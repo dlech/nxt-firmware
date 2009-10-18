@@ -1,0 +1,178 @@
+//
+// Date init       14.12.2004
+//
+// Revision date   $Date: 14-06-06 8:09 $
+//
+// Filename        $Workfile:: c_cmd.iom                                     $
+//
+// Version         $Revision: 21 $
+//
+// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_cmd.iom  $
+//
+// Platform        C
+//
+
+#ifndef   CCMD_IOM
+#define   CCMD_IOM
+
+#include "modules.h"
+
+#define   pMapCmd ((IOMAPCMD*)(pHeaders[ENTRY_CMD]->pIOMap))
+
+//
+// Status/error codes for the VM internal code and bytecodes, loosely categorized
+// Positive values are used for non-error status codes; commonly used by bytecode handlers
+//  to affect future execution.
+// Negative values are run-time errors, and the first group is considered "fatal" in that
+//  program execution cannot continue when these errors are encountered.
+//
+
+#define STAT_MSG_EMPTY_MAILBOX 64 //0x40 Specified mailbox contains no new messages
+
+#define STAT_COMM_PENDING 32 //0x20 Pending setup operation in progress
+
+#define STOP_REQ      5 //0x05 Abort current program
+#define BREAKOUT_REQ  4 //0x04 Break multi-instruction interpreter loop; give I/O a chance to run
+#define PC_OVERRIDE   3 //0x03 Move program counter according to ScratchPC value
+#define CLUMP_SUSPEND 2 //0x02 Place clump in stasis; execute others until this one returns to RunQ
+#define CLUMP_DONE    1 //0x01 Finish and reset this clump; execute others until this one is rescheduled
+
+#define NO_ERR        0
+
+//Fatal errors
+#define ERR_ARG      -1 //0xFF Bad arguments
+#define ERR_INSTR    -2 //0xFE Illegal bytecode instruction
+#define ERR_FILE     -3 //0xFD Mal-formed file contents
+#define ERR_VER      -4 //0xFC Version mismatch between firmware and compiler
+#define ERR_MEM      -5 //0xFB Insufficient memory available
+#define ERR_BAD_PTR  -6 //0xFA Someone passed us a bad pointer!
+
+//General errors
+#define ERR_INVALID_PORT   -16 //0xF0 Bad input or output port specified
+#define ERR_INVALID_FIELD  -17 //0xEF Attempted to access invalid field of a structure
+#define ERR_INVALID_QUEUE  -18 //0xEE Illegal queue ID specified
+#define ERR_INVALID_SIZE   -19 //0xED Illegal size specified
+#define ERR_NO_PROG        -20 //0xEC No active program
+
+//Communications specific errors
+#define ERR_COMM_CHAN_NOT_READY -32 //0xE0 Specified channel/connection not configured or busy
+#define ERR_COMM_CHAN_INVALID   -33 //0xDF Specified channel/connection is not valid
+#define ERR_COMM_BUFFER_FULL    -34 //0xDE No room in comm buffer
+#define ERR_COMM_BUS_ERR        -35 //0xDD Something went wrong on the communications bus
+
+//Remote control ("direct commands") errors
+#define ERR_RC_ILLEGAL_VAL -64 //0xC0 Data contains out-of-range values
+#define ERR_RC_BAD_PACKET  -65 //0xBF Clearly insane packet
+#define ERR_RC_UNKNOWN_CMD -66 //0xBE Unknown command opcode
+#define ERR_RC_FAILED      -67 //0xBD Request failed (i.e. specified file not found)
+
+//NB: Error codes -96 through -128 (0xA0 through 0x80) reserved for loader (file system) errors
+//This whole range isn't actually used by current loader code, but it's a reasonable range to reserve
+
+#define IS_ERR(Status)   ((Status) < NO_ERR)
+
+//Errors are considered fatal if they are something we'd consider halting the VM for.
+#define IS_FATAL(Status) ((Status) < NO_ERR && (Status) >= ERR_BAD_PTR)
+
+//Direct command protocol opcodes
+//!!! These MUST be mutually exclusive with c_comm's protocol opcodes.
+// Since all of c_comm's protocol opcodes are above 0x80, we're safe for now.
+enum
+{
+  RC_START_PROGRAM,
+  RC_STOP_PROGRAM,
+  RC_PLAY_SOUND_FILE,
+  RC_PLAY_TONE,
+  RC_SET_OUT_STATE,
+  RC_SET_IN_MODE,
+  RC_GET_OUT_STATE,
+  RC_GET_IN_VALS,
+  RC_RESET_IN_VAL,
+  RC_MESSAGE_WRITE,
+  RC_RESET_POSITION,
+  RC_GET_BATT_LVL,
+  RC_STOP_SOUND,
+  RC_KEEP_ALIVE,
+  RC_LS_GET_STATUS,
+  RC_LS_WRITE,
+  RC_LS_READ,
+  RC_GET_CURR_PROGRAM,
+  RC_GET_BUTTON_STATE,
+  RC_MESSAGE_READ,
+  NUM_RC_OPCODES
+};
+
+
+//
+//Published status of last program to be activated
+//This value is published so outside parties (like the UI) can check if a program is running,
+//and if not, how the last program ended.  Initial value is "PROG_OK".
+//PROG_OK: Last program finished normally.
+//PROG_RUNNING: Program currently running
+//PROG_ERROR: Last program ended because of an error
+//PROG_ABORT: Last program ended because of (user) abort
+//
+typedef enum
+{
+  PROG_IDLE,
+  PROG_OK,
+  PROG_RUNNING,
+  PROG_ERROR,
+  PROG_ABORT,
+  PROG_RESET
+} PROGRAM_STATUS;
+
+//Maximum size of memory pool, in bytes
+//!!! Code assumes this value is evenly divisible by 4!
+#define POOL_MAX_SIZE 32768
+
+//Versioning information
+//Format string must exist verbatim in the header of a valid program file.
+//Also included in IOMAPCMD for remote identification of the VM
+#define VM_FORMAT_STRING "MindstormsNXT"
+//Size of format string above, plus version number packed in the last two bytes.
+#define VM_FORMAT_STRING_SIZE 16
+//Current firmware version defined in c_loader.iom as FIRMWAREVERSION
+//This is the oldest compatible version in the same system
+#define VM_OLDEST_COMPATIBLE_VERSION 0x0004
+
+//
+//IO Map for Command Module
+// pRCHandler: Function pointer to handler for remote control protocol
+// Tick:       Latest value from 1 ms system timer
+
+//!!! Two offset values below are useful for external debugging.  They are only valid after a program has started!
+// OffsetDS: Offset to the dataspace (inside MemoryPool); relative to first byte of IOMapCmd
+// OffsetDVA: Offset to the DopeVectorArray (inside MemoryPool); relative to first byte of IOMapCmd
+
+// ProgStatus: Published status of last program to be activated
+// Awake:      Boolean is only true after initialization
+
+// ActivateFlag: Set this flag to notify cCmdCtrl to activate new file
+// DeactivateFlag: Set this flag to notify cCmdCtrl to deactivate current program
+
+// FileName[]:   Fill in this buffer when using ActivateFlag
+// MemoryPool[]: Main memory pool for program data.
+//   (Declared as ULONG for portable alignment; used internally via a byte pointer.)
+//
+typedef struct
+{
+  UBYTE FormatString[VM_FORMAT_STRING_SIZE];
+  UWORD (*pRCHandler)(UBYTE *, UBYTE *, UBYTE *);
+  ULONG Tick;
+
+  UWORD OffsetDS;
+  UWORD OffsetDVA;
+
+  PROGRAM_STATUS ProgStatus;
+
+  UBYTE Awake;
+
+  UBYTE ActivateFlag;
+  UBYTE DeactivateFlag;
+  UBYTE FileName[FILENAME_LENGTH + 1];
+
+  ULONG MemoryPool[POOL_MAX_SIZE / 4];
+} IOMAPCMD;
+
+#endif //CCMD_IOM

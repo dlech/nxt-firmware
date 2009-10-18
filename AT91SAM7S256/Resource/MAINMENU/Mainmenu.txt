@@ -1,0 +1,20 @@
+00000001      00000002
+YES           NO
+Turn_off?     Turn_off?
+10200401      10200001
+2             0
+0             0
+0             0
+1             1
+
+
+00000011      00000021      00000031      00000041      00000051      00000061      00000071
+MYFILES		    NXTPROGRAM    DATALOG       VIEW          BLUETOOTH     SETTINGS      TRYME   
+My_Files	    NXT_Program   Datalog       View          Bluetooth	    Settings      Try_Me  
+01040000	    01040000      01040000	    01040000	    01040000      01040000      01040000
+0		          0             A		          0		          0             0             0       
+0		          0             0		          0		          0             0             0       
+1		          2             3		          4		          7		          5             6       
+1		          1             1		          1		          2             1             1       
+
+

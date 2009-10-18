@@ -1,0 +1,63 @@
+00000001	                                  00000002                                                00000003                                  00000004                    00000005
+SELECTDEVICES                               MYUNITS                                                 SHOWDEVICES                               VISIABILITY                 ONOFF 
+Search                                      My_contacts                                             Connections                               Visibility                  On/Off
+00408000	                                  00408000                                                00408000                                  00408000                    00008000
+0 		                                      0                                                       0                                         0                           0
+0		                                        0                                                       0                                         0                           0
+0		                                        0                                                       0                                         0                           0
+1		                                        1                                                       1                                         1                           1
+
+
+00000011	                                  00000012                                                00000013                                  00000014      00000024      00000015      00000025
+BTUNKNOWN                                   BTUNKNOWN                                               MYUNITS0                                  VISIBEL       INVISIBEL     BTON          BTOFF
+_                                           _                                                       Slot_0                                    Visible       Invisible     On            Off
+00000302	                                  00001002                                                00001002                                  00000000      00000000      00000080      00400080
+12		                                      0                                                       0	                                        11            11            3             3
+FF                                          0                                                       0                                         EB            EA            EB            EA
+0		                                        0                                                       0                                         0             0             0             0
+1		                                        1                                                       1                                         0             0             0             0
+
+
+00000111	                                  00000112	                                              00000113	    00000213      00000313
+BTUNKNOWN                                   BTUNKNOWN                                               MYUNITS1      MYUNITS2      MYUNITS3
+_                                           _                                                       Slot_1        Slot_2        Slot_3
+00000308	                                  00100208	                                              00000308	    00000000      00000000
+13		                                      13		                                                  14	          0             0
+F2	                                        F2	                                                    F6            0             0
+0		                                        0		                                                    0             0             0
+1		                                        2		                                                    1             0             0
+
+
+00001111	    00002111      00003111        00001112      00002112                                  00001113      00002113
+MYUNITS1      MYUNITS2      MYUNITS3        DELETE        CONNECT                                   CONNECT       DISCONNECT
+Slot_1        Slot_2        Slot_3          Remove        Connect                                   Open_stream   Disconnect
+00000300	    00000000      00000000        00000000      00000000                                  00000000      00000000
+10	          0             0               13            0                                         14            14
+F5	          0             0               F1            0                                         EC            F0
+0		          0             0               0             0                                         0             0
+0             0             0               0             1                                         0             0
+
+		        
+                                                          00012112	    00022112      00032112                    
+                                                          MYUNITS1      MYUNITS2      MYUNITS3                    
+                                                          Slot_1        Slot_2        Slot_3                      
+                                                          00000308	    00000000      00000000                    
+                                                          10	          0             0                           
+                                                          F5	          0             0                           
+                                                          0		          0             0                           
+                                                          0             0             0                           
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      
+                                                                                      

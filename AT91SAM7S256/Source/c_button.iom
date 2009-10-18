@@ -1,0 +1,61 @@
+//
+// Date init       14.12.2004
+//
+// Revision date   $Date:: 16-05-06 9:58                                     $
+//
+// Filename        $Workfile:: c_button.iom                                  $
+//
+// Version         $Revision:: 10                                            $
+//
+// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_button.i $
+//
+// Platform        C
+//
+
+#ifndef   CBUTTON_IOM
+#define   CBUTTON_IOM
+
+#define   pMapButton         ((IOMAPBUTTON*)(pHeaders[ENTRY_BUTTON]->pIOMap))  
+
+enum
+{
+  BTN1,
+  BTN2,
+  BTN3,
+  BTN4,
+  NO_OF_BTNS  
+};
+
+/* Costants related to State */
+enum
+{
+  PRESSED_EV         = 0x01,
+  SHORT_RELEASED_EV  = 0x02,
+  LONG_PRESSED_EV    = 0x04,
+  LONG_RELEASED_EV   = 0x08,
+  PRESSED_STATE      = 0x80
+};
+
+typedef   struct
+{
+  UBYTE   PressedCnt;
+  UBYTE   LongPressCnt;
+  UBYTE   ShortRelCnt;
+  UBYTE   LongRelCnt;
+  UBYTE   RelCnt;
+  UBYTE   SpareOne;
+  UBYTE   SpareTwo;
+  UBYTE   SpareThree;
+}BTNCNT;
+
+typedef   struct
+{
+  BTNCNT  BtnCnt[NO_OF_BTNS];
+  UBYTE   State[NO_OF_BTNS];
+}IOMAPBUTTON;
+
+
+#endif
+
+
+

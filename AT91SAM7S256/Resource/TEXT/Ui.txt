@@ -1,0 +1,51 @@
+Connecting
+Line is busy
+Failed!
+Connection?
+Sending file
+Failed!
+Turning on
+Failed!
+Turning off
+Failed!
+Searching
+Aborted!
+Failed!
+Failed!
+Failed!
+Memory full!
+File saved
+File exists
+overwrite!
+File deleted
+Files
+deleted
+Running
+Aborted!
+Done
+File error!
+Deleting all
+%s files!
+Sound
+Software
+NXT
+Try Me
+Datalog
+Passkey:
+File name:
+Please use port:
+1 - Touch Sensor
+2 - Sound Sensor
+3 - Light Sensor
+4 - Ultrasonic  
+B/C - L/R motors
+Select
+Select
+Select
+BT save data
+error!
+BT store is
+full error!
+BT unknown
+addr. error!
+Never

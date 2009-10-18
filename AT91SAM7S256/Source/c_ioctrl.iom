@@ -1,0 +1,35 @@
+//
+// Date init       14.12.2004
+//
+// Revision date   $Date:: 16-05-06 9:50                                     $
+//
+// Filename        $Workfile:: c_ioctrl.iom                                  $
+//
+// Version         $Revision:: 8                                             $
+//
+// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_ioctrl.i $
+//
+// Platform        C
+//
+
+#ifndef   CIOCTRL_IOM
+#define   CIOCTRL_IOM
+
+#define   pMapIoCtrl ((IOMAPIOCTRL*)(pHeaders[ENTRY_IOCTRL]->pIOMap))  
+
+enum
+{
+  POWERDOWN = 0x5A00,
+  BOOT      = 0xA55A
+};
+
+typedef   struct
+{
+  UWORD   PowerOn;
+}IOMAPIOCTRL;
+
+
+#endif
+
+
+

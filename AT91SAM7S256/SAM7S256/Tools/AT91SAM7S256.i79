@@ -1,0 +1,38 @@
+[FILEFORMAT]
+rev=1.0
+
+
+[CHIP]
+//Chip name
+name=AT91SAM7S256
+
+//What endian modes does the chip support? (littleonly, bigonly, both(default))
+endiansupport=
+
+//Does the chip support the thumb instruction set? (true(default), false)
+thumbsupport=
+
+//Does the chip have an FPU coprocessor?
+//(VFPv1,VFPv2,VFP9-S,MaverickCrunch,None(default)
+fpu=
+
+
+[CORE]
+//Name of the ARM processor core
+name=ARM7TDMI
+
+
+[DDF FILE]
+//Name of the ddf file
+name=ioat91sam7s256.ddf
+
+
+[XCL FILE]
+//Name of the linker config file
+name=
+
+[FLASH LOADER]
+name=$TOOLKIT_DIR$\config\flashloader\Atmel\FlashAT91SAM7Sxx.d79
+args=
+
+

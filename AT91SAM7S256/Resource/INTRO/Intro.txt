@@ -1,0 +1,21 @@
+
+			offset(x,y)	size(x,y)	bytes
+
+RCXintro_1.bmp		16,0		64,64		512
+RCXintro_2.bmp		16,0		64,64		512
+RCXintro_3.bmp		16,0		64,64		512		
+RCXintro_4.bmp		16,0		64,64		512
+RCXintro_5.bmp		23,0		52,64		416
+RCXintro_6.bmp		28,8		44,48		264
+RCXintro_7.bmp		35,16		34,40		170
+RCXintro_8.bmp		44,24		22,24		66
+RCXintro_9.bmp		52,24		16,24		48
+RCXintro_10.bmp		56,32		10,16		20		
+RCXintro_11.bmp		58,32		8,16		16
+RCXintro_12.bmp		3,32		94,16		188
+RCXintro_13.bmp		3,32		94,16		188
+RCXintro_14.bmp		3,32		94,16		188
+RCXintro_15.bmp		3,32		94,16		188
+RCXintro_16.bmp		3,32		94,16		188
+							----
+							3988

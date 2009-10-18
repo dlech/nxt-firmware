@@ -1,0 +1,38 @@
+00000001	    00000002      00000003                    00000004
+LMSFILE       NXTFILE       SOUNDFILE                   DATALOGFILE   
+Software_files NXT_files    Sound_files                 Datalog_files
+10008003	    10008003      10008003                    00008002
+6 		        6             6                           6
+2		          3             1                           5
+0		          0             0                           0
+1		          1             1                           2
+
+
+00000011                                                00000014
+_                                                       _
+_                                                       _
+00000300                                                00000300
+6                                                       6
+F2                                                      F2
+0                                                       0
+1                                                       1
+
+
+00000111      00000211      00000311                    00000114                    00000214
+RUN           SEND          DELETE                      DELETE                      SEND
+Run           Send          Delete                      Delete                      Send
+00000120      00000000      00000000                    00000000                    00000000
+8             0             0                           0                           0
+F8            0             0                           0                           0
+0             10            0                           0                           10
+0             1             2                           2                           1
+
+
+                            00001311      00002311      00001114      00002114
+                            YES           NO            YES           NO
+                            Are_you_sure? Are_you_sure? Are_you_sure? Are_you_sure?
+                            0000008       00000004      00000008      00000004
+                            9             0             9             0
+                            0             0             0             0
+                            0             0             0             0
+                            0             0             0             0

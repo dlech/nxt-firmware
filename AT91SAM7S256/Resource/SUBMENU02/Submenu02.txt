@@ -1,0 +1,78 @@
+00000001
+Dummy
+_    
+00000300
+B       
+F7      
+0       
+1       
+
+
+00000011        00000021        00000031        00000041        00000051        00000061        00000071        00000081        00000091        000000A1        000000B1        000000C1        000000D1        000000E1        000000F1
+FORWARD2        FORWARD1        TURNRIGHT2      TURNRIGHT1      BACKTURNRIGHT2  BACKTURNRIGHT1  TONE1           TONE2           BACKTURNLEFT2   BACKTURNLEFT1   TURNLEFT1       TURNLEFT2       EMPTY           BACKWARD1       BACKWARD2
+Forward_5       Forward         Turn_right_2    Turn_right      Back_right_2    Back_right      Tone_1          Tone_2          Back_left_2     Back_left       Turn_left       Turn_left_2     Empty           Backward        Backward_5
+10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061
+B               B               B               B               B               B               B               B               B               B               B               B               B               B               B
+23              22              29              28              2F              27              2B              2C              24              2A              25              26              21              2D              2E
+0               0               0               0               0               0               0               0               0               0               0               0               0               0               0
+1               1               1               1               1               1               1               1               1               1               1               1               1               1               1
+
+
+00000111        00000211        00000311        00000411        00000511        00000611        00000711        00000811        00000911
+EMPTY           WAIT1           WAIT2           WAIT3           SEEKOBJ         SOUND           LIGHT           DARK            TOUCH
+Empty           Wait_2          Wait_5          Wait_10         Object          Sound           Light           Dark            Touch 
+10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061
+B               B               B               B               B               B               B               B               B
+41              46              47              48              43              44              42              49              45
+0               0               0               0               0               0               0               0               0
+1               1               1               1               1               1               1               1               1
+
+
+00001111        00002111        00003111        00004111        00005111        00006111        00007111        00008111        00009111        0000A111        0000B111        0000C111        0000D111        0000E111        0000F111
+FORWARD2        FORWARD1        TURNRIGHT2      TURNRIGHT1      BACKTURNRIGHT2  BACKTURNRIGHT1  TONE1           TONE2           BACKTURNLEFT2   BACKTURNLEFT1   TURNLEFT1       TURNLEFT2       EMPTY           BACKWARD1       BACKWARD2
+Forward_5       Forward         Turn_right_2    Turn_right      Back_right_2    Back_right      Tone_1          Tone_2          Back_left_2     Back_left       Turn_left       Turn_left_2     Empty           Backward        Backward_5
+10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061
+B               B               B               B               B               B               B               B               B               B               B               B               B               B               B
+23              22              29              28              2F              27              2B              2C              24              2A              25              26              21              2D              2E
+0               0               0               0               0               0               0               0               0               0               0               0               0               0               0
+1               1               1               1               1               1               1               1               1               1               1               1               1               1               1
+
+
+00011111        00021111        00031111        00041111        00051111        00061111        00071111        00081111        00091111
+EMPTY           WAIT1           WAIT2           WAIT3           SEEKOBJ         SOUND           LIGHT           DARK            TOUCH
+Empty           Wait_2          Wait_5          Wait_10         Object          Sound           Light           Dark            Touch 
+10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061        10000061
+B               B               B               B               B               B               B               B               B
+41              46              47              48              43              44              42              49              45
+0               0               0               0               0               0               0               0               0
+1               1               1               1               1               1               1               1               1
+
+
+00111111      00211111
+STOP          LOOP
+Stop          Loop
+10000061      10000061
+B             B
+FB            FC
+0             0
+1             1
+
+
+01111111      02111111          04111111
+RUN           MAINMENU          PROGRAMFILE
+Run           Main_menu         Save
+00000060      00002060          00000060
+B             B                 B
+F8            F6                FA
+0             0                 0
+0             0                 2
+
+
+                                14111111      24111111
+                                YES           NO            
+                                Yes           No
+                                00002020      00080024      
+                                B             B             
+                                ED            F6
+                                0             0             
+                                0             0             

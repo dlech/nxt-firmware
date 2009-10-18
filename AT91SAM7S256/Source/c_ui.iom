@@ -1,0 +1,116 @@
+//
+// Programmer      
+//
+// Date init       14.12.2004
+//
+// Reviser         $Author:: Dktochpe                                        $
+//
+// Revision date   $Date:: 28-02-06 14:07                                    $
+//
+// Filename        $Workfile:: c_ui.iom                                      $
+//
+// Version         $Revision:: 45                                            $
+//
+// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_ui.iom   $
+//
+// Platform        C
+//
+
+#ifndef   CUI_IOM
+#define   CUI_IOM
+
+#define   pMapUi ((IOMAPUI*)(pHeaders[ENTRY_UI]->pIOMap))
+
+// Various filenames without extension
+#define   UI_NONVOLATILE      "NVConfig"      // Ui non volatile config filename
+#define   UI_PROGRAM_DEFAULT  "Untitled"      // On brick programming default filename
+#define   UI_PROGRAM_TEMP     "Program"       // On brick programming tmp filename
+#define   UI_PROGRAM_READER   "RPGReader"     // On brick programming script reader filename
+#define   UI_STARTUP_SOUND    "! Startup"     // Sound file activated when the menu system starts up
+#define   UI_KEYCLICK_SOUND   "! Click"       // Sound file activated when key pressed in the menu system
+#define   UI_ATTENTION_SOUND  "! Attention"   // Sound file activated when incomming BT requests attention 
+
+// Various text strings
+#define   UI_NAME_DEFAULT     "NXT"           // Default blue tooth name 
+#define   UI_PINCODE_DEFAULT  "1234"          // Default blue tooth pin code
+#define   UI_PINCODE_NONE_OUT "????"          // Fake pin code to deney outgoing request
+#define   UI_PINCODE_NONE_IN  "????"          // Fake pin code to deney incomming request
+
+// Constants related to Flags
+enum
+{
+  UI_UPDATE                   = 0x01,         // W  - Make changes take effect
+  UI_DISABLE_LEFT_RIGHT_ENTER = 0x02,         // RW - Disable left, right and enter button
+  UI_DISABLE_EXIT             = 0x04,         // RW - Disable exit button
+  UI_REDRAW_STATUS            = 0x08,         // W  - Redraw entire status line
+  UI_RESET_SLEEP_TIMER        = 0x10,         // W  - Reset sleep timeout timer
+  UI_EXECUTE_LMS_FILE         = 0x20,         // W  - Execute LMS file in "LMSfilename" (Try It)
+  UI_BUSY                     = 0x40,         // R  - UI busy running or datalogging (popup disabled)
+  UI_ENABLE_STATUS_UPDATE     = 0x80          // W  - Enable status line to be updated
+};
+
+// Constants related to State
+enum
+{
+  INIT_DISPLAY,                               // RW - Init display and load font, menu etc.
+  INIT_LOW_BATTERY,                           // R  - Low battery voltage at power on
+  INIT_INTRO,                                 // R  - Display intro
+  INIT_WAIT,                                  // RW - Wait for initialization end
+  INIT_MENU,                                  // RW - Init menu system
+  NEXT_MENU,                                  // RW - Next menu icons ready for drawing
+  DRAW_MENU,                                  // RW - Execute function and draw menu icons
+  TEST_BUTTONS,                               // RW - Wait for buttons to be pressed
+  LEFT_PRESSED,                               // RW - Load selected function and next menu id
+  RIGHT_PRESSED,                              // RW - Load selected function and next menu id
+  ENTER_PRESSED,                              // RW - Load selected function and next menu id
+  EXIT_PRESSED,                               // RW - Load selected function and next menu id
+  CONNECT_REQUEST,                            // RW - Request for connection accept
+  EXECUTE_FILE,                               // RW - Execute file in "LMSfilename"
+  EXECUTING_FILE,                             // R  - Executing file in "LMSfilename"
+  LOW_BATTERY,                                // R  - Low battery at runtime
+  BT_ERROR                                    // R  - BT error
+};
+
+// Constants related to Button
+enum
+{
+  BUTTON_NONE,                                // R  - Button inserted are executed
+  BUTTON_LEFT,                                // W  - Insert left arrow button
+  BUTTON_ENTER,                               // W  - Insert enter button
+  BUTTON_RIGHT,                               // W  - Insert right arrow button
+  BUTTON_EXIT                                 // W  - Insert exit button
+};
+
+// Constants related to BlueToothState
+enum
+{
+  BT_STATE_VISIBLE            = 0x01,         // RW - BT visible
+  BT_STATE_CONNECTED          = 0x02,         // RW - BT connected to something
+  BT_STATE_OFF                = 0x04,         // RW - BT power off
+  BT_ERROR_ATTENTION          = 0x08,         // W  - BT error attention
+  BT_CONNECT_REQUEST          = 0x40,         // RW - BT get connect accept in progress
+  BT_PIN_REQUEST              = 0x80          // RW - BT get pin code
+};
+
+typedef   struct
+{
+  MENU    *pMenu;                             // W  - Pointer to menu file
+  UWORD   BatteryVoltage;                     // R  - Battery voltage in millivolts
+  UBYTE   LMSfilename[FILENAME_LENGTH + 1];   // W  - LMS filename to execute (Try It)
+  UBYTE   Flags;                              // RW - Update command flags  (flags enumerated above)
+  UBYTE   State;                              // RW - UI state              (states enumerated above)
+  UBYTE   Button;                             // RW - Insert button         (buttons enumerated above)
+  UBYTE   RunState;                           // W  - VM Run state          (0 = stopped, 1 = running)
+  UBYTE   BatteryState;                       // W  - Battery state         (0..4 capacity)
+  UBYTE   BluetoothState;                     // W  - Bluetooth state       (0=on, 1=visible, 2=conn, 3=conn.visible, 4=off, 5=dfu)
+  UBYTE   UsbState;                           // W  - Usb state             (0=disconnected, 1=connected, 2=working)
+  UBYTE   SleepTimeout;                       // RW - Sleep timeout time    (min)
+  UBYTE   SleepTimer;                         // RW - Sleep timer           (min)
+  UBYTE   Rechargeable;                       // R  - Rechargeable battery  (0 = no, 1 = yes)
+  UBYTE   Volume;                             // RW - Volume used in UI     (0 - 4)
+  UBYTE   Error;                              // W  - Error code
+  UBYTE   OBPPointer;                         // W  - Actual OBP step       (0 - 4)
+  UBYTE   ForceOff;                           // W  - Force off             (> 0 = off)
+}IOMAPUI;
+
+#endif

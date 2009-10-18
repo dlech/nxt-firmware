@@ -1,0 +1,58 @@
+00000001      00000002      00000003      00000004      00000005      00000006      00000007      00000008      00000009        0000000A      0000000B      0000000C        0000000D      0000000E
+SOUNDDB       SOUNDDBA      LIGHT         LIGHTAMB      LIGHTOLD      TEMPC         TEMPF         ROTATION      MOTORROT        MOTORDEG      TOUCH         ULTRASONICIN    ULTRASONICCM  DONE
+Sound_dB      Sound_dBA   Reflected_light Ambient_light Light_sensor# Temperature_`C# Temperature_`F# Rotation# Motor_Rotations Motor_Degrees Touch         UltraSonic_inch UltraSonic_cm Done
+10000021      10000021      10000021      10000021      10000021      10000021      10000021      10000021      00000020        00000020      10000021      10000021        10000021      00000020
+A             A             A             A             A             A             A             A             A               A             A             A               A             A
+2             3             4             5             6             D             E             A             9               8             7             B               C             EE
+0             0             0             0             0             0             0             0             0               0             0             0               0             0
+1             1             1             1             1             1             1             1             1               1             1             1               1             1
+
+
+00000011      00000021      00000031      00000041      00000019      00000029      00000039      0000001A      0000002A      0000003A                                                    0000001E      0000002E      0000003E
+PORT1         PORT2         PORT3         PORT4         PORTA         PORTB         PORTC         PORTA         PORTB         PORTC                                                       TIME          ARROWRIGHT    ARROWLEFT
+Port_1        Port_2        Port_3        Port_4        Port_A        Port_B        Port_C        Port_A        Port_B        Port_C                                                      Logging_time  _             _            
+10000021      10000021      10000021      10000021      10000021      10000021      10000021      10000021      10000021      10000021                                                    000003E0      00000000      00000000
+A             A             A             A             A             A             A             A             A             A                                                           C             0             0
+12            13            14            15            16            17            18            16            17            18                                                          EF            0             0
+0             0             0             0             0             0             0             0             0             0                                                           0             0             0
+1             1             1             1             1             1             1             1             1             1                                                           1             0             0
+
+
+00000111      00000211      00000311      00000119      00000219      00000319      0000011A      0000021A      0000031A                                                                  0000011E               
+TIME          ARROWRIGHT    ARROWLEFT     TIME          ARROWRIGHT    ARROWLEFT     TIME          ARROWRIGHT    ARROWLEFT                                                                 Dummy              
+Logging_Rate  _             _             Logging_Rate  _             _             Logging_Rate  _             _                                                                         _                      
+00000368      00000000      00000000      00000368      00000000      00000000      00000368      00000000      00000000                                                                  00001000              
+C             0             0             C             0             0             C             0             0                                                                         A                     
+EF            0             0             EF            0             0             EF            0             0                                                                         F7
+0             0             0             0             0             0             0             0             0                                                                         0                   
+1             0             0             1             0             0             1             0             0                                                                         1                     
+
+
+00001111                                  00001119                                  0000111A                                                                                              0000111E
+Dummy                                     Dummy                                     Dummy                                                                                                 RUN   
+_                                         _                                         _                                                                                                     Run
+0E051000                                  0E051000                                  0E051000                                                                                              00000020
+A                                         A                                         A                                                                                                     A
+F2                                        F2                                        F2                                                                                                    F8
+0                                         0                                         0                                                                                                     0
+0                                         0                                         0                                                                                                     2
+
+
+0001111E                    0002111E
+MAINMENU                    DATALOGFILE
+Main_menu                   Save           
+00022000                    00020000               
+A                           A
+F1                          FA 
+0                           0   
+0                           2    
+
+
+                            0012111E      0022111E          
+                            YES           NO                
+                            Yes           No            
+                            00002020      00080024      
+                            A             0               
+                            ED            0              
+                            0             0             
+                            0             0             

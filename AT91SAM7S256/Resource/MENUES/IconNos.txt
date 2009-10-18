@@ -1,0 +1,98 @@
+Index	Current file	New file		Comments
+-----	--------------	--------------------	--------
+00	-dont care-				
+01
+02	SoundDb		(SensorSoundDb)		Sensors
+03	SoundDba	(SensorSoundDba)
+04	Light 	 	(SensorLight)
+05	LightAmb 	(SensorLightAmb)
+06	LightOld 	(SensorLightOld)
+07	Touch	 	(SensorTouch)
+08	MotorDeg 	(MotorDegrees)
+09	MotorRot 	(MotorRotation)
+0A	Rotation 	(SensorRotation)
+0B	UltrasonicIn 	(SensorUltrasonicIn)
+0C	UltrasonicCm	(SensorUltrasonicCm)
+0D	TempC	 	(SensorTempC)
+0E	TempF	 	(SensorTempF)
+0F
+10
+11
+12	Port1					Ports
+13	Port2
+14	Port3
+15	Port4
+16	PortA
+17	PortB
+18	PortC
+19
+1A	AllFiles				Files
+1B	SoundFile
+1C	LMSFile
+1D	NXTFile
+1E	TryMeFile
+1F	DatalogFile
+20
+21	Empty					Actions
+22	Forward1				
+23	Forward2				
+24	BackTurnLeft2
+25	TurnLeft1
+26	TurnLeft2
+27	BackTurnRight1
+28	TurnRight1
+29	TurnRight2
+2A	BackTurnLeft1
+2B	Tone1
+2C	Tone2
+2D	Backward1
+2E	Backward2
+2F	BackTurnRight2
+30	No					General
+31	Yes					
+32	Run
+33	Send
+34	Delete
+35	ArrowRight
+36	ArrowLeft
+37	MainMenu
+38	Time
+39	Volume
+3A	Sleep
+3B	MyFiles					Menues
+3C	NXTProgram
+3D	Datalog
+3E	View
+3F	Settings
+40	TryMe
+41
+42	Light					Waitfor
+43	SeekObj					
+44	Sound
+45	Touch
+46	Wait1
+47	Wait2
+48	Wait3
+49	Dark
+4A
+4B
+4C
+4D	Stop					Terminations
+4E	Loop
+4F	TestProgram
+50
+51	Bluetooth				BlueTooth
+52	MyUnits		(MyContacts)
+53	ShowDevices	(Connections)
+54	Visiability	(Visibility)
+55	OnOff
+56	SelectDevices	(Search)
+57	BtUnknown
+58	Connect
+59	Disconnect
+5A	Visibel		(Visible)
+5B	Invisibel	(Invisible)
+5C	BTOn
+5D	BTOff
+5E
+5F

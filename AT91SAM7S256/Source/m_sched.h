@@ -36,7 +36,7 @@
 #define   SYSFREQ                       1000
 
 
-#include  "..\SAM7S256\include\sam7s256.h"
+#include  "../SAM7S256/Include/sam7s256.h"
 
 #if       defined (PROTOTYPE_PCB_3) || (PROTOTYPE_PCB_4)
 
@@ -102,7 +102,7 @@ extern    IOFROMAVR IoFromAvr;
 
 #ifdef    INCLUDE_OS
 
-#include  "..\SAM7S256\include\sam7s256.c"
+#include  "../SAM7S256/Include/sam7s256.c"
 
 IOTOAVR   IoToAvr;
 IOFROMAVR IoFromAvr;

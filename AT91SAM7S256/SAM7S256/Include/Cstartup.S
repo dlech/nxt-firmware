@@ -47,6 +47,8 @@
 .set VECTREMAPPED, 0
 #endif
 
+.set VECTREMAPPED_AUTODETECT, 0
+
 
 .if (RAM_MODE)
 .print "RAM_MODE enabled"
@@ -180,6 +182,7 @@ InitReset:
 		.equ    MC_RCR, 0x00        /* MC_RCR Offset */
 		
 
+.if (VECTREMAPPED_AUTODETECT)
 		/* store first word in RAM into r4 */
 		ldr r0,=__FIRST_IN_RAM
 		ldr r4,[r0]
@@ -201,6 +204,7 @@ InitReset:
 		/* compare */
 		cmp r3, r2
 		bne already_remapped
+.endif
 	
 		/* if both values have been equal the change of the
 		RAM-value had no effect on the value at 0x00000000 

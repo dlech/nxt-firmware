@@ -62,4 +62,8 @@ typedef   char*                         PSZ;
 #define SIZEOF_DATA(name) (sizeof (name))
 #endif
 
+#ifdef __GNUC__
+#define __ramfunc __attribute__ ((section (".fastrun"), optimize ("no-jump-tables")))
+#endif
+
 #endif

@@ -48,6 +48,7 @@
 #endif
 
 .set VECTREMAPPED_AUTODETECT, 0
+.set CPP_CONSTRUCTORS, 0
 
 
 .if (RAM_MODE)
@@ -306,6 +307,7 @@ LoopZI:         CMP     R1, R2
                 BLO     LoopZI
 
 
+.if (CPP_CONSTRUCTORS)
 /* call C++ constructors of global objects */
 		LDR 	r0, =__ctors_start__
 		LDR 	r1, =__ctors_end__
@@ -320,6 +322,7 @@ ctor_loop:
 		LDMFD 	sp!, {r0-r1}
 		B 		ctor_loop
 ctor_end:
+.endif
 
 
 /* call main() */

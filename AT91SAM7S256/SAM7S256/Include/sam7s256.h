@@ -15,7 +15,11 @@
 #ifndef   SAM7S256_H
 #define   SAM7S256_H
 
+#ifdef __IAR_SYSTEMS_ICC__
 #include  "ioat91sam7s256.h"
+#else
+#include  "AT91SAM7S256.h"
+#endif
 
 #define   SAM7S256
 

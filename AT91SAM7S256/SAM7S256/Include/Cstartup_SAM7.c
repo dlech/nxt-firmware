@@ -23,13 +23,18 @@ extern void AT91F_Spurious_handler(void);
 extern void AT91F_Default_IRQ_handler(void);
 extern void AT91F_Default_FIQ_handler(void);
 
+#ifdef __IAR_SYSTEMS_ICC__
+# define SECTION_ICODE @ "ICODE"
+#else
+# define SECTION_ICODE
+#endif
 //*----------------------------------------------------------------------------
 //* \fn    AT91F_LowLevelInit
 //* \brief This function performs very low level HW initialization
 //*        this function can be use a Stack, depending the compilation
 //*        optimization mode
 //*----------------------------------------------------------------------------
-void AT91F_LowLevelInit( void) @ "ICODE"
+void AT91F_LowLevelInit( void) SECTION_ICODE
 {
   int            i;
   AT91PS_PMC     pPMC = AT91C_BASE_PMC;

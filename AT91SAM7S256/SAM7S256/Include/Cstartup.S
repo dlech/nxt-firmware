@@ -155,7 +155,7 @@ reset:
 
 .if (VECTREMAPPED)
 /* mthomas: Dummy used during startup */
-				LDR PC,=Reset_Addr_F
+				LDR PC, Reset_Addr_F
 				NOP
 				NOP
 				NOP

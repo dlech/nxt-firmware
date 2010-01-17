@@ -41,9 +41,9 @@ void      cCmdExit(void);
 //
 //ARM_NXT vs SIM_NXT
 //These definitions are set up to allow compiling this code for use in a simulated (non-ARM7) environment.
-//If your toolchain doesn't automatically use the __ICCARM__ token, define it to ensure normal compilation.
+//If your toolchain doesn't automatically use the __ICCARM__ or __arm__ token, define it to ensure normal compilation.
 //
-#ifdef __ICCARM__
+#if defined (__ICCARM__) || (defined (__GNUC__) && defined (__arm__))
 #define ARM_NXT
 #else
 #define SIM_NXT

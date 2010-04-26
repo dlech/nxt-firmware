@@ -88,6 +88,7 @@
 // Code segments may be placed anywhere.
 //************************************************
 -Z(CODE)CODE=ROMSTART-ROMEND
+-Z(CODE)RAMCODE=RAMSTART-RAMEND
 
 //************************************************
 // Various constants and initializers.
@@ -124,6 +125,9 @@
 
 -Z(DATA)CSTACK+_CSTACK_SIZE=RAMSTART-RAMEND
 -Z(DATA)IRQ_STACK+_IRQ_STACK_SIZE=RAMSTART-RAMEND
+
+-D_HEAP_SIZE=1024
+-Z(DATA)HEAP+_HEAP_SIZE=RAMSTART-RAMEND
 
 //*************************************************************************
 // ELF/DWARF support.

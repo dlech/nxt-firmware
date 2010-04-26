@@ -1,11 +1,11 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 24-06-09 8:53                                     $
+// Revision date   $Date:: 2-12-08 14:30                                     $
 //
 // Filename        $Workfile:: d_loader.c                                    $
 //
-// Version         $Revision:: 18                                            $
+// Version         $Revision:: 16                                            $
 //
 // Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_load $
 //
@@ -20,7 +20,7 @@
 #include  <string.h>
 #include  <ctype.h>
 
-#define   FILEVERSION                   (0x0000010DL)
+#define   FILEVERSION                   (0x0000010CL)
 
 #define   MAX_FILES                     ((FILETABLE_SIZE) - 1)  /* Last file entry is used for file version*/
 #define   FILEVERSIONINDEX              ((FILETABLE_SIZE) - 1)  /* Last file entry is used for file version*/
@@ -219,9 +219,7 @@ UWORD     dLoaderDeleteFilePtr(UWORD Handle)
       /* Update the HandleTable[].FileIndex */
       for (LongCnt = 0; LongCnt < MAX_HANDLES; LongCnt++)
       {
-        
-        /* FileIndex must not be decremented for to the file to be deleted (when Handle = LongCnt)*/
-        if ((HandleTable[Handle].FileIndex < HandleTable[LongCnt].FileIndex) && (FREE != HandleTable[LongCnt].Status))
+        if ((HandleTable[Handle].FileIndex <= HandleTable[LongCnt].FileIndex) && (FREE != HandleTable[LongCnt].Status))
         {
           (HandleTable[LongCnt].FileIndex)--;
         }
@@ -655,6 +653,61 @@ UWORD     dLoaderOpenRead(UBYTE *pFileName, ULONG *pLength)
   return(Handle);
 }
 
+UWORD     dLoaderSeek(UBYTE Handle, SLONG offset, UBYTE from)
+{
+  // move the ReadLength file pointer for this handle to the new offset
+  // and update pFlash appropriately
+  UWORD   Status;
+  SLONG   distFromStart;
+  const   FILEHEADER *TmpHeader;
+
+  Status = dLoaderCheckHandle(Handle, BUSY);
+  if (0x8000 > Status)
+  {
+    Status  = Handle;
+    // calculate distance from start regardless of "from"
+    // and start from there going forward unless distance > current
+    // in which case start from current going forward
+    switch (from) {
+    case SEEK_FROMSTART:
+      distFromStart = offset;
+      break;
+    case SEEK_FROMCURRENT:
+      distFromStart = (SLONG)HandleTable[Handle].ReadLength + offset;
+      break;
+    case SEEK_FROMEND:
+      distFromStart = (SLONG)HandleTable[Handle].DataLength + offset;
+      break;
+    }
+    if (distFromStart != HandleTable[Handle].ReadLength) {
+      if ((distFromStart < 0) || (distFromStart > HandleTable[Handle].DataLength))
+        return (Status | INVALIDSEEK);
+      if (distFromStart < HandleTable[Handle].ReadLength) {
+        // start from the beginning in this case
+        TmpHeader = (FILEHEADER const *)(FILEPTRTABLE[HandleTable[Handle].FileIndex]);
+        HandleTable[Handle].pFlash = (const UBYTE *)TmpHeader->FileStartAdr;
+        HandleTable[Handle].ReadLength = 0;
+      }
+      else
+        distFromStart -= HandleTable[Handle].ReadLength; // dist from current
+      // now move forward from the current location
+      while (distFromStart > 0) {
+        distFromStart--;
+        // move to next byte in the flash
+        HandleTable[Handle].pFlash++;
+        // update our file pointer
+        HandleTable[Handle].ReadLength++;
+        // if we reach a flash sector boundary then find the next sector pointer
+        if (!((ULONG)(HandleTable[Handle].pFlash) & (SECTORSIZE-1)))
+        {
+          HandleTable[Handle].pFlash = dLoaderGetNextSectorPtr(Handle);
+        }
+      }
+    }
+  }
+  return(Status);
+}
+
 UWORD      dLoaderRead(UBYTE Handle, UBYTE *pBuffer, ULONG *pLength)
 {
   UWORD   ByteCnt, Status;
@@ -668,16 +721,21 @@ UWORD      dLoaderRead(UBYTE Handle, UBYTE *pBuffer, ULONG *pLength)
     {
       if (HandleTable[Handle].DataLength <= HandleTable[Handle].ReadLength)
       {
+        // if the file pointer (ReadLength) is >= file size then return EOF
         *pLength = ByteCnt;
         Status  |= ENDOFFILE;
       }
       else
       {
+        // copy a byte at a time from pFlash to pBuffer
         *pBuffer = *(HandleTable[Handle].pFlash);
         pBuffer++;
         ByteCnt++;
+        // move to next byte in the flash
         HandleTable[Handle].pFlash++;
+        // update our file pointer
         HandleTable[Handle].ReadLength++;
+        // if we reach a flash sector boundary then find the next sector pointer
         if (!((ULONG)(HandleTable[Handle].pFlash) & (SECTORSIZE-1)))
         {
           HandleTable[Handle].pFlash = dLoaderGetNextSectorPtr(Handle);

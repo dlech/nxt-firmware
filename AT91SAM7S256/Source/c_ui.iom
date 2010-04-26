@@ -40,6 +40,7 @@ enum
 #define   UI_STARTUP_SOUND    "! Startup"     // Sound file activated when the menu system starts up
 #define   UI_KEYCLICK_SOUND   "! Click"       // Sound file activated when key pressed in the menu system
 #define   UI_ATTENTION_SOUND  "! Attention"   // Sound file activated when incomming BT requests attention
+#define   UI_STARTUP_PROGRAM  "! Startup.rxe"  // Program file activated when the NXT boots
 
 // Various text strings
 #define   UI_NAME_DEFAULT     "NXT"           // Default blue tooth name 
@@ -122,6 +123,7 @@ typedef   struct
   UBYTE   Error;                              // W  - Error code
   UBYTE   OBPPointer;                         // W  - Actual OBP step       (0 - 4)
   UBYTE   ForceOff;                           // W  - Force off             (> 0 = off)
+  UBYTE   AbortFlag;                          // RW - Abort on this button state
 }IOMAPUI;
 
 #endif

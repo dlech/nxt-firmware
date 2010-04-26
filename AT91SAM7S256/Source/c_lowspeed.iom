@@ -67,6 +67,19 @@ enum
   LOWSPEED_RX_ERROR  
 };
 
+// Constants referring to NoRestartOnRead
+enum
+{
+  COM_CHANNEL_RESTART_ALL     = 0x00,
+  COM_CHANNEL_NO_RESTART_1    = 0x01,
+  COM_CHANNEL_NO_RESTART_2    = 0x02,
+  COM_CHANNEL_NO_RESTART_3    = 0x04,
+  COM_CHANNEL_NO_RESTART_4    = 0x08,
+  COM_CHANNEL_RESTART_NONE    = 0x0F,
+  COM_CHANNEL_NO_RESTART_MASK = 0x10
+};
+
+
 
 typedef   struct
 {
@@ -85,7 +98,7 @@ typedef   struct
   UBYTE   ErrorType[NO_OF_LSBUF];
   UBYTE   State;
   UBYTE   Speed;  
-  UBYTE   Spare1;
+  UBYTE   NoRestartOnRead;
 }IOMAPLOWSPEED;
 
 

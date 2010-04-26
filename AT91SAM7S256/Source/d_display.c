@@ -28,11 +28,11 @@ void      dDisplayInit(void)
 }
 
 
-void      dDisplayOn(UBYTE On)
+void      dDisplayOn(UBYTE On, UBYTE Contrast)
 {
   if (On)
   {
-    DISPLAYOn;
+    DISPLAYOn(Contrast);
   }
   else
   {

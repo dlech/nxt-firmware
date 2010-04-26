@@ -4,7 +4,7 @@
 // opcode definitions
 // symbol, bits, arg format
 //
-#define OPCODE_COUNT	0x38
+#define OPCODE_COUNT  0x51
 
 //Family: Math
 #define OP_ADD    	0x00	// dest, src1, src2
@@ -21,13 +21,13 @@
 #define OP_NOT    	0x09	// dest, src
 
 //Family: Bit manipulation
-#define OP_CMNT   	0x0A	// dest, src
-#define OP_LSL    	0x0B	// dest, src
-#define OP_LSR    	0x0C	// dest, src
-#define OP_ASL    	0x0D	// dest, src
-#define OP_ASR    	0x0E	// dest, src
-#define OP_ROTL   	0x0F	// dest, src
-#define OP_ROTR   	0x10	// dest, src
+#define OP_CMNT     0x0A  // dest, src
+#define OP_LSL      0x0B  // dest, src, bits
+#define OP_LSR      0x0C  // dest, src, bits
+#define OP_ASL      0x0D  // dest, src, bits
+#define OP_ASR      0x0E  // dest, src, bits
+#define OP_ROTL     0x0F  // dest, src, bits
+#define OP_ROTR     0x10  // dest, src, bits
 
 //Family: Comparison
 #define OP_CMP    	0x11	// dest, src1, src2
@@ -85,6 +85,66 @@
 //Family: Math NEW
 #define OP_SQRT   	0x36	// dest, src
 #define OP_ABS    	0x37	// dest, src
+
+// JCH ADDS
+#define OP_WAITI           0x64  // immed
+#define OP_WAITV           0x65  // var 
+#define OP_SIGN            0x66  // dest, src
+#define OP_STOPCLUMPIMMED  0x67  // clumpID
+#define OP_STARTCLUMPIMMED 0x68  // clumpID
+#define OP_PRIORITY        0x69  // clumpID, pri
+#define OP_FMTNUM          0x6a  // dest, fmt, src1
+#define OP_ARROP           0x6b  // cmd, dest, src, idx, len
+
+// math ops (float)
+#define OP_ACOS     0x6c  // dest, src
+#define OP_ASIN     0x6d  // dest, src
+#define OP_ATAN     0x6e  // dest, src
+#define OP_CEIL     0x6f  // dest, src
+#define OP_EXP      0x70  // dest, src
+#define OP_FLOOR    0x71  // dest, src
+#define OP_TAN      0x72  // dest, src
+#define OP_COS      0x74  // dest, src
+#define OP_LOG      0x76  // dest, src
+#define OP_LOG10    0x77  // dest, src
+#define OP_SIN      0x78  // dest, src
+#define OP_TRUNC    0x7a  // dest, src
+#define OP_FRAC     0x7b  // dest, src
+
+#define OP_ATAN2    0x7c  // dest, src1, src2
+#define OP_POW      0x7d  // dest, src1, src2
+
+#define OP_MULDIV   0x7e  // dest, src1, src2, src3
+
+// transcendental opcodes that use degrees instead of radians
+#define OP_ACOSD    0x7f  // dest, src
+#define OP_ASIND    0x80  // dest, src
+#define OP_ATAND    0x81  // dest, src
+#define OP_TAND     0x82  // dest, src
+#define OP_COSD     0x84  // dest, src
+#define OP_SIND     0x86  // dest, src
+#define OP_ATAN2D   0x88  // dest, src1, src2
+
+
+// hyperbolic transcendental functions
+#define OP_TANH     0x73  // dest, src
+#define OP_COSH     0x75  // dest, src
+#define OP_SINH     0x79  // dest, src
+#define OP_TANHD    0x83  // dest, src
+#define OP_COSHD    0x85  // dest, src
+#define OP_SINHD    0x87  // dest, src
+
+// additional string opcodes
+
+
+// array operation definitions
+#define OPARR_SUM    0x00
+#define OPARR_MEAN   0x01
+#define OPARR_SUMSQR 0x02
+#define OPARR_STD    0x03
+#define OPARR_MIN    0x04
+#define OPARR_MAX    0x05
+#define OPARR_SORT   0x06
 
 // condition code definitions
 #define OPCC1_LT   0x00

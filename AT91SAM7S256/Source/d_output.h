@@ -52,6 +52,9 @@
 #define MOTOR_RUN_STATE_HOLD      0x60
 
 
+#define RAMP_TIME_INTERVAL       25           // Measured in 1 mS => 25 mS interval
+#define REGULATION_TIME          100          // Measured in 1 mS => 100 mS regulation interval
+
 enum
 {
   MOTOR_A,
@@ -64,15 +67,15 @@ void      dOutputExit(void);
 
 void      dOutputCtrl(void);
 void      dOutputGetMotorParameters(UBYTE *CurrentMotorSpeed, SLONG *TachoCount, SLONG *BlockTachoCount, UBYTE *RunState, UBYTE *MotorOverloaded, SLONG *RotationCount);
-void      dOutputSetMode(UBYTE Motor, UBYTE Mode);
+void      dOutputSetMode(UBYTE MotorNr, UBYTE Mode);
 void      dOutputSetSpeed (UBYTE MotorNr, UBYTE NewMotorRunState, SBYTE Speed, SBYTE TurnParameter);
-void      dOutputEnableRegulation(UBYTE Motor, UBYTE RegulationMode);
-void	    dOutputDisableRegulation(UBYTE Motor);
-void      dOutputSetTachoLimit(UBYTE Motor, ULONG TachoCntToTravel);
-void      dOutputResetTachoLimit(UBYTE Motor);
-void      dOutputResetBlockTachoLimit(UBYTE Motor);
+void      dOutputEnableRegulation(UBYTE MotorNr, UBYTE RegulationMode);
+void	    dOutputDisableRegulation(UBYTE MotorNr);
+void      dOutputSetTachoLimit(UBYTE MotorNr, ULONG TachoCntToTravel, UBYTE Options);
+void      dOutputResetTachoLimit(UBYTE MotorNr);
+void      dOutputResetBlockTachoLimit(UBYTE MotorNr);
 void      dOutputResetRotationCaptureCount(UBYTE MotorNr);
-void      dOutputSetPIDParameters(UBYTE Motor, UBYTE NewRegPParameter, UBYTE NewRegIParameter, UBYTE NewRegDParameter); 
+void      dOutputSetPIDParameters(UBYTE MotorNr, UBYTE NewRegPParameter, UBYTE NewRegIParameter, UBYTE NewRegDParameter); 
 
 void 	    dOutputRegulateMotor(UBYTE MotorNr);
 void      dOutputCalculateRampUpParameter(UBYTE MotorNr, ULONG NewTachoLimit);
@@ -86,5 +89,6 @@ void      dOutputMotorIdleControl(UBYTE MotorNr);
 void      dOutputSyncTachoLimitControl(UBYTE MotorNr);
 void      dOutputMotorSyncStatus(UBYTE MotorNr, UBYTE *SyncMotorOne, UBYTE *SyncMotorTwo);
 void      dOutputResetSyncMotors(UBYTE MotorNr);
+void      dOutputUpdateRegulationTime(UBYTE rt);
 
 #endif

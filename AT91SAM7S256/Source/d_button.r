@@ -40,10 +40,7 @@ static    UBYTE RisingTime;
 /* And because it's an AD value returned from the AVR     */
 /* then a peak detector is needed                         */
 #define   BUTTONRead(pB)                {\
-                                          UBYTE Tmp, BtnPtr;\
-                                          UWORD TmpBtn;\
                                           *pB    = OldState;\
-                                          BtnPtr = 0x01;\
                                           if (OldVal < IoFromAvr.Buttons)\
                                           {\
                                             OldVal = IoFromAvr.Buttons;\
@@ -60,27 +57,31 @@ static    UBYTE RisingTime;
                                             {\
                                               if (RisingTime > RISING_THRESHOLD)\
                                               {\
-                                                TmpBtn = IoFromAvr.Buttons;\
-                                                if (0x40 > TmpBtn)\
-                                                {\
-                                                  TmpBtn = 0x00;\
-                                                }\
-                                                else if (0x100 > TmpBtn)\
-                                                {\
-                                                  TmpBtn = 0x04;\
-                                                }\
-                                                else if (0x1FF > TmpBtn)\
-                                                {\
-                                                  TmpBtn = 0x02;\
-                                                }\
-                                                else if (0x5FF > TmpBtn)\
-                                                {\
-                                                  TmpBtn = 0x01;\
-                                                }\
-                                                else\
-                                                {\
+                                                UBYTE Tmp, BtnPtr, TmpBtn;\
+                                                UWORD buttonsVal;\
+                                                buttonsVal = IoFromAvr.Buttons;\
+                                                TmpBtn = 0;\
+                                                if (buttonsVal > 0x5FF) {\
                                                   TmpBtn = 0x08;\
+                                                  buttonsVal -= 0x7ff;\
                                                 }\
+                                                if (0x40 > buttonsVal)\
+                                                {\
+                                                  TmpBtn |= 0x00;\
+                                                }\
+                                                else if (0x100 > buttonsVal)\
+                                                {\
+                                                  TmpBtn |= 0x04;\
+                                                }\
+                                                else if (0x1FF > buttonsVal)\
+                                                {\
+                                                  TmpBtn |= 0x02;\
+                                                }\
+                                                else if (0x5FF > buttonsVal)\
+                                                {\
+                                                  TmpBtn |= 0x01;\
+                                                }\
+                                                BtnPtr = 0x01;\
                                                 for (Tmp = 0; Tmp < NOS_OF_AVR_BTNS; Tmp++)\
                                                 {\
                                                   if ((TmpBtn) & BtnPtr)\

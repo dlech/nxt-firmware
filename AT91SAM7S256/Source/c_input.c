@@ -69,12 +69,12 @@ enum
 
 const     SWORD TempConvTable[] =
 {
-   1500,  1460,  1430,  1400,  1380,  1360,  1330,  1310,  1290,  1270,  1250,  1230,  1220,  1200,  1190,  1170,
+/* 1500,  1460,  1430,  1400,  1380,  1360,  1330,  1310,  1290,  1270,  1250,  1230,  1220,  1200,  1190,  1170,
    1160,  1150,  1140,  1130,  1110,  1100,  1090,  1080,  1070,  1060,  1050,  1040,  1030,  1020,  1010,  1000,
     994,   988,   982,   974,   968,   960,   954,   946,   940,   932,   926,   918,   912,   906,   900,   894,
     890,   884,   878,   874,   868,   864,   858,   854,   848,   844,   838,   832,   828,   822,   816,   812,
     808,   802,   798,   794,   790,   786,   782,   780,   776,   772,   768,   764,   762,   758,   754,   750,
-    748,   744,   740,   736,   732,   730,   726,   722,   718,   716,   712,   708,   704,   700,   696,   694,
+    748,   744,   740,   736,   732,   730,   726,   722,   718,   716,   712,   708,   704,*/ 700,   696,   694,
     690,   688,   684,   682,   678,   674,   672,   668,   666,   662,   660,   656,   654,   650,   648,   644,
     642,   640,   638,   634,   632,   630,   628,   624,   622,   620,   616,   614,   612,   610,   608,   604,
     602,   600,   598,   596,   592,   590,   588,   586,   584,   582,   580,   578,   576,   574,   572,   570,
@@ -114,13 +114,13 @@ const     SWORD TempConvTable[] =
     -98,   -98,  -100,  -102,  -104,  -106,  -106,  -108,  -110,  -112,  -114,  -114,  -116,  -118,  -120,  -120,
    -122,  -124,  -126,  -128,  -130,  -130,  -132,  -134,  -136,  -138,  -140,  -142,  -144,  -146,  -146,  -148,
    -150,  -152,  -154,  -156,  -158,  -160,  -162,  -164,  -166,  -166,  -168,  -170,  -172,  -174,  -176,  -178,
-   -180,  -182,  -184,  -186,  -188,  -190,  -192,  -194,  -196,  -196,  -198,  -200,  -202,  -204,  -206,  -208,
+   -180,  -182,  -184,  -186,  -188,  -190,  -192,  -194,  -196,  -196,  -198,  -200/*,-202,  -204,  -206,  -208,
    -210,  -212,  -214,  -216,  -218,  -220,  -224,  -226,  -228,  -230,  -232,  -234,  -236,  -238,  -242,  -246,
    -248,  -250,  -254,  -256,  -260,  -262,  -264,  -268,  -270,  -274,  -276,  -278,  -282,  -284,  -286,  -290,
    -292,  -296,  -298,  -300,  -306,  -308,  -312,  -316,  -320,  -324,  -326,  -330,  -334,  -338,  -342,  -344,
    -348,  -354,  -358,  -362,  -366,  -370,  -376,  -380,  -384,  -388,  -394,  -398,  -404,  -410,  -416,  -420,
    -428,  -432,  -440,  -446,  -450,  -460,  -468,  -476,  -484,  -492,  -500,  -510,  -524,  -534,  -546,  -560,
-   -572,  -588,  -600,  -630,  -656,  -684,  -720,  -770
+   -572,  -588,  -600,  -630,  -656,  -684,  -720,  -770 */
 };
 
 static    IOMAPINPUT   IOMapInput;
@@ -145,7 +145,7 @@ void      cInputCalcSensorValue(UWORD NewSensorRaw, UWORD *pOldSensorRaw, SWORD 
                                 UBYTE *pBoolean,    UBYTE *pDebounce,     UBYTE *pSampleCnt,
                                 UBYTE *LastAngle,   UBYTE *pEdgeCnt,      UBYTE Slope,
                                 UBYTE Mode);
-void      cInputSetupType(UBYTE Port, UBYTE *pType, UBYTE OldType);
+void      cInputSetupType(UBYTE Port, UBYTE newType, UBYTE OldType);
 void      cInputSetupCustomSensor(UBYTE Port);
 void      cInputCalcSensorValues(UBYTE No);
 UBYTE     cInputInitColorSensor(UBYTE Port, UBYTE *pInitStatus);
@@ -226,8 +226,10 @@ void      cInputCtrl(void)
 
   for (Tmp = 0; Tmp < NO_OF_INPUTS; Tmp++)
   {
+    UBYTE sType = IOMapInput.Inputs[Tmp].SensorType;
+    UBYTE oldType = VarsInput.OldSensorType[Tmp];
 
-    if ((IOMapInput.Inputs[Tmp].SensorType) != (VarsInput.OldSensorType[Tmp]))
+    if (sType != oldType)
     {
 
       /* Clear all variables for this sensor */
@@ -238,10 +240,21 @@ void      cInputCtrl(void)
       VarsInput.ColorStatus       &= ~(0x01<<Tmp);
       memset(&(VarsInput.VarsColor[Tmp]),0 ,sizeof(VarsInput.VarsColor[Tmp]));
 
+      VarsInput.InvalidTimer[Tmp] = INVALID_RELOAD_NORMAL;
+      /* If old type is color sensor in color lamp mode then turn off leds */
+      if ((sType == NO_SENSOR) && 
+          (oldType == COLORRED  || oldType == COLORGREEN || 
+           oldType == COLORBLUE || oldType == COLORFULL || 
+           oldType == COLOREXIT))
+      {
+        VarsInput.InvalidTimer[Tmp] = INVALID_RELOAD_COLOR;
+        IOMapInput.Inputs[Tmp].SensorType = COLOREXIT;
+        sType = COLOREXIT;
+      }
       /* Setup the pins for the new sensortype */
-      cInputSetupType(Tmp, &(IOMapInput.Inputs[Tmp].SensorType), VarsInput.OldSensorType[Tmp]);
+      cInputSetupType(Tmp, sType, oldType);
       IOMapInput.Inputs[Tmp].InvalidData = INVALID_DATA;
-      VarsInput.OldSensorType[Tmp]       = IOMapInput.Inputs[Tmp].SensorType;
+      VarsInput.OldSensorType[Tmp]       = sType;
     }
     else
     {
@@ -250,12 +263,9 @@ void      cInputCtrl(void)
 
         /* A type change has been carried out earlier - waiting for valid data   */
         /* The color sensor requires special startup sequence with communication */
-        if (((IOMapInput.Inputs[Tmp].SensorType) == COLORFULL) ||
-            ((IOMapInput.Inputs[Tmp].SensorType) == COLORRED)  ||
-            ((IOMapInput.Inputs[Tmp].SensorType) == COLORGREEN)||
-            ((IOMapInput.Inputs[Tmp].SensorType) == COLORBLUE) ||
-            ((IOMapInput.Inputs[Tmp].SensorType) == COLOREXIT) ||
-            ((IOMapInput.Inputs[Tmp].SensorType) == COLORNONE))
+        if ((sType == COLORFULL) || (sType == COLORRED)  ||
+            (sType == COLORGREEN)|| (sType == COLORBLUE) ||
+            (sType == COLOREXIT) || (sType == COLORNONE))
         {
           cInputCalcSensorValues(Tmp);
         }
@@ -287,158 +297,58 @@ void      cInputCtrl(void)
 
 void      cInputCalcSensorValues(UBYTE No)
 {
+  UBYTE sType = IOMapInput.Inputs[No].SensorType;
 
-  switch(IOMapInput.Inputs[No].SensorType)
+  switch(sType)
   {
     case SWITCH:
-    {
-      UWORD InputVal;
-
-      dInputGetRawAd(&InputVal, No);
-      IOMapInput.Inputs[No].ADRaw = InputVal;
-      cInputCalcSensorValue(  InputVal,
-                            &(IOMapInput.Inputs[No].SensorRaw),
-                            &(IOMapInput.Inputs[No].SensorValue),
-                            &(IOMapInput.Inputs[No].SensorBoolean),
-                            &(VarsInput.InputDebounce[No]),
-                            &(VarsInput.SampleCnt[No]),
-                            &(VarsInput.LastAngle[No]),
-                            &(VarsInput.EdgeCnt[No]),
-                            ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
-                            ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
-    }
-    break;
-
     case TEMPERATURE:
-    {
-      UWORD InputVal;
-
-      dInputGetRawAd(&InputVal, No);
-      IOMapInput.Inputs[No].ADRaw = InputVal;
-      if (InputVal < 290)
-      {
-        InputVal = 290;
-      }
-      else
-      {
-        if (InputVal > 928)
-        {
-          InputVal = 928;
-        }
-      }
-      InputVal = TempConvTable[(InputVal) - 197];
-      InputVal = InputVal + 200;
-      InputVal = (UWORD)(((SLONG)InputVal * (SLONG)1023)/(SLONG)900);
-      cInputCalcSensorValue(  InputVal,
-                            &(IOMapInput.Inputs[No].SensorRaw),
-                            &(IOMapInput.Inputs[No].SensorValue),
-                            &(IOMapInput.Inputs[No].SensorBoolean),
-                            &(VarsInput.InputDebounce[No]),
-                            &(VarsInput.SampleCnt[No]),
-                            &(VarsInput.LastAngle[No]),
-                            &(VarsInput.EdgeCnt[No]),
-                            ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
-                            ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
-    }
-    break;
-
     case REFLECTION:
-    {
-      UWORD InputVal;
-
-      dInputGetRawAd(&InputVal, No);
-      IOMapInput.Inputs[No].ADRaw = InputVal;
-      cInputCalcFullScale(&InputVal, REFLECTIONSENSORMIN, REFLECTIONSENSORPCTDYN, TRUE);
-      cInputCalcSensorValue(  InputVal,
-                            &(IOMapInput.Inputs[No].SensorRaw),
-                            &(IOMapInput.Inputs[No].SensorValue),
-                            &(IOMapInput.Inputs[No].SensorBoolean),
-                            &(VarsInput.InputDebounce[No]),
-                            &(VarsInput.SampleCnt[No]),
-                            &(VarsInput.LastAngle[No]),
-                            &(VarsInput.EdgeCnt[No]),
-                            ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
-                            ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
-    }
-    break;
-
     case ANGLE:
-    {
-      UWORD InputVal;
-
-      dInputGetRawAd(&InputVal, No);
-      IOMapInput.Inputs[No].ADRaw = InputVal;
-      cInputCalcSensorValue(  InputVal,
-                            &(IOMapInput.Inputs[No].SensorRaw),
-                            &(IOMapInput.Inputs[No].SensorValue),
-                            &(IOMapInput.Inputs[No].SensorBoolean),
-                            &(VarsInput.InputDebounce[No]),
-                            &(VarsInput.SampleCnt[No]),
-                            &(VarsInput.LastAngle[No]),
-                            &(VarsInput.EdgeCnt[No]),
-                            ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
-                            ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
-    }
-    break;
-
-    /* Dual case intended */
     case LIGHT_ACTIVE:
     case LIGHT_INACTIVE:
-    {
-      UWORD InputVal;
-
-      dInputGetRawAd(&InputVal, No);
-      IOMapInput.Inputs[No].ADRaw = InputVal;
-      cInputCalcFullScale(&InputVal, NEWLIGHTSENSORMIN, NEWLIGHTSENSORPCTDYN, TRUE);
-      cInputCalcSensorValue(  InputVal,
-                            &(IOMapInput.Inputs[No].SensorRaw),
-                            &(IOMapInput.Inputs[No].SensorValue),
-                            &(IOMapInput.Inputs[No].SensorBoolean),
-                            &(VarsInput.InputDebounce[No]),
-                            &(VarsInput.SampleCnt[No]),
-                            &(VarsInput.LastAngle[No]),
-                            &(VarsInput.EdgeCnt[No]),
-                            ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
-                            ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
-
-    }
-    break;
-
-    /* Dual case intended */
     case SOUND_DB:
     case SOUND_DBA:
-    {
-      UWORD InputVal;
-
-      dInputGetRawAd(&InputVal, No);
-      IOMapInput.Inputs[No].ADRaw = InputVal;
-      cInputCalcFullScale(&InputVal, NEWSOUNDSENSORMIN, NEWSOUNDSENSORPCTDYN, TRUE);
-      cInputCalcSensorValue(  InputVal,
-                            &(IOMapInput.Inputs[No].SensorRaw),
-                            &(IOMapInput.Inputs[No].SensorValue),
-                            &(IOMapInput.Inputs[No].SensorBoolean),
-                            &(VarsInput.InputDebounce[No]),
-                            &(VarsInput.SampleCnt[No]),
-                            &(VarsInput.LastAngle[No]),
-                            &(VarsInput.EdgeCnt[No]),
-                            ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
-                            ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
-
-    }
-    break;
-
     case CUSTOM:
     {
       UWORD InputVal;
 
-      /* Setup and read digital IO */
-      cInputSetupCustomSensor(No);
-      dInputRead0(No, &(IOMapInput.Inputs[No].DigiPinsIn));
-      dInputRead1(No, &(IOMapInput.Inputs[No].DigiPinsIn));
-
+      if (sType == CUSTOM) {
+        /* Setup and read digital IO */
+        cInputSetupCustomSensor(No);
+        dInputRead0(No, &(IOMapInput.Inputs[No].DigiPinsIn));
+        dInputRead1(No, &(IOMapInput.Inputs[No].DigiPinsIn));
+      }
+      
       dInputGetRawAd(&InputVal, No);
       IOMapInput.Inputs[No].ADRaw = InputVal;
-      cInputCalcFullScale(&InputVal, IOMapInput.Inputs[No].CustomZeroOffset, IOMapInput.Inputs[No].CustomPctFullScale, FALSE);
+      
+      if (sType == REFLECTION)
+      {
+        cInputCalcFullScale(&InputVal, REFLECTIONSENSORMIN, REFLECTIONSENSORPCTDYN, TRUE);
+      }
+      else if (sType == TEMPERATURE)
+      {
+        if (InputVal < 290)
+          InputVal = 290;
+        else if (InputVal > 928)
+          InputVal = 928;
+        InputVal = TempConvTable[(InputVal) - /*197*/ 290];
+        InputVal = InputVal + 200;
+        InputVal = (UWORD)(((SLONG)InputVal * (SLONG)1023)/(SLONG)900);
+      }
+      else if (sType == LIGHT_ACTIVE || sType == LIGHT_INACTIVE)
+      {
+        cInputCalcFullScale(&InputVal, NEWLIGHTSENSORMIN, NEWLIGHTSENSORPCTDYN, TRUE);
+      }
+      else if (sType == SOUND_DB || sType == SOUND_DBA)
+      {
+        cInputCalcFullScale(&InputVal, NEWSOUNDSENSORMIN, NEWSOUNDSENSORPCTDYN, TRUE);
+      }
+      else if (sType == CUSTOM)
+      {
+        cInputCalcFullScale(&InputVal, IOMapInput.Inputs[No].CustomZeroOffset, IOMapInput.Inputs[No].CustomPctFullScale, FALSE);
+      }
       cInputCalcSensorValue(  InputVal,
                             &(IOMapInput.Inputs[No].SensorRaw),
                             &(IOMapInput.Inputs[No].SensorValue),
@@ -449,11 +359,10 @@ void      cInputCalcSensorValues(UBYTE No)
                             &(VarsInput.EdgeCnt[No]),
                             ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
                             ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
-
     }
     break;
 
-    /* Tripple case intended */
+    /* Triple case intended */
     case LOWSPEED:
     case LOWSPEED_9V:
     case HIGHSPEED:
@@ -1100,29 +1009,10 @@ void      cInputCalcFullScale(UWORD *pRawVal, UWORD ZeroPointOffset, UBYTE PctFu
 }
 
 
-void      cInputSetupType(UBYTE Port, UBYTE *pType, UBYTE OldType)
+void      cInputSetupType(UBYTE Port, UBYTE newType, UBYTE OldType)
 {
 
-  VarsInput.InvalidTimer[Port] = INVALID_RELOAD_NORMAL;
-
-  /* If old type is color sensor in color lamp mode then turn off leds */
-  switch (OldType)
-  {
-    case COLORRED:
-    case COLORGREEN:
-    case COLORBLUE:
-    case COLORFULL:
-    case COLOREXIT:
-    {
-      if (NO_SENSOR == *pType)
-      {
-        VarsInput.InvalidTimer[Port] = INVALID_RELOAD_COLOR;
-        *pType = COLOREXIT;
-      }
-    }
-    break;
-  }
-  switch(*pType)
+  switch(newType)
   {
     case NO_SENSOR:
     case SWITCH:
@@ -1135,13 +1025,6 @@ void      cInputSetupType(UBYTE Port, UBYTE *pType, UBYTE OldType)
     break;
 
     case REFLECTION:
-    {
-      dInputSetActive(Port);
-      dInputClearDigi0(Port);
-      dInputClearDigi1(Port);
-    }
-    break;
-
     case ANGLE:
     {
       dInputSetActive(Port);
@@ -1215,50 +1098,9 @@ void      cInputSetupType(UBYTE Port, UBYTE *pType, UBYTE OldType)
     break;
 
     case COLORFULL:
-    {
-      VarsInput.InvalidTimer[Port] = INVALID_RELOAD_COLOR;
-      dInputSetInactive(Port);
-      dInputSetDigi0(Port);
-      dInputSetDirInDigi1(Port);
-      IOMapInput.Colors[Port].CalibrationState = SENSORCAL;
-      VarsInput.VarsColor[Port].ColorInitState = 0;
-
-    }
-    break;
-
     case COLORRED:
-    {
-      VarsInput.InvalidTimer[Port] = INVALID_RELOAD_COLOR;
-      dInputSetInactive(Port);
-      dInputSetDigi0(Port);
-      dInputSetDirInDigi1(Port);
-      IOMapInput.Colors[Port].CalibrationState = SENSORCAL;
-      VarsInput.VarsColor[Port].ColorInitState = 0;
-    }
-    break;
-
     case COLORGREEN:
-    {
-      VarsInput.InvalidTimer[Port] = INVALID_RELOAD_COLOR;
-      dInputSetInactive(Port);
-      dInputSetDigi0(Port);
-      dInputSetDirInDigi1(Port);
-      IOMapInput.Colors[Port].CalibrationState = SENSORCAL;
-      VarsInput.VarsColor[Port].ColorInitState = 0;
-    }
-    break;
-
     case COLORBLUE:
-    {
-      VarsInput.InvalidTimer[Port] = INVALID_RELOAD_COLOR;
-      dInputSetInactive(Port);
-      dInputSetDigi0(Port);
-      dInputSetDirInDigi1(Port);
-      IOMapInput.Colors[Port].CalibrationState = SENSORCAL;
-      VarsInput.VarsColor[Port].ColorInitState = 0;
-    }
-    break;
-
     case COLORNONE:
     {
       VarsInput.InvalidTimer[Port] = INVALID_RELOAD_COLOR;

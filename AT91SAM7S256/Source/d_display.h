@@ -20,7 +20,7 @@
 #define   D_DISPLAY
 
 void      dDisplayInit(void);
-void      dDisplayOn(UBYTE On);
+void      dDisplayOn(UBYTE On, UBYTE Contrast);
 UBYTE     dDisplayUpdate(UWORD Height,UWORD Width,UBYTE *pImage);
 void      dDisplayExit(void);
 

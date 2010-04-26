@@ -1,11 +1,11 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 24-06-09 12:15                                    $
+// Revision date   $Date:: 3/21/09 10:03a                                    $
 //
 // Filename        $Workfile:: d_loader.h                                    $
 //
-// Version         $Revision:: 18                                            $
+// Version         $Revision:: 17                                            $
 //
 // Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_load $
 //
@@ -18,7 +18,7 @@
 #define   FILETABLE_SIZE                ((2 * SECTORSIZE)/4)
 #define   STARTOFFILETABLE              (0x140000L - (FILETABLE_SIZE*4))
 #define   FILEPTRTABLE                  ((const ULONG*)(0x140000L - (FILETABLE_SIZE*4)))
-#define   STARTOFUSERFLASH              (0x122100L)
+#define   STARTOFUSERFLASH              (0x125800L)//(0x124600L)
 #define   SIZEOFUSERFLASH               ((ULONG)STARTOFFILETABLE - STARTOFUSERFLASH)
 
 #define   SIZEOFFLASH                   262144L
@@ -59,6 +59,14 @@ enum
   NONLINEAR  = 0x08
 };
 
+/* Enum related to seek operation */
+enum
+{
+  SEEK_FROMSTART,
+  SEEK_FROMCURRENT,
+  SEEK_FROMEND
+};
+
 typedef   struct
 {
   UBYTE   FileName[FILENAME_SIZE];
@@ -77,6 +85,7 @@ UWORD     dLoaderCreateFileHeader(ULONG FileSize, UBYTE *pName, UBYTE LinearStat
 UWORD     dLoaderWriteData(UWORD Handle, UBYTE *pBuf, UWORD *pLen);
 UWORD     dLoaderCloseHandle(UWORD Handle);
 UWORD     dLoaderOpenRead(UBYTE *pFileName, ULONG *pLength);
+UWORD     dLoaderSeek(UBYTE Handle, SLONG offset, UBYTE from);
 UWORD     dLoaderRead(UBYTE Handle, UBYTE *pBuf, ULONG *pLength);
 UWORD     dLoaderDelete(UBYTE *pFile);
 UWORD     dLoaderFind(UBYTE *pFind, UBYTE *pFound, ULONG *pFileLength, ULONG *pDataLength, UBYTE Session);

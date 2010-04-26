@@ -36,7 +36,7 @@
 
 #define   CHECKBYTE                     0x78        // Used to validate NVData
 
-#define   BATTERY_COUNT_TO_MV           13.848      // Battery count to mV factor             [mV/cnt]
+#define   BATTERY_COUNT_TO_MV    (float)13.848      // Battery count to mV factor             [mV/cnt]
 #define   LOW_BATT_THRESHOLD            6           // Low batt conunts before warning
 
 #define   BUTTON_DELAY_TIME             800         // Delay before first repeat              [mS]

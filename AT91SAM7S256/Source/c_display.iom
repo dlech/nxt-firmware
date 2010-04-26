@@ -24,11 +24,63 @@
 // Constants related to simple draw entry (x = dont care)
 enum
 {
-  DISPLAY_ERASE_ALL         = 0x00,     // W  - erase entire screen     (CMD,x,x,x,x,x)
-  DISPLAY_PIXEL             = 0x01,     // W  - set pixel (on/off)      (CMD,TRUE/FALSE,X,Y,x,x)
-  DISPLAY_HORISONTAL_LINE   = 0x02,     // W  - draw horisontal line    (CMD,TRUE,X1,Y1,X2,x)
-  DISPLAY_VERTICAL_LINE     = 0x03,     // W  - draw vertical line      (CMD,TRUE,X1,Y1,x,Y2)
-  DISPLAY_CHAR              = 0x04      // W  - draw char (actual font) (CMD,TRUE,X1,Y1,Char,x)
+  DISPLAY_ERASE_ALL         = 0x00,     // W - erase entire screen     (CMD,x,x,x,x,x)
+  DISPLAY_PIXEL             = 0x01,     // W - set pixel (on/off)      (CMD,TRUE/FALSE,X,Y,x,x)
+  DISPLAY_HORIZONTAL_LINE   = 0x02,     // W - draw horisontal line (on/off) (CMD,TRUE/FALSE,X1,Y1,X2,x)
+  DISPLAY_VERTICAL_LINE     = 0x03,     // W - draw vertical line (on/off) (CMD,TRUE/FALSE,X1,Y1,x,Y2)
+  DISPLAY_CHAR              = 0x04,     // W - draw char (actual font) (CMD,TRUE/FALSE,X1,Y1,Char,x)
+  DISPLAY_ERASE_LINE        = 0x05,     // W - erase a single line     (CMD,x,LINE,x,x,x)
+  DISPLAY_FILL_REGION       = 0x06,     // W - fill screen region    (CMD,TRUE/FALSE,X1,Y1,X2,Y2)
+  DISPLAY_FRAME             = 0x07      // W - draw a frame (on/off) (CMD,TRUE/FALSE,X1,Y1,X2,Y2)
+};
+
+//JJR
+// Constants related to drawing operations.
+
+enum
+{
+  DRAW_PIXELS_SET       = 0x00,     //Basic options for pixel, line and shape drawing.
+  DRAW_PIXELS_CLEAR     = 0x01,
+  DRAW_PIXELS_INVERT    = 0x02
+};
+
+enum
+{
+  DRAW_SHAPE_HOLLOW     = 0x00,     //Extra options for shape drawing.
+  DRAW_SHAPE_FILLED     = 0x01
+};
+
+enum
+{
+  DRAW_BITMAP_PLAIN      = 0x00,
+  DRAW_BITMAP_INVERT     = 0x01
+};
+
+enum
+{
+  DRAW_LOGICAL_COPY     = 0x00,
+  DRAW_LOGICAL_AND      = 0x01,
+  DRAW_LOGICAL_OR       = 0x02,
+  DRAW_LOGICAL_XOR      = 0x03
+};
+//JJR
+
+enum
+{
+  DRAW_FONT_WRAP_OFF = 0x00,
+  DRAW_FONT_WRAP_ON  = 0x01
+};
+
+enum
+{
+  DRAW_FONT_DIR_L2RB = 0x00,
+  DRAW_FONT_DIR_L2RT = 0x01,
+  DRAW_FONT_DIR_R2LB = 0x02,
+  DRAW_FONT_DIR_R2LT = 0x03,
+  DRAW_FONT_DIR_B2TL = 0x04,
+  DRAW_FONT_DIR_B2TR = 0x05,
+  DRAW_FONT_DIR_T2BL = 0x06,
+  DRAW_FONT_DIR_T2BR = 0x07
 };
 
 // Constants related to Flags
@@ -44,12 +96,16 @@ enum
 
 #define   DISPLAY_HEIGHT      64        // Y pixels
 #define   DISPLAY_WIDTH       100       // X pixels
+#define   DISPLAY_BUFF_WIDTH  100       // width of buffer 
 
 #define   DISPLAY_MENUICONS_Y       40
 #define   DISPLAY_MENUICONS_X_OFFS  7
 #define   DISPLAY_MENUICONS_X_DIFF  31
 
 #define   DISPLAY_IDLE                  ((pMapDisplay->EraseMask == 0) && (pMapDisplay->UpdateMask == 0))
+
+#define   DISPLAY_CONTRAST_DEFAULT 0x5A
+#define   DISPLAY_CONTRAST_MAX     0x7F
 
 enum      TEXTLINE_NO                   // Used in macro "TEXTLINE_BIT"
 {
@@ -166,8 +222,10 @@ typedef   struct
 
   UBYTE   TextLinesCenterFlags;                             // Mask to center TextLines
 
-  UBYTE   Normal[DISPLAY_HEIGHT / 8][DISPLAY_WIDTH];        // Raw display memory for normal screen
-  UBYTE   Popup[DISPLAY_HEIGHT / 8][DISPLAY_WIDTH];         // Raw display memory for popup screen
+  UBYTE   Normal[DISPLAY_HEIGHT / 8][DISPLAY_BUFF_WIDTH];        // Raw display memory for normal screen
+  UBYTE   Popup[DISPLAY_HEIGHT / 8][DISPLAY_BUFF_WIDTH];         // Raw display memory for popup screen
+
+  UBYTE   Contrast;                                         // Display contrast
 }
 IOMAPDISPLAY;
 

@@ -27,6 +27,9 @@ enum
   REG_METHOD = 0xF0   /* Regulation methods - to be designed! */
 };
 
+#define OPTION_HOLDATLIMIT     0x10
+#define OPTION_RAMPDOWNTOLIMIT 0x20
+
 // Constants related to Flags
 enum
 {
@@ -72,7 +75,7 @@ typedef   struct
   UBYTE   RegMode;						/* RW - Tells which regulation mode should be used */
   UBYTE   Overloaded;					/* R  - True if the motor has been overloaded within speed control regulation */ 
   SBYTE   SyncTurnParameter;			/* RW - Holds the turning parameter need within MoveBlock */   
-  UBYTE   SpareOne;
+  UBYTE   Options;
   UBYTE   SpareTwo; 
   UBYTE   SpareThree;
 }OUTPUT;
@@ -81,7 +84,7 @@ typedef   struct
 typedef   struct
 {
   OUTPUT  Outputs[NO_OF_OUTPUTS];
-  UBYTE   PwnFreq;
+  UBYTE   PwnFreq; // use for frequency of checking regulation mode
 }IOMAPOUTPUT;
 
 

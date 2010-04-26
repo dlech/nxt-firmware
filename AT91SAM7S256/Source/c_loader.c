@@ -18,6 +18,7 @@
 #include  "c_ioctrl.iom"
 #include  "d_loader.h"
 #include  "c_loader.h"
+#include <string.h>
 
 static    IOMAPLOADER   IOMapLoader;
 static    VARSLOADER    VarsLoader;
@@ -41,12 +42,18 @@ UWORD     cLoaderFileRq(UBYTE Cmd, UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLen
 UWORD     cLoaderGetIoMapInfo(ULONG ModuleId, UBYTE *pIoMap, UWORD *pIoMapSize);
 UWORD     cLoaderFindModule(UBYTE *pBuffer);
 void      cLoaderGetModuleName(UBYTE *pDst, UBYTE *pModule);
+UWORD     cLoaderCreateFile(UBYTE *pFileName, ULONG *pLength, UBYTE bLinear, UBYTE fType);
+UWORD     cLoaderRenameFile(UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLength);
+UWORD     cLoaderOpenRead(UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLength, UBYTE bLinear);
+UWORD     cLoaderDeleteFile(UBYTE *pFileName);
+UWORD     cLoaderResizeFile(UBYTE *pFileName, ULONG pLength);
 
 void      cLoaderInit(void* pHeader)
 {
 
   IOMapLoader.pFunc       = &cLoaderFileRq;
   VarsLoader.IoMapHandle  = FALSE;
+  VarsLoader.Resizing     = FALSE;
   pHeaders = pHeader;
   dLoaderInit();
   IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
@@ -54,9 +61,154 @@ void      cLoaderInit(void* pHeader)
 
 void      cLoaderCtrl(void)
 {
+  if (VarsLoader.Resizing) 
+  {
+    // keep resizing the file currently in the file resize operation
+    // copy 1024 bytes from old file handle to new file handle
+    // if no more bytes to copy then set Resizing to FALSE,
+    // close both files, and delete the old file.
+  }
 }
 
+UWORD cLoaderCreateFile(UBYTE *pFileName, ULONG *pLength, UBYTE bLinear, UBYTE fType)
+{
+  UWORD ReturnState;
+  /* This is to create a new file */
+  ReturnState = dLoaderCreateFileHeader(*pLength, pFileName, bLinear, fType);
+  if (0x8000 <= ReturnState)
+  {
+    dLoaderCloseHandle(ReturnState);
+  }
+  else
+  {
+    IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
+  }
+  return ReturnState;
+}
 
+UWORD cLoaderRenameFile(UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLength)
+{
+  UWORD ReturnState;
+  UBYTE FoundName[FILENAME_LENGTH + 1];
+  
+  /* Check for file exists*/
+  ReturnState = dLoaderFind(pBuffer, FoundName, pLength, pLength, (UBYTE) SEARCHING);
+  dLoaderCloseHandle(LOADER_HANDLE(ReturnState));
+  if (FILENOTFOUND == LOADER_ERR(ReturnState))
+  {
+    ReturnState = dLoaderFind(pFileName, FoundName, pLength, pLength, (UBYTE) SEARCHING);
+    if (ReturnState < 0x8000)
+    {
+      ReturnState = dLoaderCheckFiles((UBYTE) ReturnState);
+      if (ReturnState < 0x8000)
+      {
+        dLoaderRenameFile((UBYTE) ReturnState, pBuffer);
+      }
+    }
+    dLoaderCloseHandle(LOADER_HANDLE(ReturnState));
+  }
+  else
+  {
+    if (SUCCESS == LOADER_ERR(ReturnState))
+    {
+      ReturnState |= FILEEXISTS;
+    }
+  }
+  return ReturnState;
+}
+
+UWORD cLoaderOpenRead(UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLength, UBYTE bLinear)
+{
+  UWORD ReturnState;
+  if (bLinear)
+    ReturnState = dLoaderGetFilePtr(pFileName, pBuffer, pLength);
+  else
+    ReturnState = dLoaderOpenRead(pFileName, pLength);
+  if (0x8000 <= ReturnState)
+  {
+    dLoaderCloseHandle(ReturnState);
+  }
+  return ReturnState;
+}
+
+UWORD cLoaderDeleteFile(UBYTE *pFileName)
+{
+  UWORD ReturnState;
+  ReturnState = dLoaderDelete(pFileName);
+  IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
+  return ReturnState;
+}
+
+UWORD cLoaderResizeFile(UBYTE *pFileName, ULONG pLength)
+{
+  UWORD ReturnState = SUCCESS;
+  /* 
+    All that this method can do is start the process of
+    resizing a file.  To do that we will 
+    a) rename the file
+    b) open old file for reading
+    c) create new file for writing
+    d) store both handles in VarsLoader & set resizing flag
+    e) if any errors occur in a, b, or c then restore original file
+    f) return LOADER_BUSY (maybe?)
+  */
+/*
+  // rename file to _tmpoldname
+  strcat __frsFRArgs.NewFilename, '_tmp', __frsOldName
+  mov __frsFRArgs.OldFilename, __frsOldName
+  syscall FileRename, __frsFRArgs
+  mov __frsResult, __frsFRArgs.Result
+  brtst NEQ, __frsEnd, __frsResult
+  // old file has been renamed successfully
+  mov __frsFOReadArgs.Filename, __frsFRArgs.NewFilename
+  syscall FileOpenRead, __frsFOReadArgs
+  mov __frsResult, __frsFOReadArgs.Result
+  brtst NEQ, __frsOpenReadFailed, __frsResult
+  // renamed file is open for reading
+  mov __frsFOWriteArgs.Filename, __frsOldName
+  mov __frsFOWriteArgs.Length, __frsNewSize
+  syscall FileOpenWrite, __frsFOWriteArgs
+  mov __frsResult, __frsFOWriteArgs.Result
+  brtst NEQ, __frsOpenWriteFailed, __frsResult
+  // both files are open
+  mov __frsFReadArgs.FileHandle, __frsFOReadArgs.FileHandle
+  mov __frsFWriteArgs.FileHandle, __frsFOWriteArgs.FileHandle
+__frsCopyLoop:
+  set __frsFReadArgs.Length, 1024
+  syscall FileRead, __frsFReadArgs
+  brtst NEQ, __frsEndLoop, __frsFReadArgs.Result
+  brtst LTEQ, __frsEndLoop, __frsFReadArgs.Length
+  mov __frsFWriteArgs.Buffer, __frsFReadArgs.Buffer
+  mov __frsFWriteArgs.Length, __frsFReadArgs.Length
+  syscall FileWrite, __frsFWriteArgs
+  brtst NEQ, __frsEndLoop, __frsFWriteArgs.Result
+  jmp __frsCopyLoop
+__frsEndLoop:
+  // close read file
+  mov __frsFCArgs.FileHandle, __frsFOReadArgs.FileHandle
+  syscall FileClose, __frsFCArgs
+  // close write file
+  mov __frsFCArgs.FileHandle, __frsFOWriteArgs.FileHandle
+  syscall FileClose, __frsFCArgs
+  // delete read file
+  mov __frsFDArgs.Filename, __frsFOReadArgs.Filename
+  syscall FileDelete, __frsFDArgs
+  jmp __frsEnd
+__frsOpenWriteFailed:
+  // close read file
+  mov __frsFCArgs.FileHandle, __frsFOReadArgs.FileHandle
+  syscall FileClose, __frsFCArgs
+//  jmp __frsEnd
+__frsOpenReadFailed:
+  // if the open read failed rename tmp back to original and exit
+  mov __frsFRArgs.OldFilename, __frsFRArgs.NewFilename
+  mov __frsFRArgs.NewFilename, __frsOldName
+  syscall FileRename, __frsFRArgs
+__frsEnd:
+  return
+*/
+  return ReturnState;
+}
 
 UWORD     cLoaderFileRq(UBYTE Cmd, UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLength)
 {
@@ -68,63 +220,29 @@ UWORD     cLoaderFileRq(UBYTE Cmd, UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLen
   {
     case OPENREAD:
     {
-      ReturnState = dLoaderOpenRead(pFileName, pLength);
-      if (0x8000 <= ReturnState)
-      {
-        dLoaderCloseHandle(ReturnState);
-      }
+      ReturnState = cLoaderOpenRead(pFileName, pBuffer, pLength, FALSE);
     }
     break;
     case OPENREADLINEAR:
     {
-      ReturnState = dLoaderGetFilePtr(pFileName, pBuffer, pLength);
-      if (0x8000 <= ReturnState)
-      {
-        dLoaderCloseHandle(ReturnState);
-      }
-
+      ReturnState = cLoaderOpenRead(pFileName, pBuffer, pLength, TRUE);
     }
     break;
     case OPENWRITE:
     {
 
       /* This is to create a new file */
-      ReturnState = dLoaderCreateFileHeader(*pLength, pFileName, (UBYTE) NONLINEAR, SYSTEMFILE);
-      if (0x8000 <= ReturnState)
-      {
-        dLoaderCloseHandle(ReturnState);
-      }
-      else
-      {
-        IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
-      }
+      ReturnState = cLoaderCreateFile(pFileName, pLength, (UBYTE) NONLINEAR, SYSTEMFILE);
     }
     break;
     case OPENWRITELINEAR:
     {
-      ReturnState = dLoaderCreateFileHeader(*pLength, pFileName, (UBYTE) LINEAR, SYSTEMFILE);
-      if (0x8000 <= ReturnState)
-      {
-        dLoaderCloseHandle(ReturnState);
-      }
-      else
-      {
-        IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
-      }
+      ReturnState = cLoaderCreateFile(pFileName, pLength, (UBYTE) LINEAR, SYSTEMFILE);
     }
     break;
     case OPENWRITEDATA:
     {
-
-      ReturnState = dLoaderCreateFileHeader(*pLength, pFileName, (UBYTE) NONLINEAR, DATAFILE);
-      if (0x8000 <= ReturnState)
-      {
-        dLoaderCloseHandle(ReturnState);
-      }
-      else
-      {
-        IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
-      }
+      ReturnState = cLoaderCreateFile(pFileName, pLength, (UBYTE) NONLINEAR, DATAFILE);
     }
     break;
     case OPENAPPENDDATA:
@@ -145,6 +263,20 @@ UWORD     cLoaderFileRq(UBYTE Cmd, UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLen
     {
       ReturnState = dLoaderCropDatafile(*pFileName);
       IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
+    }
+    break;
+    case RESIZEDATAFILE:
+    {
+      ReturnState = cLoaderResizeFile(pFileName, *pLength);
+      IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
+    }
+    break;
+    case SEEKFROMSTART:
+    case SEEKFROMCURRENT:
+    case SEEKFROMEND:
+    {
+      // *pFileName is the handle, *pLength is the offset, Cmd-SEEKFROMSTART is the origin
+      ReturnState = dLoaderSeek(*pFileName, *(SLONG*)pLength, Cmd-SEEKFROMSTART);
     }
     break;
     case READ:
@@ -179,9 +311,11 @@ UWORD     cLoaderFileRq(UBYTE Cmd, UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLen
     break;
     case DELETE:
     {
+      ReturnState = cLoaderDeleteFile(pFileName);
+/*
       ReturnState = dLoaderDelete(pFileName);
       IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
-
+*/
     }
     break;
     case DELETEUSERFLASH:
@@ -320,31 +454,7 @@ UWORD     cLoaderFileRq(UBYTE Cmd, UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLen
 
     case RENAMEFILE:
     {
-      UBYTE FoundName[FILENAME_LENGTH + 1];
-
-      /* Check for file exists*/
-      ReturnState = dLoaderFind(pBuffer, FoundName, pLength, pLength, (UBYTE) SEARCHING);
-      dLoaderCloseHandle(LOADER_HANDLE(ReturnState));
-      if (FILENOTFOUND == LOADER_ERR(ReturnState))
-      {
-        ReturnState = dLoaderFind(pFileName, FoundName, pLength, pLength, (UBYTE) SEARCHING);
-        if (ReturnState < 0x8000)
-        {
-          ReturnState = dLoaderCheckFiles((UBYTE) ReturnState);
-          if (ReturnState < 0x8000)
-          {
-            dLoaderRenameFile((UBYTE) ReturnState, pBuffer);
-          }
-        }
-        dLoaderCloseHandle(LOADER_HANDLE(ReturnState));
-      }
-      else
-      {
-        if (SUCCESS == LOADER_ERR(ReturnState))
-        {
-          ReturnState |= FILEEXISTS;
-        }
-      }
+      ReturnState = cLoaderRenameFile(pFileName, pBuffer, pLength);
     }
     break;
 

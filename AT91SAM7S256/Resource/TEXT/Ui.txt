@@ -17,9 +17,6 @@ Memory full!
 File saved
 File exists
 overwrite!
-Saved as
-File exist
-overwrite!
 File deleted
 Files
 deleted
@@ -29,11 +26,6 @@ Done
 File error!
 Deleting all
 %s files!
-Press Clear to
-stop DataLogging
-Port occupied!
-H:MM:SS:00
-HH:MM:SS
 Sound
 Software
 NXT
@@ -56,6 +48,4 @@ BT store is
 full error!
 BT unknown
 addr. error!
-Memory is
-full!
 Never

@@ -138,18 +138,25 @@ static    UWORD  RemainingLength;
                                           *AT91C_PIOA_CODR = BT_RST_PIN;              /* PA11 set output low */\
                                         }
 
-#define   BTInitReceiver(InputBuffer, Mode)\
+#define   BTInitReceiver(InputBuffer, Mode, noLenBytes)\
                                        {\
                                           pBuffer         = InputBuffer;\
                                           MsgIn           = 0;\
                                           FullRxLength    = 0;\
-                                          if (STREAM_MODE == Mode)\
+                                          if (noLenBytes)\
                                           {\
-                                            LengthSize = 2;\
+                                            LengthSize = 0;\
                                           }\
                                           else\
                                           {\
-                                            LengthSize = 1;\
+                                            if (STREAM_MODE == Mode)\
+                                            {\
+                                              LengthSize = 2;\
+                                            }\
+                                            else\
+                                            {\
+                                              LengthSize = 1;\
+                                            }\
                                           }\
                                         }
 
@@ -200,7 +207,7 @@ static    UWORD  RemainingLength;
                                               OutDma[DmaBufPtr][0] = (UBYTE)MsgSize;\
                                               OutDma[DmaBufPtr][1] = (UBYTE)(MsgSize>>8);\
                                             }\
-                                            else\
+                                            else if (1 == LengthSize)\
                                             {\
                                               OutDma[DmaBufPtr][0] = (UBYTE)MsgSize;\
                                             }\
@@ -244,7 +251,7 @@ static    UWORD  RemainingLength;
                                                   /* Remove Length when in strean mode */\
                                                   MsgIn          = 0;\
                                                 }\
-                                                else\
+                                                else if (1 == LengthSize)\
                                                 {\
                                                   FullRxLength = pBuffer[0];\
                                                 }\

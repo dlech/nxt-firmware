@@ -1,11 +1,11 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 24-06-09 8:53                                     $
+// Revision date   $Date:: 16-12-08 12:11                                    $
 //
 // Filename        $Workfile:: c_loader.iom                                  $
 //
-// Version         $Revision:: 15                                            $
+// Version         $Revision:: 14                                            $
 //
 // Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_load $
 //
@@ -21,7 +21,7 @@
 //For example, version 1.5 would be 0x0105
 //If these switch to little-endian, be sure to update
 //definition and usages of VM_OLDEST_COMPATIBLE_VERSION, too!
-#define   FIRMWAREVERSION               0x011D //1.28
+#define   FIRMWAREVERSION               0x011C //1.28
 #define   PROTOCOLVERSION               0x017C //1.124
 
 enum
@@ -40,21 +40,35 @@ enum
   OPENWRITEDATA   = 0x8B,
   OPENAPPENDDATA  = 0x8C,
   CROPDATAFILE    = 0x8D,    /* New cmd for datalogging */
+//  XXXXXXXXXXXXXX  = 0x8E,
+//  XXXXXXXXXXXXXX  = 0x8F,
   FINDFIRSTMODULE = 0x90,
   FINDNEXTMODULE  = 0x91,
   CLOSEMODHANDLE  = 0x92,
+//  XXXXXXXXXXXXXX  = 0x93,
   IOMAPREAD       = 0x94,
   IOMAPWRITE      = 0x95,
+//  XXXXXXXXXXXXXX  = 0x96,
   BOOTCMD         = 0x97,     /* external command only */
   SETBRICKNAME    = 0x98,
+//  XXXXXXXXXXXXXX  = 0x99,
   BTGETADR        = 0x9A,
   DEVICEINFO      = 0x9B,
+//  XXXXXXXXXXXXXX  = 0x9C,
+//  XXXXXXXXXXXXXX  = 0x9D,
+//  XXXXXXXXXXXXXX  = 0x9E,
+//  XXXXXXXXXXXXXX  = 0x9F,
   DELETEUSERFLASH = 0xA0,
   POLLCMDLEN      = 0xA1,
   POLLCMD         = 0xA2,
   RENAMEFILE      = 0xA3,
-  BTFACTORYRESET  = 0xA4
+  BTFACTORYRESET  = 0xA4,
 
+  // enhanced firmware additions
+  RESIZEDATAFILE  = 0xD0,
+  SEEKFROMSTART   = 0xD1,
+  SEEKFROMCURRENT = 0xD2,
+  SEEKFROMEND     = 0xD3
 };
 
 typedef UWORD LOADER_STATUS;

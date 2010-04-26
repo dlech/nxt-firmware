@@ -27,7 +27,7 @@
 #endif
 
 #include "c_cmd_bytecodes.h"
-#define SYSCALL_COUNT 48
+#define SYSCALL_COUNT 100
 
 extern    const HEADER cCmd;
 
@@ -55,6 +55,17 @@ void      cCmdExit(void);
 //
 #define ENABLE_VM 1
 #undef ARM_DEBUG
+
+
+//
+//WRITE_IOMAP_OFFSETS enables saving a file containing accurate iomap offsets.
+//
+#define WRITE_IOMAP_OFFSETS 0
+
+#if WRITE_IOMAP_OFFSETS
+void cCmdWriteIOMapOffsetsFile();
+#endif
+
 //
 //VM_BENCHMARK enables extra instrumentation code to measure VM performance.
 //When enabled, a file named "benchmark.txt" is produced every time a program completes.
@@ -194,10 +205,11 @@ enum
   IO_OUT_REG_I_VAL,
   IO_OUT_REG_D_VAL,
   IO_OUT_BLOCK_TACH_COUNT,
-  IO_OUT_ROTATION_COUNT
+  IO_OUT_ROTATION_COUNT,
+  IO_OUT_OPTIONS,
 };
 
-#define IO_OUT_FPP 15
+#define IO_OUT_FPP 16
 #define IO_OUT_FIELD_COUNT (IO_OUT_FPP * NO_OF_OUTPUTS)
 
 //
@@ -350,7 +362,6 @@ typedef struct
 #define SET_WRITE_DTLG(DVIndex) (VarsCmd.DatalogBuffer.Datalogs[VarsCmd.DatalogBuffer.WriteIndex] = (DVIndex))
 #define SET_READ_DTLG(DVIndex) (VarsCmd.DatalogBuffer.Datalogs[VarsCmd.DatalogBuffer.ReadIndex] = (DVIndex))
 
-
 //
 //Definitions related to dataflow scheduling
 //
@@ -385,6 +396,17 @@ typedef struct
   CLUMP_Q WaitQ;
 } MUTEX_Q;
 
+
+// Clump Breakpoints
+//
+typedef struct
+{ 
+  CODE_INDEX Location;
+  UBYTE Enabled;
+} CLUMP_BREAK_REC;
+
+#define MAX_BREAKPOINTS 4
+
 //
 // Clump Record, run-time book-keeping for each clump
 //
@@ -395,6 +417,7 @@ typedef struct
 // CurrFireCount: Run-time count of unsatisfied dependencies
 // Link: ID of next clump in the queue.  NOT_A_CLUMP denotes end or bad link.
 //
+// Priority: number of instructions to run per pass on this clump
 // clumpScalarDispatchHints: this clump only uses scalar data args, can be interpretted with faster dispatch tables
 //
 // pDependents: pointer to list of downstream dependents' ClumpIDs
@@ -410,11 +433,13 @@ typedef struct
   UBYTE     CurrFireCount; //AKA ShortCount
   CLUMP_ID  Link;
 
+  UBYTE     Priority; // deleted in 1.28
   UBYTE     clumpScalarDispatchHints;
 
   CLUMP_ID* pDependents;
   ULONG     awakenTime;
   UBYTE     DependentCount;
+  CLUMP_BREAK_REC Breakpoints[MAX_BREAKPOINTS];
 } CLUMP_REC;
 
 //
@@ -535,6 +560,10 @@ typedef struct
 
   DATALOG_QUEUE DatalogBuffer;
 
+  UBYTE Debugging;
+  UBYTE PauseClump;
+  CODE_INDEX PausePC;
+  
 #if VM_BENCHMARK
   ULONG InstrCount;
   ULONG Average;
@@ -544,8 +573,10 @@ typedef struct
   ULONG CompactionCount;
   ULONG LastCompactionTick;
   ULONG MaxCompactionTime;
-  ULONG OpcodeBenchmarks[OPCODE_COUNT][4];
-  ULONG SyscallBenchmarks[SYSCALL_COUNT][4];
+  ULONG CmdCtrlOverTimeCnt;
+  ULONG MaxCmdCtrlOverTimeLen;
+  ULONG OpcodeBenchmarks[OPCODE_COUNT][3];
+  ULONG SyscallBenchmarks[SYSCALL_COUNT][3];
   UBYTE Buffer[256];
 #endif
 
@@ -786,7 +817,7 @@ float cCmdGetValFlt(void * pVal, TYPE_CODE TypeCode);
 
 NXT_STATUS cCmdLSCheckStatus(UBYTE Port);
 UBYTE cCmdLSCalcBytesReady(UBYTE Port);
-NXT_STATUS cCmdLSWrite(UBYTE Port, UBYTE BufLength, UBYTE *pBuf, UBYTE ResponseLength);
+NXT_STATUS cCmdLSWrite(UBYTE Port, UBYTE BufLength, UBYTE *pBuf, UBYTE ResponseLength, UBYTE NoRestartOnRead);
 NXT_STATUS cCmdLSRead(UBYTE Port, UBYTE BufLength, UBYTE * pBuf);
 
 //
@@ -844,9 +875,6 @@ NXT_STATUS cCmdWrapSetSleepTimeout(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapListFiles(UBYTE * ArgV[]);
 
 // Handlers for dynamically added syscalls
-NXT_STATUS cCmdWrapCommHSWrite(UBYTE * ArgV[]);
-NXT_STATUS cCmdWrapCommHSRead(UBYTE * ArgV[]);
-NXT_STATUS cCmdWrapCommHSCheckStatus(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapCommBTOnOff(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapCommBTConnection(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapReadSemData(UBYTE * ArgV[]);
@@ -854,6 +882,29 @@ NXT_STATUS cCmdWrapWriteSemData(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapUpdateCalibCacheInfo(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapComputeCalibValue(UBYTE * ArgV[]);
 
+NXT_STATUS cCmdWrapIOMapReadByID(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapIOMapWriteByID(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapDisplayExecuteFunction(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapCommExecuteFunction(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapLoaderExecuteFunction(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapFileFindFirst(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapFileFindNext(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapFileOpenWriteLinear(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapFileOpenWriteNonLinear(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapFileOpenReadLinear(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapCommHSControl(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapCommHSCheckStatus(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapCommHSWrite(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapCommHSRead(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapCommLSWriteEx(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapFileSeek(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapFileResize(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapDrawPictureArray(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapDrawPolygon(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapDrawEllipse(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapDrawFont(UBYTE * ArgV[]);
+
+NXT_STATUS cCmdWrapUndefinedSysCall(UBYTE * ArgV[]);
 
 //Handler for remote control protocol packets -- called from comm module via IO map function pointer
 UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen);

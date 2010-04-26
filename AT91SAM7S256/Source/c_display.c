@@ -98,6 +98,14 @@ void      cDisplayClrPixel(UBYTE X,UBYTE Y)
   }
 }
 
+void      cDisplayXorPixel(UBYTE X,UBYTE Y)
+{
+  if ((X < DISPLAY_WIDTH) && (Y < DISPLAY_HEIGHT))
+  {
+    IOMapDisplay.Display[(Y / 8) * DISPLAY_WIDTH + X] ^= (1 << (Y % 8));
+  }
+}
+
 
 void      cDisplayChar(FONT *pFont,UBYTE On,UBYTE X,UBYTE Y,UBYTE Char)
 {
@@ -316,34 +324,85 @@ void      cDisplayUpdateIcon(ICON *pIcons,UBYTE Index,SCREEN_CORDINATE *pCord)
 }
 
 
-void      cDisplayLineX(UBYTE X1,UBYTE X2,UBYTE Y)
+void cDisplayLineX(UBYTE X1, UBYTE X2, UBYTE Y, UBYTE PixelMode)
 {
   UBYTE   X;
   UBYTE   M;
+  UBYTE   t;
 
+  if (Y > DISPLAY_HEIGHT) return;
+  if (X1 > X2) {t = X1; X1 = X2; X2 = t;}
+  if (X2 > (DISPLAY_WIDTH-1)) X2 = (DISPLAY_WIDTH-1);
+  
   M   = 1 << (Y % 8);
   Y >>= 3;
-  for (X = X1;X < X2;X++)
+  
+  for (X=X1; X<=X2; X++)
   {
-    IOMapDisplay.Display[Y * DISPLAY_WIDTH + X] |= M;
+    switch (PixelMode)
+    {
+      case DRAW_PIXELS_INVERT:
+        IOMapDisplay.Display[Y * DISPLAY_WIDTH + X] ^= M;
+        break;
+      case DRAW_PIXELS_CLEAR:
+        IOMapDisplay.Display[Y * DISPLAY_WIDTH + X] &= ~M;
+        break;
+      case DRAW_PIXELS_SET:
+      default:
+        IOMapDisplay.Display[Y * DISPLAY_WIDTH + X] |= M;
+        break;
+    }
   }
 }
 
-void      cDisplayLineY(UBYTE X,UBYTE Y1,UBYTE Y2)
+static UBYTE Masks[9] = {0x00, 0x01, 0x03, 0x07, 0x0f, 0x1f, 0x3f, 0x7f, 0xff};
+
+void      cDisplayLineY(UBYTE X,UBYTE Y1,UBYTE Y2,UBYTE PixelMode)
 {
   UBYTE   Y;
+  UBYTE   M;
+  UBYTE   t;
+  
+  if (X > DISPLAY_WIDTH) return;
+  if (Y1 > Y2) {t = Y1; Y1 = Y2; Y2 = t;}
+  if (Y2 > (DISPLAY_HEIGHT-1)) Y2 = (DISPLAY_HEIGHT-1);
 
-  for (Y = Y1;Y < Y2;Y++)
+  // starting point of Y is the byte containing Y1
+  Y = (Y1 / 8) * 8;
+  
+  while (Y <= Y2)
   {
-    IOMapDisplay.Display[(Y / 8) * DISPLAY_WIDTH + X] |= (1 << (Y % 8));
+    M = 0xff;
+    if (Y < Y1)
+      M &= ~Masks[Y1 % 8];
+    if ((Y2-Y) < 8)
+      M &= Masks[(Y2 % 8) + 1];
+    switch (PixelMode)
+    {
+      case DRAW_PIXELS_INVERT:
+        IOMapDisplay.Display[(Y / 8) * DISPLAY_WIDTH + X] ^= M;
+        break;
+      case DRAW_PIXELS_CLEAR:
+        IOMapDisplay.Display[(Y / 8) * DISPLAY_WIDTH + X] &= ~M;
+        break;
+      case DRAW_PIXELS_SET:
+      default:
+        IOMapDisplay.Display[(Y / 8) * DISPLAY_WIDTH + X] |= M;
+        break;
+    }
+    Y += 8;
   }
+  
 }
 
-void      cDisplayFrame(SCREEN_CORDINATE *pCord)
+void cDisplayFrame(SCREEN_CORDINATE *pCord, UBYTE PixelMode)
 {
-  cDisplayLineX(pCord->StartX,pCord->StartX + pCord->PixelsX - 1,pCord->StartY);
-  cDisplayLineY(pCord->StartX,pCord->StartY,pCord->StartY + pCord->PixelsY - 1);
-  cDisplayLineY(pCord->StartX + pCord->PixelsX - 1,pCord->StartY,pCord->StartY + pCord->PixelsY - 1);
+  cDisplayLineX(pCord->StartX, pCord->StartX + pCord->PixelsX-1, pCord->StartY, PixelMode);
+  if (pCord->PixelsY > 1)
+  {
+    cDisplayLineY(pCord->StartX, pCord->StartY + 1, pCord->StartY + pCord->PixelsY - 1, PixelMode);
+    cDisplayLineY(pCord->StartX + pCord->PixelsX - 1, pCord->StartY + 1, pCord->StartY + pCord->PixelsY - 1, PixelMode);
+  }
 }
 
 
@@ -358,30 +417,54 @@ void      cDisplayErase(void)
   memset(&IOMapDisplay.Display[0], 0x00, DISPLAY_WIDTH*DISPLAY_HEIGHT/8);
 }
 
-
-void      cDisplayEraseScreen(SCREEN_CORDINATE *pCord)
+void      cDisplayFillScreen(SCREEN_CORDINATE *pCord, UBYTE PixelMode)
 {
-  UBYTE   *pDestination;
-  UBYTE   Line;
-  UBYTE   Lines;
+  UBYTE   X1, Y1;
+  UBYTE   X2, Y2;
+  UBYTE   X, Y;
+  UBYTE   M;
+  
+  X1 = pCord->StartX;
+  Y1 = pCord->StartY;
+  X2 = pCord->StartX + pCord->PixelsX - 1;
+  Y2 = pCord->StartY + pCord->PixelsY - 1;
 
-  if (((pCord->StartY & 0x07) == 0) && ((pCord->PixelsY & 0x07) == 0))
+  if (X2 > (DISPLAY_WIDTH-1)) X2 = (DISPLAY_WIDTH-1);
+  if (Y2 > (DISPLAY_HEIGHT-1)) Y2 = (DISPLAY_HEIGHT-1);
+
+  Y = (Y1 / 8) * 8;
+  
+  while (Y <= Y2)
   {
-    Line    = pCord->StartY / 8;
-    Lines   = Line + pCord->PixelsY / 8;
-
-    while (Line < Lines)
+    M = 0xff;
+    if (Y < Y1)
+      M &= ~Masks[Y1 % 8];
+    if ((Y2-Y) < 8)
+      M &= Masks[(Y2 % 8) + 1];
+    switch (PixelMode)
     {
-      pDestination = &IOMapDisplay.Display[Line * DISPLAY_WIDTH + pCord->StartX];
-      memset(pDestination,0,(size_t)pCord->PixelsX);
-      Line++;
+      case DRAW_PIXELS_INVERT:
+        for (X=X1; X<=X2; X++)
+          IOMapDisplay.Display[(Y / 8) * DISPLAY_WIDTH + X] ^= M;
+        break;
+      case DRAW_PIXELS_CLEAR:
+        for (X=X1; X<=X2; X++)
+          IOMapDisplay.Display[(Y / 8) * DISPLAY_WIDTH + X] &= ~M;
+        break;
+      case DRAW_PIXELS_SET:
+      default:
+        for (X=X1; X<=X2; X++)
+          IOMapDisplay.Display[(Y / 8) * DISPLAY_WIDTH + X] |= M;
+        break;
     }
+    Y += 8;
   }
 }
 
-
-void      cDisplayDraw(UBYTE Cmd,UBYTE On,UBYTE X1,UBYTE Y1,UBYTE X2,UBYTE Y2)
+void cDisplayDraw(UBYTE Cmd,UBYTE PixelMode,UBYTE X1,UBYTE Y1,UBYTE X2,UBYTE Y2)
 {
+  SCREEN_CORDINATE Coord;
+  
   switch (Cmd)
   {
     case DISPLAY_ERASE_ALL :
@@ -392,52 +475,63 @@ void      cDisplayDraw(UBYTE Cmd,UBYTE On,UBYTE X1,UBYTE Y1,UBYTE X2,UBYTE Y2)
 
     case DISPLAY_PIXEL :
     {
-      if (On == TRUE)
+      switch (PixelMode)
       {
-        cDisplaySetPixel(X1,Y1);
-      }
-      else
-      {
-        cDisplayClrPixel(X1,Y1);
+        case DRAW_PIXELS_INVERT:
+          cDisplayXorPixel(X1,Y1);
+          break;
+        case DRAW_PIXELS_CLEAR:
+          cDisplayClrPixel(X1,Y1);
+          break;
+        case DRAW_PIXELS_SET:
+        default:
+          cDisplaySetPixel(X1,Y1);
+          break;
       }
     }
     break;
 
-    case DISPLAY_HORISONTAL_LINE :
+    case DISPLAY_HORIZONTAL_LINE :
     {
-      if (On == TRUE)
-      {
-        if (X1 > X2)
-        {
-          cDisplayLineX(X2,X1,Y1);
-        }
-        else
-        {
-          cDisplayLineX(X1,X2,Y1);
-        }
-      }
+        cDisplayLineX(X1,X2,Y1,PixelMode);
     }
     break;
 
     case DISPLAY_VERTICAL_LINE :
     {
-      if (On == TRUE)
-      {
-        if (Y1 > Y2)
-        {
-          cDisplayLineY(X1,Y2,Y1);
-        }
-        else
-        {
-          cDisplayLineY(X1,Y1,Y2);
-        }
-      }
+        cDisplayLineY(X1,Y1,Y2,PixelMode);
     }
     break;
 
     case DISPLAY_CHAR :
     {
-      cDisplayChar(IOMapDisplay.pFont,On,X1,Y1,X2);
+      cDisplayChar(IOMapDisplay.pFont,PixelMode,X1,Y1,X2);
+    }
+    break;
+
+    case DISPLAY_ERASE_LINE :
+    {
+      cDisplayEraseLine(X1);
+    }
+    break;
+
+    case DISPLAY_FILL_REGION :
+    {
+      Coord.StartX = X1;
+      Coord.StartY = Y1;
+      Coord.PixelsX = X2;
+      Coord.PixelsY = Y2;
+      cDisplayFillScreen(&Coord, PixelMode);
+    }
+    break;
+
+    case DISPLAY_FRAME :
+    {
+      Coord.StartX = X1;
+      Coord.StartY = Y1;
+      Coord.PixelsX = X2;
+      Coord.PixelsY = Y2;
+      cDisplayFrame(&Coord, PixelMode);
     }
     break;
 
@@ -454,6 +548,7 @@ void      cDisplayInit(void* pHeader)
   IOMapDisplay.UpdateMask           =  0;
   IOMapDisplay.TextLinesCenterFlags =  0;
   IOMapDisplay.Flags                =  DISPLAY_REFRESH | DISPLAY_ON;
+  IOMapDisplay.Contrast             =  0x5A; // 90
   VarsDisplay.ErasePointer          =  0;
   VarsDisplay.UpdatePointer         =  0;
 }
@@ -514,7 +609,7 @@ void      cDisplayCtrl(void)
         }
         if (Tmp < MENUICONS)
         {
-          cDisplayEraseScreen((SCREEN_CORDINATE*)&MENUICON_CORDINATES[Tmp]);
+          cDisplayFillScreen((SCREEN_CORDINATE*)&MENUICON_CORDINATES[Tmp], DRAW_PIXELS_CLEAR);
         }
       }
       else
@@ -528,7 +623,7 @@ void      cDisplayCtrl(void)
           }
           if (Tmp < STATUSICONS)
           {
-            cDisplayEraseScreen((SCREEN_CORDINATE*)&STATUSICON_CORDINATES[Tmp]);
+            cDisplayFillScreen((SCREEN_CORDINATE*)&STATUSICON_CORDINATES[Tmp], DRAW_PIXELS_CLEAR);
           }
         }
         else
@@ -542,13 +637,13 @@ void      cDisplayCtrl(void)
             }
             if (Tmp < SCREENS)
             {
-              cDisplayEraseScreen((SCREEN_CORDINATE*)&SCREEN_CORDINATES[Tmp]);
+              cDisplayFillScreen((SCREEN_CORDINATE*)&SCREEN_CORDINATES[Tmp], DRAW_PIXELS_CLEAR);
             }
             if ((TmpMask & SCREEN_BIT(SCREEN_LARGE)))
             {
               if ((IOMapDisplay.UpdateMask & SPECIAL_BIT(TOPLINE)))
               {
-                cDisplayLineX(0,DISPLAY_WIDTH - 1,9);
+                cDisplayLineX(0,DISPLAY_WIDTH - 1, 9, DRAW_PIXELS_SET);
                 IOMapDisplay.UpdateMask &= ~SPECIAL_BIT(TOPLINE);
               }
             }
@@ -568,7 +663,7 @@ void      cDisplayCtrl(void)
                 Cordinate.StartY  = VarsDisplay.pOldBitmaps[Tmp]->StartY;
                 Cordinate.PixelsX = VarsDisplay.pOldBitmaps[Tmp]->PixelsX;
                 Cordinate.PixelsY = VarsDisplay.pOldBitmaps[Tmp]->PixelsY;
-                cDisplayEraseScreen(&Cordinate);
+                cDisplayFillScreen(&Cordinate, DRAW_PIXELS_CLEAR); 
               }
             }
             else
@@ -622,7 +717,7 @@ void      cDisplayCtrl(void)
                   }
                   if (Tmp < STEPICONS)
                   {
-                    cDisplayEraseScreen((SCREEN_CORDINATE*)&STEPICON_CORDINATES[Tmp]);
+                    cDisplayFillScreen((SCREEN_CORDINATE*)&STEPICON_CORDINATES[Tmp], DRAW_PIXELS_CLEAR);
                   }
                 }
               }
@@ -740,7 +835,7 @@ void      cDisplayCtrl(void)
                   {
                     case FRAME_SELECT :
                     {
-                      cDisplayFrame((SCREEN_CORDINATE*)&SELECT_FRAME_CORDINATES);
+                      cDisplayFrame((SCREEN_CORDINATE*)&SELECT_FRAME_CORDINATES,DRAW_PIXELS_SET);
                     }
                     break;
 
@@ -758,16 +853,16 @@ void      cDisplayCtrl(void)
 
                     case STEPLINE :
                     {
-                      cDisplayLineX(22,28,20);
-                      cDisplayLineX(39,45,20);
-                      cDisplayLineX(56,62,20);
-                      cDisplayLineX(73,79,20);
+                      cDisplayLineX(22,28,20,DRAW_PIXELS_SET);
+                      cDisplayLineX(39,45,20,DRAW_PIXELS_SET);
+                      cDisplayLineX(56,62,20,DRAW_PIXELS_SET);
+                      cDisplayLineX(73,79,20,DRAW_PIXELS_SET);
                     }
                     break;
 
                     case TOPLINE :
                     {
-                      cDisplayLineX(0,DISPLAY_WIDTH - 1,9);
+                      cDisplayLineX(0,DISPLAY_WIDTH - 1,9,DRAW_PIXELS_SET); 
                     }
                     break;
 
@@ -808,11 +903,11 @@ void      cDisplayCtrl(void)
     {
       if ((IOMapDisplay.Flags & DISPLAY_ON))
       {
-        dDisplayOn(TRUE);
+        dDisplayOn(TRUE, IOMapDisplay.Contrast);
       }
       else
       {
-        dDisplayOn(FALSE);
+        dDisplayOn(FALSE, IOMapDisplay.Contrast);
       }
       if (!(dDisplayUpdate(DISPLAY_HEIGHT,DISPLAY_WIDTH,(UBYTE*)IOMapDisplay.Normal)))
       {

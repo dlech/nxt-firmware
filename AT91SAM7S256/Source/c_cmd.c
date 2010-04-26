@@ -4521,8 +4521,8 @@ afterCompaction:
     else if (Status == CLUMP_SUSPEND || Status == BREAKOUT_REQ || Status == ROTATE_QUEUE)  // already requeued
     {
       pClumpRec->PC = pInstr + gPCDelta;
-    //Throw error if we ever advance beyond the clump's codespace
-    if (pInstr > lastClumpInstr)
+      //Throw error if we ever advance beyond the clump's codespace
+      if (pInstr > lastClumpInstr)
       {
         NXT_BREAK;
         Status = ERR_INSTR;
@@ -4699,7 +4699,7 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
     case OP_STARTCLUMPIMMED:
     {
         CLUMP_ID Clump = (CLUMP_ID)Arg1;
-        // only enqueue the clump if it is not already on the run queue
+        // only enqueue the clump if it is not already on one of the queues
         // otherwise this is a no-op
         if (!cCmdIsClumpOnQ(&(VarsCmd.RunQ), Clump) && 
             !cCmdIsClumpOnQ(&(VarsCmd.RestQ), Clump) &&

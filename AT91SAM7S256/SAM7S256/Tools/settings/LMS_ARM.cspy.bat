@@ -22,7 +22,7 @@
 @REM but they are listed at the end of this file for reference.
 
 
-"C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\common\bin\cspybat" "C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\armproc.dll" "C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\armjlink.dll"  %1 --plugin "C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\<libsupport_plugin>" --macro "C:\NXT\LMS NXT\AT91SAM7S256\SAM7S256\Tools\SAM7.mac" --backend -B "--endian" "little" "--cpu" "ARM7TDMI" "--fpu" "None" "--proc_device_desc_file" "C:\NXT\LMS NXT\AT91SAM7S256\SAM7S256\Tools\ioat91sam7s256.ddf" "--proc_driver" "jlink" "--jlink_connection" "USB:0" "--jlink_initial_speed" "32" 
+"C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\common\bin\cspybat" "C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\armproc.dll" "C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\armjlink.dll"  %1 --plugin "C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\<libsupport_plugin>" --macro "D:\NXT\lms_nbcnxc_128\AT91SAM7S256\SAM7S256\Tools\SAM7.mac" --backend -B "--endian" "little" "--cpu" "ARM7TDMI" "--fpu" "None" "--proc_device_desc_file" "D:\NXT\lms_nbcnxc_128\AT91SAM7S256\SAM7S256\Tools\ioat91sam7s256.ddf" "--proc_driver" "jlink" "--jlink_connection" "USB:0" "--jlink_initial_speed" "32" 
 
 
 @REM Loaded plugins:

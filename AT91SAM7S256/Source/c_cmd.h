@@ -439,6 +439,7 @@ typedef struct
   CLUMP_ID* pDependents;
   ULONG     awakenTime;
   UBYTE     DependentCount;
+  CLUMP_ID  CalledClump;
   CLUMP_BREAK_REC Breakpoints[MAX_BREAKPOINTS];
 } CLUMP_REC;
 

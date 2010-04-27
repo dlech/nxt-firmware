@@ -1921,6 +1921,7 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
     clumpPtr->PC = clumpPtr->CodeStart;
     clumpPtr->Link = NOT_A_CLUMP;
     clumpPtr->Priority = INSTR_MAX_COUNT;
+    clumpPtr->CalledClump = NOT_A_CLUMP;
     
     CLUMP_BREAK_REC* pBreakpoints = clumpPtr->Breakpoints;
     for (j = 0; j < MAX_BREAKPOINTS; j++)
@@ -2457,6 +2458,7 @@ NXT_STATUS cCmdReleaseAllMutexes(CLUMP_ID Clump)
   NXT_ASSERT(cCmdIsClumpIDSane(Clump));
   DATA_ARG Arg1;
   MUTEX_Q * Mutex;
+  UBYTE bFoundWaitingMutex = FALSE;
   for (Arg1=0; Arg1 < VarsCmd.DataspaceCount; Arg1++)
   {
     if (VarsCmd.pDataspaceTOC[Arg1].TypeCode == TC_MUTEX)
@@ -2466,8 +2468,11 @@ NXT_STATUS cCmdReleaseAllMutexes(CLUMP_ID Clump)
       if (Mutex->Owner == Clump)
         cCmdReleaseMutex(Mutex);
       // also make sure that this Clump is not waiting in this mutex's wait queue
-      if (cCmdIsClumpOnQ(&(Mutex->WaitQ), Clump))
+      if (!bFoundWaitingMutex && cCmdIsClumpOnQ(&(Mutex->WaitQ), Clump)) {
+        bFoundWaitingMutex = TRUE;
         cCmdDeQClump(&(Mutex->WaitQ), Clump);
+        cCmdEnQClump(&(VarsCmd.RunQ), Clump);
+      }
     }
   }
   return (NO_ERR);
@@ -2495,6 +2500,39 @@ NXT_STATUS cCmdReleaseMutex(MUTEX_Q * Mutex)
   NXT_ASSERT(cCmdIsQSane(&(Mutex->WaitQ)));
   NXT_ASSERT(cCmdIsQSane(&(VarsCmd.RunQ)));
 
+  return (NO_ERR);
+}
+
+NXT_STATUS cCmdStopClump(CLUMP_ID Clump)
+{
+  // first check whether this clump has called another clump
+  CLUMP_REC* pClumpRec = &(VarsCmd.pAllClumps[Clump]);
+  if (pClumpRec->CalledClump != NOT_A_CLUMP) {
+    // in this situation we know that this clump
+    // is not on any queues of any kind (run, rest, or wait)
+    // so instead of trying to stop THIS clump we will
+    // try to stop the clump it called instead
+    cCmdStopClump(pClumpRec->CalledClump);
+  }
+  else
+  {
+    // release any mutexes owned by this clump
+    // and remove it from any wait queues that it might be on
+    cCmdReleaseAllMutexes(Clump);
+    if (cCmdIsClumpOnQ(&(VarsCmd.RunQ), Clump)) {
+        // remove the specified clump from the run queue if it is on it
+        cCmdDeQClump(&(VarsCmd.RunQ), Clump);
+    }
+    else if (cCmdIsClumpOnQ(&(VarsCmd.RestQ), Clump)) {
+        // if the specified clump happened to be sleeping then
+        // remove it from the rest queue
+        cCmdDeQClump(&(VarsCmd.RestQ), Clump);
+    }
+    // since we have stopped that clump we should reset its clump rec values.
+    pClumpRec->PC = pClumpRec->CodeStart;
+    pClumpRec->CurrFireCount = pClumpRec->InitFireCount;
+    pClumpRec->awakenTime = 0;
+  }
   return (NO_ERR);
 }
 
@@ -4620,12 +4658,16 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
     case OP_SUBRET:
     {
       NXT_ASSERT(cCmdIsDSElementIDSane(Arg1));
-
+      CLUMP_ID clump = *((CLUMP_ID *)cCmdDSScalarPtr(Arg1, 0));
+      
       //Take Subroutine off RunQ
       //Add Subroutine's caller to RunQ
       cCmdDeQClump(&(VarsCmd.RunQ), VarsCmd.RunQ.Head);
-      cCmdEnQClump(&(VarsCmd.RunQ), *((CLUMP_ID *)cCmdDSScalarPtr(Arg1, 0)));
+      cCmdEnQClump(&(VarsCmd.RunQ), clump);
 
+      CLUMP_REC* pClumpRec = &(VarsCmd.pAllClumps[clump]);
+      pClumpRec->CalledClump = NOT_A_CLUMP;
+      
       Status = CLUMP_DONE;
     }
     break;
@@ -4676,23 +4718,7 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
     {
         // Release any mutexes that the clump we are stopping owns
         CLUMP_ID Clump = (CLUMP_ID)Arg1;
-        // release any mutexes owned by this clump
-        // and remove it from any wait queues that it might be on
-        cCmdReleaseAllMutexes(Clump);
-        if (cCmdIsClumpOnQ(&(VarsCmd.RunQ), Clump)) {
-            // remove the specified clump from the run queue if it is on it
-            cCmdDeQClump(&(VarsCmd.RunQ), Clump);
-        }
-        else if (cCmdIsClumpOnQ(&(VarsCmd.RestQ), Clump)) {
-            // if the specified clump happened to be sleeping then
-            // remove it from the rest queue
-            cCmdDeQClump(&(VarsCmd.RestQ), Clump);
-        }
-        // since we have stopped that clump we should reset its clump rec values.
-        CLUMP_REC* pClumpRec = &(VarsCmd.pAllClumps[Clump]);
-        pClumpRec->PC = pClumpRec->CodeStart;
-        pClumpRec->CurrFireCount = pClumpRec->InitFireCount;
-        pClumpRec->awakenTime = 0;
+        cCmdStopClump(Clump);
     }
     break;
     
@@ -4911,10 +4937,14 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
       NXT_ASSERT(!cCmdIsClumpOnQ(&(VarsCmd.RunQ), (CLUMP_ID)Arg1));
 
       NXT_ASSERT(cCmdIsDSElementIDSane(Arg2));
+      
+      CLUMP_ID clump = VarsCmd.RunQ.Head;
+      CLUMP_REC* pClumpRec = &(VarsCmd.pAllClumps[clump]);
+      pClumpRec->CalledClump = (CLUMP_ID)Arg1;
 
-      *((CLUMP_ID *)(cCmdDSScalarPtr(Arg2, 0))) = VarsCmd.RunQ.Head;
+      *((CLUMP_ID *)(cCmdDSScalarPtr(Arg2, 0))) = clump;
 
-      cCmdDeQClump(&(VarsCmd.RunQ), VarsCmd.RunQ.Head); //Take caller off RunQ
+      cCmdDeQClump(&(VarsCmd.RunQ), clump); //Take caller off RunQ
       cCmdEnQClump(&(VarsCmd.RunQ), (CLUMP_ID)Arg1);  //Add callee to RunQ
 
       Status = CLUMP_SUSPEND;
@@ -5120,6 +5150,18 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
         Status = cCmdSleepClump(wait + IOMapCmd.Tick); // put to sleep, to wake up wait ms in future
       if(Arg1 != NOT_A_DS_ID)
         cCmdSetScalarValFromDataArg(Arg1, dTimerReadNoPoll());
+    }
+    break;
+
+    case OP_ADDROF:
+    {
+      pArg1 = cCmdResolveDataArg(Arg1, 0, &TypeCode1);
+      if (TypeCode1 == TC_ULONG) {
+        pArg2 = cCmdResolveDataArg(Arg2, 0, NULL);
+        *(ULONG*)pArg1 = (ULONG)pArg2;
+      }
+      else
+        Status = ERR_INSTR; // output argument MUST be an unsigned long type
     }
     break;
 
@@ -7039,6 +7081,7 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
       ULONG ArgVal1;
       float ArgValF;
       SLONG decimals= 0;
+      UBYTE exponent=FALSE;
       UBYTE cont= TRUE;
       // Arg1 - Dst number (output)
       // Arg2 - Offset past match (output)
@@ -7090,13 +7133,20 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
           if (TypeCode1 == TC_FLOAT)
           {
             //Scan until we get past the number and no more than one decimal
+            // optionally there can also be a single "e" or "E" followed by 
+            // one or more digits (but the decimal cannot come after this)
             while (cont) {
-              if ((((UBYTE *)pArg3)[i] >= '0') && (((UBYTE *)pArg3)[i] <= '9'))
+              UBYTE ch = ((UBYTE *)pArg3)[i];
+              if ((ch >= '0') && (ch <= '9'))
                 i++;
-              else if(((UBYTE *)pArg3)[i] == '.' && !decimals) {
+              else if(ch == '.' && !decimals && !exponent) {
                 i++;
                 decimals++;
-                }
+              }
+              else if (((ch == 'E') || (ch == 'e')) && !exponent) {
+                i++;
+                exponent = TRUE;
+              }
               else
                 cont= FALSE;
             }

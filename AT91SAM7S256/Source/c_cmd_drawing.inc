@@ -103,6 +103,9 @@ enum {
 #define DRAW_OPT_FONT_DIR_T2BL (0x0180)           // Font top to bottom left align
 #define DRAW_OPT_FONT_DIR_T2BR (0x01C0)           // Font top to bottom right align
 
+// new constant for polyline vs polygon
+#define DRAW_OPT_POLYGON_POLYLINE           (0x0400)
+
 #define DESC_FONTOUT    0x8001         // ID for new font out function
 
 // CopyOptions, as originally defined for RIC files, now equate to:
@@ -265,7 +268,7 @@ SWORD           gPassedVarsCount = 0;
 void cCmdDrawLine(SLONG x1, SLONG y1, SLONG x2, SLONG y2, UBYTE PixelMode);
 void cCmdDrawRect(SLONG left, SLONG bottom, SLONG width, SLONG height, UBYTE PixelMode, UBYTE FillMode);
 void cCmdDrawCircle(SLONG cx, SLONG cy, SLONG radius, UBYTE PixelMode, UBYTE FillMode);
-void cCmdDrawPolygon(IMG_PT* points, UWORD polyCorners, UBYTE PixelMode, UBYTE FillMode);
+void cCmdDrawPolygon(IMG_PT* points, UWORD polyCorners, UBYTE PixelMode, UBYTE FillMode, UBYTE bLine);
 void cCmdDrawEllipse(SWORD cx, SWORD cy, SWORD a, SWORD b, UBYTE PixelMode, UBYTE FillMode);
 void cCmdCopyBitMapBits(SLONG dst_x, SLONG dst_y,
                         SLONG src_x, SLONG src_y, SLONG src_width, SLONG src_height,
@@ -418,31 +421,30 @@ NXT_STATUS cCmdWrapDrawRect(UBYTE * ArgV[])
 NXT_STATUS cCmdWrapDrawPolygon(UBYTE * ArgV[])
 {
   ULONG DrawOptions = *(ULONG*)ArgV[2];
-  UBYTE pixelMode, fillMode;
+  UBYTE pixelMode, fillMode, bLine;
 
   //Resolve array argument
   IMG_PT * Points = (IMG_PT*)cCmdDVPtr(*(DV_INDEX *)(ArgV[1]));
   UWORD polyCorners = DV_ARRAY[*(DV_INDEX *)(ArgV[1])].Count;
-  if (polyCorners <= MAX_CORNERS) {
 
-    cCmdClearScreenIfNeeded(DrawOptions);
-  
-    if (cCmdResolveDrawingMode(DrawOptions, &pixelMode, &fillMode))
-      cCmdDrawPolygon(Points, polyCorners, pixelMode, fillMode);
-  
-    pMapDisplay->UpdateMask |= SCREEN_BIT(SCREEN_BACKGROUND);
-  
-    // Set return value
-    *((SBYTE*)(ArgV[0])) = NO_ERR;
-  
-    return NO_ERR;
+  cCmdClearScreenIfNeeded(DrawOptions);
+  bLine = (DrawOptions & DRAW_OPT_POLYGON_POLYLINE) ? 1 : 0;
+  if (cCmdResolveDrawingMode(DrawOptions, &pixelMode, &fillMode)) {
+    if (fillMode == DRAW_SHAPE_FILLED && polyCorners > MAX_CORNERS) {
+      // Set return value
+      *((SBYTE*)(ArgV[0])) = ERR_INSTR;
+      return ERR_INSTR;
+    }
+    else
+      cCmdDrawPolygon(Points, polyCorners, pixelMode, fillMode, bLine);
   }
-  else {
-    // Set return value
-    *((SBYTE*)(ArgV[0])) = ERR_INSTR;
   
-    return ERR_INSTR;
-  }
+  pMapDisplay->UpdateMask |= SCREEN_BIT(SCREEN_BACKGROUND);
+  
+  // Set return value
+  *((SBYTE*)(ArgV[0])) = NO_ERR;
+ 
+  return NO_ERR;
 }
 
 //-----------------------------------------------------------------
@@ -721,13 +723,17 @@ NXT_STATUS cCmdDrawPictureHelper(IMG_OP_UNION** ppImage, IMG_PT* pPoint, SLONG* 
         if (OpSize >= sizeof(IMG_OP_POLYGON))
         {
           IMG_OP_POLYGON * pP = &(pImage->Polygon);
+          UBYTE bLine = (pP->CopyOptions & DRAW_OPT_POLYGON_POLYLINE) ? 1 : 0;
           cCmdResolveDrawingMode(pP->CopyOptions, &pixelMode, &fillMode);   //JJR
           // resolve all the values in the struct
-          for(int i=0;i<pP->Count; i++) {
-            pP->Points[i].X = (SWORD)(cCmdResolveValue(pP->Points[i].X)+Pt.X);
-            pP->Points[i].Y = (SWORD)(cCmdResolveValue(pP->Points[i].Y)+Pt.Y);
+          if (fillMode != DRAW_SHAPE_FILLED || pP->Count <= MAX_CORNERS)
+          {
+            for(int i=0;i<pP->Count; i++) {
+              pP->Points[i].X = (SWORD)(cCmdResolveValue(pP->Points[i].X)+Pt.X);
+              pP->Points[i].Y = (SWORD)(cCmdResolveValue(pP->Points[i].Y)+Pt.Y);
+            }
+            cCmdDrawPolygon(pP->Points, pP->Count, pixelMode, fillMode, bLine);
           }
-          cCmdDrawPolygon(pP->Points, pP->Count, pixelMode, fillMode);
         }
       }
       break;
@@ -1081,9 +1087,10 @@ void cCmdDrawRect(
   
 }
 
-void cCmdDrawPolygon(IMG_PT* points, UWORD polyCorners, UBYTE PixelMode, UBYTE FillMode)
+void cCmdDrawPolygon(IMG_PT* points, UWORD polyCorners, UBYTE PixelMode, UBYTE FillMode, UBYTE bLine)
 {
-  if (FillMode == DRAW_SHAPE_FILLED)
+  // the fill mode overrides the polyline vs polygon setting
+  if (FillMode == DRAW_SHAPE_FILLED) 
   {
     int nodes;
     int nodeX[MAX_CORNERS];
@@ -1145,8 +1152,17 @@ void cCmdDrawPolygon(IMG_PT* points, UWORD polyCorners, UBYTE PixelMode, UBYTE F
   }
   else
   {
-    for(int i = 0, j = polyCorners-1; i<polyCorners; j=i++) {
-      IMG_PT pI, pJ;
+//    for(int i = 0, j = polyCorners-1; i<polyCorners; j=i++) {
+    IMG_PT pI, pJ;
+    int i = 1, j = 0;
+    while (i < polyCorners) {
+      pI = points[i];
+      pJ = points[j];
+      cCmdDrawLine(pI.X, pI.Y, pJ.X, pJ.Y, PixelMode);
+      j=i++;
+    }
+    if (!bLine) {
+      i = 0;
       pI = points[i];
       pJ = points[j];
       cCmdDrawLine(pI.X, pI.Y, pJ.X, pJ.Y, PixelMode);

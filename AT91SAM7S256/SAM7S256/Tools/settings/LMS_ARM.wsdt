@@ -40,7 +40,7 @@
             <Factory>Workspace</Factory>
             <Session>
               
-            <NodeDict><ExpandedNode>LMS_ARM</ExpandedNode><ExpandedNode>LMS_ARM/c_led.c</ExpandedNode><ExpandedNode>LMS_ARM/d_loader.c</ExpandedNode></NodeDict></Session>
+            <NodeDict><ExpandedNode>LMS_ARM</ExpandedNode><ExpandedNode>LMS_ARM/c_cmd.c</ExpandedNode><ExpandedNode>LMS_ARM/c_display.c</ExpandedNode><ExpandedNode>LMS_ARM/c_led.c</ExpandedNode></NodeDict></Session>
           </Tab>
         </Tabs>
         
@@ -50,14 +50,14 @@
       
       
       
-    <Pane><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_128\AT91SAM7S256\Source\c_cmd.c</Filename><XPos>0</XPos><YPos>5146</YPos><SelStart>145211</SelStart><SelEnd>145211</SelEnd></Tab><ActiveTab>0</ActiveTab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_128\AT91SAM7S256\Source\c_display.c</Filename><XPos>0</XPos><YPos>94</YPos><SelStart>2514</SelStart><SelEnd>2519</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_128\AT91SAM7S256\Source\c_cmd_drawing.inc</Filename><XPos>0</XPos><YPos>1597</YPos><SelStart>47512</SelStart><SelEnd>47517</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_128\AT91SAM7S256\Source\c_display.iom</Filename><XPos>0</XPos><YPos>186</YPos><SelStart>6950</SelStart><SelEnd>6955</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_128\AT91SAM7S256\Source\c_ui.c</Filename><XPos>0</XPos><YPos>1277</YPos><SelStart>33562</SelStart><SelEnd>33580</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_128\AT91SAM7S256\Source\c_cmd_bytecodes.h</Filename><XPos>0</XPos><YPos>121</YPos><SelStart>4522</SelStart><SelEnd>4522</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_128\AT91SAM7S256\Source\c_cmd.h</Filename><XPos>0</XPos><YPos>418</YPos><SelStart>12192</SelStart><SelEnd>12192</SelEnd></Tab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
+    <Pane><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_128\AT91SAM7S256\Source\c_cmd.c</Filename><XPos>0</XPos><YPos>5659</YPos><SelStart>160445</SelStart><SelEnd>160445</SelEnd></Tab><ActiveTab>0</ActiveTab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_128\AT91SAM7S256\Source\c_cmd_drawing.inc</Filename><XPos>0</XPos><YPos>1142</YPos><SelStart>34786</SelStart><SelEnd>34786</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_128\AT91SAM7S256\Source\c_display.iom</Filename><XPos>0</XPos><YPos>34</YPos><SelStart>1748</SelStart><SelEnd>1748</SelEnd></Tab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
     <Positions>
       
       
       
       
       
-    <Top><Row0><Sizes><Toolbar-0036cd50><key>iaridepm.enu1</key></Toolbar-0036cd50></Sizes></Row0></Top><Left><Row0><Sizes><Wnd2><Rect><Top>-2</Top><Left>-2</Left><Bottom>546</Bottom><Right>223</Right><x>-2</x><y>-2</y><xscreen>0</xscreen><yscreen>0</yscreen><sizeHorzCX>0</sizeHorzCX><sizeHorzCY>0</sizeHorzCY><sizeVertCX>169683</sizeVertCX><sizeVertCY>743555</sizeVertCY></Rect></Wnd2></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd3><Rect><Top>-2</Top><Left>-2</Left><Bottom>147</Bottom><Right>1328</Right><x>-2</x><y>-2</y><xscreen>1330</xscreen><yscreen>149</yscreen><sizeHorzCX>1003017</sizeHorzCX><sizeHorzCY>202171</sizeHorzCY><sizeVertCX>0</sizeVertCX><sizeVertCY>0</sizeVertCY></Rect></Wnd3></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
+    <Top><Row0><Sizes><Toolbar-0089ccf0><key>iaridepm.enu1</key></Toolbar-0089ccf0></Sizes></Row0></Top><Left><Row0><Sizes><Wnd2><Rect><Top>-2</Top><Left>-2</Left><Bottom>546</Bottom><Right>223</Right><x>-2</x><y>-2</y><xscreen>0</xscreen><yscreen>0</yscreen><sizeHorzCX>0</sizeHorzCX><sizeHorzCY>0</sizeHorzCY><sizeVertCX>169683</sizeVertCX><sizeVertCY>743555</sizeVertCY></Rect></Wnd2></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd3><Rect><Top>-2</Top><Left>-2</Left><Bottom>147</Bottom><Right>1328</Right><x>-2</x><y>-2</y><xscreen>1330</xscreen><yscreen>149</yscreen><sizeHorzCX>1003017</sizeHorzCX><sizeHorzCY>202171</sizeHorzCY><sizeVertCX>0</sizeVertCX><sizeVertCY>0</sizeVertCY></Rect></Wnd3></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
   </Desktop>
 </Workspace>
 

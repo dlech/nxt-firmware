@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 9:42                                     $
+// Revision date   $Date:: 9-06-08 14:57                                     $
 //
 // Filename        $Workfile:: c_comm.iom                                    $
 //
-// Version         $Revision:: 72                                            $
+// Version         $Revision:: 2                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_comm.iom $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_comm $
 //
 // Platform        C
 //
@@ -62,7 +62,7 @@ enum
 enum
 {
   HS_INITIALISE = 1,
-  HS_INIT_RECEIVER,  
+  HS_INIT_RECEIVER,
   HS_SEND_DATA,
   HS_DISABLE
 };
@@ -97,7 +97,8 @@ enum
   SETBTNAME,
   EXTREAD,
   PINREQ,
-  CONNECTREQ
+  CONNECTREQ,
+  CONNECTBYNAME
 };
 
 
@@ -138,7 +139,7 @@ typedef   struct
 typedef   struct
 {
   UBYTE       Buf[SIZE_OF_BTBUF];
-  UBYTE       InPtr;  
+  UBYTE       InPtr;
   UBYTE       OutPtr;
   UBYTE       Spare1;
   UBYTE       Spare2;

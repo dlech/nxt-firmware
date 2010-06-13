@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Dktochpe                                        $
+// Reviser         $Author:: Dkandlun                                        $
 //
-// Revision date   $Date:: 28-02-06 14:07                                    $
+// Revision date   $Date:: 10-06-08 9:26                                     $
 //
 // Filename        $Workfile:: c_ui.iom                                      $
 //
-// Version         $Revision:: 45                                            $
+// Version         $Revision:: 4                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_ui.iom   $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_ui.i $
 //
 // Platform        C
 //
@@ -21,14 +21,25 @@
 
 #define   pMapUi ((IOMAPUI*)(pHeaders[ENTRY_UI]->pIOMap))
 
+enum
+{
+  DEVICETYPE_UNKNOWN,
+  DEVICETYPE_NXT,
+  DEVICETYPE_PHONE,
+  DEVICETYPE_PC
+};
+
 // Various filenames without extension
 #define   UI_NONVOLATILE      "NVConfig"      // Ui non volatile config filename
 #define   UI_PROGRAM_DEFAULT  "Untitled"      // On brick programming default filename
 #define   UI_PROGRAM_TEMP     "Program"       // On brick programming tmp filename
 #define   UI_PROGRAM_READER   "RPGReader"     // On brick programming script reader filename
+#define   UI_DATALOG_FILENAME "OBD_"          // On brick datalog filename
+#define   UI_DATALOG_DEFAULT  "Untitled"      // On brick datalog default name
+#define   UI_DATALOG_TEMP     "Tmp"           // On brick datalog tmp filename
 #define   UI_STARTUP_SOUND    "! Startup"     // Sound file activated when the menu system starts up
 #define   UI_KEYCLICK_SOUND   "! Click"       // Sound file activated when key pressed in the menu system
-#define   UI_ATTENTION_SOUND  "! Attention"   // Sound file activated when incomming BT requests attention 
+#define   UI_ATTENTION_SOUND  "! Attention"   // Sound file activated when incomming BT requests attention
 
 // Various text strings
 #define   UI_NAME_DEFAULT     "NXT"           // Default blue tooth name 

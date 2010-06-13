@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 9:42                                     $
+// Revision date   $Date:: 24-04-08 14:33                                    $
 //
 // Filename        $Workfile:: d_bt.r                                        $
 //
-// Version         $Revision:: 28                                            $
+// Version         $Revision:: 3                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_bt.r     $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_bt.r $
 //
 // Platform        C
 //
@@ -121,15 +121,12 @@ static    UWORD  RemainingLength;
                                           *AT91C_PIOA_OER   = BT_ARM7_CMD_PIN;           /* PA27 set to output */\
                                         }
 
-#define   BTInitADC                     {\
-                                          *AT91C_ADC_MR    = 0;                             /* Reset register plus setting only software trigger */\
-                                          *AT91C_ADC_MR   |= 0x00003F00;                    /* ADC-clock set to approximatly 375 kHz */\
-                                          *AT91C_ADC_MR   |= 0x00020000;                    /* Startup set to approximatly 84uS */\
-                                          *AT91C_ADC_MR   |= 0x09000000;                    /* Sample & Hold set to approximatly 20uS */\
-                                          *AT91C_ADC_CHER  = AT91C_ADC_CH6 | AT91C_ADC_CH4; /* Enable channel 6 and 4*/\
+#define   BTStartADConverter            {\
+                                          *AT91C_ADC_CHER = AT91C_ADC_CH6 | AT91C_ADC_CH4;  \
+                                          ADStart;                                          \
+                                          while(!((*AT91C_ADC_SR) & AT91C_ADC_CH6));        \
+                                          *AT91C_ADC_CHDR = AT91C_ADC_CH6 | AT91C_ADC_CH4;  \
                                         }
-
-#define   BTStartADConverter            *AT91C_ADC_CR      = AT91C_ADC_START;           /* Start the ADC converter */\
 
 #define   BTReadADCValue(ADValue)       ADValue            = *AT91C_ADC_CDR6;
 

@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 9:41                                     $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: d_bt.h                                        $
 //
-// Version         $Revision:: 16                                            $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_bt.h     $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_bt.h $
 //
 // Platform        C
 //

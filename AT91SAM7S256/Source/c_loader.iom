@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 28-03-07 14:54                                    $
+// Revision date   $Date:: 24-06-09 8:53                                     $
 //
 // Filename        $Workfile:: c_loader.iom                                  $
 //
-// Version         $Revision:: 45                                            $
+// Version         $Revision:: 15                                            $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_loader.i $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_load $
 //
 // Platform        C
 //
@@ -21,7 +21,7 @@
 //For example, version 1.5 would be 0x0105
 //If these switch to little-endian, be sure to update
 //definition and usages of VM_OLDEST_COMPATIBLE_VERSION, too!
-#define   FIRMWAREVERSION               0x0105 //1.05
+#define   FIRMWAREVERSION               0x011D //1.28
 #define   PROTOCOLVERSION               0x017C //1.124
 
 enum
@@ -39,6 +39,7 @@ enum
   OPENREADLINEAR  = 0x8A,
   OPENWRITEDATA   = 0x8B,
   OPENAPPENDDATA  = 0x8C,
+  CROPDATAFILE    = 0x8D,    /* New cmd for datalogging */
   FINDFIRSTMODULE = 0x90,
   FINDNEXTMODULE  = 0x91,
   CLOSEMODHANDLE  = 0x92,

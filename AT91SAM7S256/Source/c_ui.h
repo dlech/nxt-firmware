@@ -5,19 +5,21 @@
 //
 // Reviser         $Author:: Dktochpe                                        $
 //
-// Revision date   $Date:: 3-02-06 12:50                                     $
+// Revision date   $Date:: 10/21/08 12:08p                                   $
 //
 // Filename        $Workfile:: c_ui.h                                        $
 //
-// Version         $Revision:: 75                                            $
+// Version         $Revision:: 10                                            $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_ui.h     $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_ui.h $
 //
 // Platform        C
 //
 
 #ifndef   C_UI
 #define   C_UI
+
+#define   DATALOGENABLED                1           // 1 == Datalog enable
 
 #define   NO_OF_FEEDBACK_CHARS          12          // Chars left when bitmap also showed
 #define   SIZE_OF_CURSOR                16          // Bitmap size of cursor  (header + 8x8 pixels)
@@ -32,6 +34,8 @@
 
 #define   MAX_VOLUME                    4           // Max volume in UI                       [cnt]
 
+#define   CHECKBYTE                     0x78        // Used to validate NVData
+
 #define   BATTERY_COUNT_TO_MV           13.848      // Battery count to mV factor             [mV/cnt]
 #define   LOW_BATT_THRESHOLD            6           // Low batt conunts before warning
 
@@ -43,11 +47,14 @@
 
 #define   DISPLAY_SHOW_ERROR_TIME       2500        // Error string show time                 [mS] 
 #define   DISPLAY_SHOW_TIME             1500        // Min. response display time             [mS]
-#define   DISPLAY_VIEW_UPDATE           250         // Display update time                    [mS]
+#define   DISPLAY_VIEW_UPDATE           200         // Display update time                    [mS]
 #define   MIN_DISPLAY_UPDATE_TIME       50          // OBP min graphics update time           [mS]
-#define   MIN_SENSOR_READ_TIME          25          // Time between sensor reads              [mS]
+#define   MIN_SENSOR_READ_TIME          100         // Time between sensor reads              [mS]
 
 #define   ARM_WAIT_FOR_POWER_OFF        250         // Time for off command to execute        [mS]
+
+#define   DISPLAY_SHOW_FILENAME_TIME    3000        // Datalog show saves as time             [mS]
+#define   DATALOG_DEFAULT_SAMPLE_TIME   100L        // Default time between samples           [mS]
 
 // Menu special flags
 
@@ -83,18 +90,17 @@
 #define   MENU_SENSOR_SOUND_DBA         0x03        // Sound sensor dBA
 #define   MENU_SENSOR_LIGHT             0x04        // Light sensor with flood light
 #define   MENU_SENSOR_LIGHT_AMB         0x05        // Light sensor without flood light
-#define   MENU_SENSOR_LIGHT_OLD         0x06        // Light sensor old with flood light
-#define   MENU_SENSOR_TOUCH             0x07        // Touch sensor
-#define   MENU_SENSOR_MOTOR_DEG         0x08        // Motor sensor degrees
-#define   MENU_SENSOR_MOTOR_ROT         0x09        // Motor sensor rotations
-#define   MENU_SENSOR_ROTATION          0x0A        // Rotation sensor ticks
-#define   MENU_SENSOR_ULTRASONIC_IN     0x0B        // Ultrasonic sensor inch
-#define   MENU_SENSOR_ULTRASONIC_CM     0x0C        // Ultrasonic sensor cm
-#define   MENU_SENSOR_TEMP_C            0x0D        // Temp sensor celcius
-#define   MENU_SENSOR_TEMP_F            0x0E        // Temp sensor fahrenheit
-#define   MENU_SENSOR_INVALID           0x0F        // Invalid
+#define   MENU_SENSOR_TOUCH             0x06        // Touch sensor
+#define   MENU_SENSOR_MOTOR_DEG         0x07        // Motor sensor degrees
+#define   MENU_SENSOR_MOTOR_ROT         0x08        // Motor sensor rotations
+#define   MENU_SENSOR_ULTRASONIC_IN     0x09        // Ultrasonic sensor inch
+#define   MENU_SENSOR_ULTRASONIC_CM     0x0A        // Ultrasonic sensor cm
+#define   MENU_SENSOR_IIC_TEMP_C        0x0B        // IIC temp sensor celcius
+#define   MENU_SENSOR_IIC_TEMP_F        0x0C        // IIC temp sensor fahrenheit
+#define   MENU_SENSOR_COLOR             0x0D        // Color sensor
+#define   MENU_SENSOR_INVALID           0x0E        // Invalid
 
-#define   MENU_PORT_EMPTY               0x11        // NA
+#define   MENU_PORT_EMPTY               0x11        // Port empty
 #define   MENU_PORT_1                   0x12        // Port 1
 #define   MENU_PORT_2                   0x13        // Port 2
 #define   MENU_PORT_3                   0x14        // Port 3
@@ -158,6 +164,10 @@
 #define   MENU_RIGHT                    0xFE        // Right
 #define   MENU_EXIT                     0xFF        // Exit
 
+#define   DATALOGPORTS                  (MENU_PORT_INVALID - MENU_PORT_EMPTY - 1)
+#define   MAX_DATALOGS                  9999        // Highest datalog file number
+#define   DATALOGBUFFERSIZE             25          // Largest number of characters buffered before flash write
+
 #define   MENULEVELS                    10          // Max no of levels in one file (8 + 2 virtual)
 #define   MENUFILELEVELS                3           // Max deept in menu file pool
 
@@ -184,6 +194,16 @@ typedef   struct
   UBYTE   MenuLevel;                                // VarsUi.MenuFiles[VarsUi.MenuFileLevel].MenuLevel
 }
 MENUFILE;
+
+typedef   struct
+{
+  UBYTE   CheckByte;                                // Check byte (CHECKBYTE)
+  UBYTE   DatalogEnabled;                           // Datalog enabled flag (0 = no)
+  UBYTE   VolumeStep;                               // Volume step (0 - MAX_VOLUME)
+  UBYTE   PowerdownCode;                            // Power down code
+  UWORD   DatalogNumber;                            // Datalog file number (0 - MAX_DATALOGS)
+}
+NVDATA;
 
 typedef   struct
 {
@@ -235,6 +255,9 @@ typedef   struct
   UBYTE   Cursor;                                   // General cursor
   UBYTE   SelectedSensor;                           // General used for selected sensor
   UBYTE   SelectedPort;                             // General used for selected port
+  UBYTE   SensorReset;
+  UBYTE   SensorState;                              // Sensor state (reset, ask, read)
+  SWORD   SensorTimer;                              // Timer used to time sensor states
   UBYTE   NextState;
 
   UBYTE   SelectedFilename[FILENAME_LENGTH + 1];    // Selected file name
@@ -314,11 +337,23 @@ typedef   struct
   SLONG   ViewSampleValue;                          // Latch for sensor values
   UBYTE   ViewSampleValid;                          // Latch for sensor valid
 
+  // Datalog
+  ULONG   DatalogOldTick;
+  ULONG   DatalogRTC;                               // Real time in mS
+  ULONG   DatalogTimer;                             // Logging main timer
+  ULONG   DatalogSampleTime;                        // Logging sample time
+  ULONG   DatalogSampleTimer;                       // Logging sample timer
+  SLONG   DatalogSampleValue[DATALOGPORTS];         // Latch for sensor values
+  UBYTE   DatalogSampleValid[DATALOGPORTS];         // Latch for sensor valid
+  UWORD   DatalogError;                             // Error code
+  UBYTE   DatalogPort[DATALOGPORTS];                // Logging sensor
+  UBYTE   Update;                                   // Update icons flag
+
   // NV storage
   ULONG   NVTmpLength;                              // Non volatile filelength
   SWORD   NVTmpHandle;                              // Non volatile filehandle
   UBYTE   NVFilename[FILENAME_LENGTH + 1];          // Non volatile file name
-  UBYTE   NVData;                                   // Non volatile data
+  NVDATA  NVData;                                   // Non volatile data
 
   // Feedback
   UBYTE   *FBText;                                  // Seperate text pointer for feedback

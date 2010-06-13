@@ -2,7 +2,7 @@
 
 #include  "Test1.txt"
 #include  "Test2.txt"
-
+//#define TESTPRG                     // If defined the test program will be included
 
 extern    void BtIo(void);
 
@@ -13,7 +13,18 @@ const     char  MONTH[]  = "JanFebMarAprMajJunJulAugSepOktNovDec";
 
 void      GetProtocolVersion(UBYTE *String)
 {
-  sprintf((char*)String,"FW         %2X.%02X",(FIRMWAREVERSION >> 8),FIRMWAREVERSION & 0x00FF);
+  UWORD   Tmp;
+  
+  Tmp = FIRMWAREVERSION & 0x00FF;
+
+  if (Tmp < 100)
+  {
+    sprintf((char*)String,"FW        %3u.%02u",(FIRMWAREVERSION >> 8) & 0x00FF,Tmp & 0x00FF);
+  }
+  else
+  {
+    sprintf((char*)String,"FW     Hex %2X.%02X",(FIRMWAREVERSION >> 8) & 0x00FF,Tmp & 0x00FF);
+  }
 }
 
 
@@ -23,22 +34,22 @@ void      GetARMBuild(UBYTE *String)
   UWORD   Lng;
   char    String1[4];
   char    String2[4];
-  
+
   String1[0] = BUILD_DATE[4];
   String1[1] = BUILD_DATE[5];
   String1[2] = 0;
-  
+
   Tmp = (UWORD)atoi(String1);
   Lng  = 0;
   Lng += sprintf((char*)&String[Lng],"BUILD ");
   Lng += sprintf((char*)&String[Lng],"%02u",Tmp);
-  
+
   String1[0] = BUILD_DATE[0];
   String1[1] = BUILD_DATE[1];
   String1[2] = BUILD_DATE[2];
   String1[3] = 0;
   String2[3] = 0;
-  
+
   Tmp = 0;
   do
   {
@@ -67,12 +78,12 @@ void      GetAVRBuild(UBYTE *String)
   sprintf((char*)String,"AVR         %1u.%02u",((IoFromAvr.Battery >> 13) & 3),((IoFromAvr.Battery >> 10) & 7));
 }
 
-  
+
 void      GetBC4Address(UBYTE *String)
 {
   UWORD   Count;
   UBYTE   Tmp;
-  
+
   Count = (UWORD)sprintf((char*)String,"ID  ");
   for (Tmp = 0;(Tmp < (SIZE_OF_BDADDR - 1)) && (Count <= (DISPLAYLINE_LENGTH - 2));Tmp++)
   {
@@ -145,15 +156,15 @@ const     UBYTE TXT_LINE[]                  = "----------------";
 const     UBYTE TXT_TEST[]                  = "Timer Test   Bt ";
 
 const     UBYTE TXT_TIMER[]                 = "Reset Hold      ";
-const     UBYTE TXT_TIMER_HOLD[]            = "    Continue    ";         
+const     UBYTE TXT_TIMER_HOLD[]            = "    Continue    ";
 
 const     UBYTE TXT_LAST[]                  = "Last UI->BT Cmd.";
-const     UBYTE TXT_BT_PAGE[]               = "Reset List  BtIo"; 
+const     UBYTE TXT_BT_PAGE[]               = "Reset List  BtIo";
 
 const     UBYTE TXT_RESETTING[]             = "   Resetting!   ";
 
-const     UBYTE TXT_BT_LIST[]               = "Down ConTab  Up "; 
-const     UBYTE TXT_BT_CONN[]               = "Down Update  Up "; 
+const     UBYTE TXT_BT_LIST[]               = "Down ConTab  Up ";
+const     UBYTE TXT_BT_CONN[]               = "Down Update  Up ";
 
 const     UBYTE TXT_BTUPDATE[]              = "BT update mode !";
 const     UBYTE TXT_DONE[]                  = "   When done    ";
@@ -226,7 +237,7 @@ UBYTE     TestPrg(UBYTE Dummy)
   static  UWORD Count;
   static  UBYTE TxtBuffer[TEXTLINES][DISPLAYLINE_LENGTH + 1];
   static  UBYTE State = SYSTEM_INIT;
-#ifdef TESTPRG  
+#ifdef TESTPRG
   static  UWORD Pointer;
   static  UWORD InputValues[NO_OF_INPUTS];
   static  SWORD OutputValues[NO_OF_OUTPUTS];
@@ -246,7 +257,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       GetBC4Build(TxtBuffer[2]);
       GetARMBuild(TxtBuffer[3]);
       GetBC4Address(TxtBuffer[4]);
-      
+
       pMapDisplay->pTextLines[TEXTLINE_3] = (UBYTE*)TxtBuffer[0];
       pMapDisplay->pTextLines[TEXTLINE_4] = (UBYTE*)TxtBuffer[1];
       pMapDisplay->pTextLines[TEXTLINE_5] = (UBYTE*)TxtBuffer[2];
@@ -257,7 +268,7 @@ UBYTE     TestPrg(UBYTE Dummy)
 
 #ifdef TESTPRG
       SubState  = 0;
-#endif      
+#endif
       State     = SYSTEM_UNLOCK_INIT;
     }
     break;
@@ -291,19 +302,19 @@ UBYTE     TestPrg(UBYTE Dummy)
               Count    = 0;
             }
             break;
-            
+
             case 3 :
             {
               State = SYSTEM_UNLOCK;
             }
             break;
-            
+
             default :
             {
               Tmp = BUTTON_EXIT;
             }
             break;
-            
+
           }
         }
         break;
@@ -322,7 +333,7 @@ UBYTE     TestPrg(UBYTE Dummy)
               Tmp = BUTTON_EXIT;
             }
             break;
-  
+
             case 1 :
             {
               if (Tmp == BUTTON_LEFT)
@@ -340,7 +351,7 @@ UBYTE     TestPrg(UBYTE Dummy)
               }
             }
             break;
-            
+
             case 2 :
             {
               if (Tmp == BUTTON_RIGHT)
@@ -357,11 +368,11 @@ UBYTE     TestPrg(UBYTE Dummy)
               }
             }
             break;
-            
+
           }
         }
         break;
-        
+
       }
       Pointer++;
       if (((SubState) && (Pointer > 500)) || (Tmp == BUTTON_EXIT))
@@ -370,7 +381,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       }
     }
     break;
-  
+
     case SYSTEM_UNLOCK :
     {
       pMapDisplay->pTextLines[TEXTLINE_8] = (UBYTE*)TXT_TEST;
@@ -378,7 +389,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       State = SYSTEM_PAGE;
     }
     break;
-  
+
     case SYSTEM_PAGE :
     {
       switch (cUiReadButtons())
@@ -450,19 +461,19 @@ UBYTE     TestPrg(UBYTE Dummy)
       }
     }
     break;
-    
+
     case TIMER_INIT :
     {
       State = TIMER_SHOW;
     }
     break;
-    
+
     case TIMER_SHOW :
     {
       sprintf((char*)TxtBuffer[2]," %10lu mS  ",VarsUi.CRPasskey);
       pMapDisplay->pTextLines[TEXTLINE_3] = TxtBuffer[2];
       pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
-      
+
       switch (cUiReadButtons())
       {
         case BUTTON_ENTER :
@@ -472,7 +483,7 @@ UBYTE     TestPrg(UBYTE Dummy)
           State = TIMER_HOLD;
         }
         break;
-        
+
         case BUTTON_LEFT :
         {
           pMapDisplay->EraseMask             |= TEXTLINE_BIT(TEXTLINE_3);
@@ -489,7 +500,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       }
     }
     break;
-    
+
     case TIMER_HOLD :
     {
       switch (cUiReadButtons())
@@ -565,7 +576,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       }
     }
     break;
-    
+
     case BT_RESET :
     {
       VarsUi.BTCommand  = (UBYTE)FACTORYRESET;
@@ -591,7 +602,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       }
     }
     break;
-    
+
     case BT_RESETTING :
     {
       if (VarsUi.BTResult != INPROGRESS)
@@ -600,7 +611,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       }
     }
     break;
-    
+
     case BT_UPDATE_FW :
     {
       if (++Timer >= 100)
@@ -609,7 +620,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       }
     }
     break;
-    
+
     case BT_LIST_INIT :
     {
       sprintf((char*)TxtBuffer[0],"DeviceTable No%2u",Pointer);
@@ -630,7 +641,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       State = BT_LIST;
     }
     break;
-    
+
     case BT_LIST :
     {
       switch (cUiReadButtons())
@@ -688,7 +699,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       }
     }
     break;
-  
+
     case BT_CONN_INIT :
     {
       sprintf((char*)TxtBuffer[0],"Conn. Table No%2u",Pointer);
@@ -713,7 +724,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       State = BT_CONN;
     }
     break;
-    
+
     case BT_CONN :
     {
       switch (cUiReadButtons())
@@ -761,7 +772,7 @@ UBYTE     TestPrg(UBYTE Dummy)
       }
     }
     break;
-  
+
     case TSTPRG_INIT :
     {
       IOMapUi.Flags                      &= ~UI_ENABLE_STATUS_UPDATE;

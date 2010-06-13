@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 12:13                                    $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: d_lowspeed.h                                  $
 //
-// Version         $Revision:: 7                                             $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_lowspeed $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_lows $
 //
 // Platform        C
 //

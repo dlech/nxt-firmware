@@ -20,8 +20,10 @@
 
 const     UBYTE NONVOLATILE_NAME[]      = UI_NONVOLATILE;     // Non volatile filename without extention
 const     UBYTE DEFAULT_PROGRAM_NAME[]  = UI_PROGRAM_DEFAULT; // On brick programming filename without extention
-const     UBYTE TEMP_PROGRAM_FILENAME[] = UI_PROGRAM_TEMP;    // On brick programming tmp filename
+const     UBYTE TEMP_PROGRAM_FILENAME[] = UI_PROGRAM_TEMP;    // On brick programming tmp filename without extention
 const     UBYTE VM_PROGRAM_READER[]     = UI_PROGRAM_READER;  // On brick programming script reader filename without extention
+const     UBYTE TEMP_DATALOG_FILENAME[] = UI_DATALOG_TEMP;    // On brick datalog tmp filename without extention
+const     UBYTE DEFAULT_DATALOG_NAME[]  = UI_DATALOG_DEFAULT; // On brick datalog filename without extention
 const     UBYTE DEFAULT_PIN_CODE[]      = UI_PINCODE_DEFAULT; // Default blue tooth pin code
 const     UBYTE TXT_INVALID_SENSOR[]    = "??????????????";   // Display invalid sensor data
 
@@ -30,142 +32,355 @@ const     UBYTE TXT_INVALID_SENSOR[]    = "??????????????";   // Display invalid
 
 const     UBYTE SENSORTYPE[SENSORS] =  // for view and datalog
 {
-  0,                //  MENU_SENSOR_EMPTY
-  SOUND_DB,         //  MENU_SENSOR_SOUND_DB
-  SOUND_DBA,        //  MENU_SENSOR_SOUND_DBA
-  LIGHT_ACTIVE,     //  MENU_SENSOR_LIGHT
-  LIGHT_INACTIVE,   //  MENU_SENSOR_LIGHT_AMB
-  REFLECTION,       //  MENU_SENSOR_LIGHT_OLD
-  SWITCH,           //  MENU_SENSOR_TOUCH
-  0,                //  MENU_SENSOR_MOTOR_DEG
-  0,                //  MENU_SENSOR_MOTOR_ROT
-  ANGLE,            //  MENU_SENSOR_ROTATION
-  LOWSPEED_9V,      //  MENU_SENSOR_ULTRASONIC_IN
-  LOWSPEED_9V,      //  MENU_SENSOR_ULTRASONIC_CM
-  TEMPERATURE,      //  MENU_SENSOR_TEMP_C
-  TEMPERATURE       //  MENU_SENSOR_TEMP_F
+  0,                        //  MENU_SENSOR_EMPTY
+  SOUND_DB,                 //  MENU_SENSOR_SOUND_DB
+  SOUND_DBA,                //  MENU_SENSOR_SOUND_DBA
+  LIGHT_ACTIVE,             //  MENU_SENSOR_LIGHT
+  LIGHT_INACTIVE,           //  MENU_SENSOR_LIGHT_AMB
+  SWITCH,                   //  MENU_SENSOR_TOUCH
+  0,                        //  MENU_SENSOR_MOTOR_DEG
+  0,                        //  MENU_SENSOR_MOTOR_ROT
+  LOWSPEED_9V,              //  MENU_SENSOR_ULTRASONIC_IN
+  LOWSPEED_9V,              //  MENU_SENSOR_ULTRASONIC_CM
+  LOWSPEED_9V,              //  MENU_SENSOR_IIC_TEMP_C
+  LOWSPEED_9V,              //  MENU_SENSOR_IIC_TEMP_F
+  COLORFULL                 //  MENU_SENSOR_COLOR
 };
 
 const     UBYTE SENSORMODE[SENSORS] =  // for view and datalog
 {
-  0,                //  MENU_SENSOR_EMPTY
-  PCTFULLSCALEMODE, //  MENU_SENSOR_SOUND_DB
-  PCTFULLSCALEMODE, //  MENU_SENSOR_SOUND_DBA
-  PCTFULLSCALEMODE, //  MENU_SENSOR_LIGHT
-  PCTFULLSCALEMODE, //  MENU_SENSOR_LIGHT_AMB
-  PCTFULLSCALEMODE, //  MENU_SENSOR_LIGHT_OLD
-  BOOLEANMODE,      //  MENU_SENSOR_TOUCH
-  0,                //  MENU_SENSOR_MOTOR_DEG
-  0,                //  MENU_SENSOR_MOTOR_ROT
-  ANGLESTEPSMODE,   //  MENU_SENSOR_ROTATION
-  0,                //  MENU_SENSOR_ULTRASONIC_IN
-  0,                //  MENU_SENSOR_ULTRASONIC_CM
-  CELSIUSMODE,      //  MENU_SENSOR_TEMP_C
-  FAHRENHEITMODE    //  MENU_SENSOR_TEMP_F
+  0,                        //  MENU_SENSOR_EMPTY
+  PCTFULLSCALEMODE,         //  MENU_SENSOR_SOUND_DB
+  PCTFULLSCALEMODE,         //  MENU_SENSOR_SOUND_DBA
+  PCTFULLSCALEMODE,         //  MENU_SENSOR_LIGHT
+  PCTFULLSCALEMODE,         //  MENU_SENSOR_LIGHT_AMB
+  BOOLEANMODE,              //  MENU_SENSOR_TOUCH
+  0,                        //  MENU_SENSOR_MOTOR_DEG
+  0,                        //  MENU_SENSOR_MOTOR_ROT
+  0,                        //  MENU_SENSOR_ULTRASONIC_IN
+  0,                        //  MENU_SENSOR_ULTRASONIC_CM
+  0,                        //  MENU_SENSOR_IIC_TEMP_C
+  0,                        //  MENU_SENSOR_IIC_TEMP_F
+  0                         //  MENU_SENSOR_COLOR
 };
 
-const     UBYTE SENSORFORMAT[SENSORS][10] =
+const     UBYTE SENSORFORMAT[SENSORS][9] =
 {
-  "",               //  MENU_SENSOR_EMPTY
-  "%3.0f %%",       //  MENU_SENSOR_SOUND_DB
-  "%3.0f %%",       //  MENU_SENSOR_SOUND_DBA
-  "%3.0f %%",       //  MENU_SENSOR_LIGHT
-  "%3.0f %%",       //  MENU_SENSOR_LIGHT_AMB
-  "%3.0f %%",       //  MENU_SENSOR_LIGHT_OLD
-  "%1.0f",          //  MENU_SENSOR_TOUCH
-  "%8.0f `",        //  MENU_SENSOR_MOTOR_DEG
-  "%8.0f R",        //  MENU_SENSOR_MOTOR_ROT
-  "%6.0f T",        //  MENU_SENSOR_ROTATION
-  "%3.0f In",       //  MENU_SENSOR_ULTRASONIC_IN
-  "%3.0f cm",       //  MENU_SENSOR_ULTRASONIC_CM
-  "%5.1f `C",       //  MENU_SENSOR_TEMP_C
-  "%5.1f `F"        //  MENU_SENSOR_TEMP_F
+  "",                       //  MENU_SENSOR_EMPTY
+  "%3.0f %%",               //  MENU_SENSOR_SOUND_DB
+  "%3.0f %%",               //  MENU_SENSOR_SOUND_DBA
+  "%3.0f %%",               //  MENU_SENSOR_LIGHT
+  "%3.0f %%",               //  MENU_SENSOR_LIGHT_AMB
+  "%1.0f",                  //  MENU_SENSOR_TOUCH
+  "%8.0f `",                //  MENU_SENSOR_MOTOR_DEG
+  "%8.0f R",                //  MENU_SENSOR_MOTOR_ROT
+  "%3.0f In",               //  MENU_SENSOR_ULTRASONIC_IN
+  "%3.0f cm",               //  MENU_SENSOR_ULTRASONIC_CM
+  "%5.1f `C",               //  MENU_SENSOR_IIC_TEMP_C
+  "%5.1f `F",               //  MENU_SENSOR_IIC_TEMP_F
+  "%9.0f"                   //  MENU_SENSOR_COLOR (no of characters)
 };
 
 const     float SENSORDIVIDER[SENSORS] =
 {
-  1.0,              //  MENU_SENSOR_EMPTY
-  1.0,              //  MENU_SENSOR_SOUND_DB
-  1.0,              //  MENU_SENSOR_SOUND_DBA
-  1.0,              //  MENU_SENSOR_LIGHT
-  1.0,              //  MENU_SENSOR_LIGHT_AMB
-  1.0,              //  MENU_SENSOR_LIGHT_OLD
-  1.0,              //  MENU_SENSOR_TOUCH
-  1.0,              //  MENU_SENSOR_MOTOR_DEG
-  360.0,            //  MENU_SENSOR_MOTOR_ROT
-  1.0,              //  MENU_SENSOR_ROTATION
-  2.54,             //  MENU_SENSOR_ULTRASONIC_IN
-  1.0,              //  MENU_SENSOR_ULTRASONIC_CM
-  10.0,             //  MENU_SENSOR_TEMP_C
-  10.0              //  MENU_SENSOR_TEMP_F
+  1.0,                      //  MENU_SENSOR_EMPTY
+  1.0,                      //  MENU_SENSOR_SOUND_DB
+  1.0,                      //  MENU_SENSOR_SOUND_DBA
+  1.0,                      //  MENU_SENSOR_LIGHT
+  1.0,                      //  MENU_SENSOR_LIGHT_AMB
+  1.0,                      //  MENU_SENSOR_TOUCH
+  1.0,                      //  MENU_SENSOR_MOTOR_DEG
+  360.0,                    //  MENU_SENSOR_MOTOR_ROT
+  2.54,                     //  MENU_SENSOR_ULTRASONIC_IN
+  1.0,                      //  MENU_SENSOR_ULTRASONIC_CM
+  10.0,                     //  MENU_SENSOR_IIC_TEMP_C
+  10.0,                     //  MENU_SENSOR_IIC_TEMP_F
+  1.0                       //  MENU_SENSOR_COLOR
 };
 
 
-//******* cUiSetupUltrasonic *************************************************
+#define   SENSORSYNCDATA    "Sync data"
+#define   SENSORSDATA       "Sdata"
+#define   SENSORTIME        "Time"
 
-void      cUiSetupUltrasonic(UBYTE Port)
+
+const     UBYTE SENSORDIRNAME[SENSORS - 1][19] =
+{
+  "Sound Sensor",           //  MENU_SENSOR_SOUND_DB
+  "Sound Sensor",           //  MENU_SENSOR_SOUND_DBA
+  "Light Sensor",           //  MENU_SENSOR_LIGHT
+  "Light Sensor",           //  MENU_SENSOR_LIGHT_AMB
+  "Bumper",                 //  MENU_SENSOR_TOUCH
+  "FP Rotation Sensor",     //  MENU_SENSOR_MOTOR_DEG
+  "FP Rotation Sensor",     //  MENU_SENSOR_MOTOR_ROT
+  "Distance Sensor",        //  MENU_SENSOR_ULTRASONIC_IN
+  "Distance Sensor",        //  MENU_SENSOR_ULTRASONIC_CM
+  "NXT Temp Sensor",        //  MENU_SENSOR_IIC_TEMP_C
+  "NXT Temp Sensor",        //  MENU_SENSOR_IIC_TEMP_F
+  "Color Detector"          //  MENU_SENSOR_COLOR
+};
+
+const     UBYTE SENSORUNITNAME[SENSORS - 1][5] =
+{
+  "_dB",                    //  MENU_SENSOR_SOUND_DB
+  "_dBa",                   //  MENU_SENSOR_SOUND_DBA
+  "_on",                    //  MENU_SENSOR_LIGHT
+  "_off",                   //  MENU_SENSOR_LIGHT_AMB
+  "",                       //  MENU_SENSOR_TOUCH
+  "_deg",                   //  MENU_SENSOR_MOTOR_DEG
+  "_rot",                   //  MENU_SENSOR_MOTOR_ROT
+  "_in",                    //  MENU_SENSOR_ULTRASONIC_IN
+  "_cm",                    //  MENU_SENSOR_ULTRASONIC_CM
+  "_C",                     //  MENU_SENSOR_IIC_TEMP_C
+  "_F",                     //  MENU_SENSOR_IIC_TEMP_F
+  "_0",                     //  MENU_SENSOR_COLOR
+};
+
+const     UBYTE SENSORFORMAT2[SENSORS - 1][6] =
+{
+  "\t%.0f",                 //  MENU_SENSOR_SOUND_DB
+  "\t%.0f",                 //  MENU_SENSOR_SOUND_DBA
+  "\t%.0f",                 //  MENU_SENSOR_LIGHT
+  "\t%.0f",                 //  MENU_SENSOR_LIGHT_AMB
+  "\t%.0f",                 //  MENU_SENSOR_TOUCH
+  "\t%.0f",                 //  MENU_SENSOR_MOTOR_DEG
+  "\t%.0f",                 //  MENU_SENSOR_MOTOR_ROT
+  "\t%.0f",                 //  MENU_SENSOR_ULTRASONIC_IN
+  "\t%.0f",                 //  MENU_SENSOR_ULTRASONIC_CM
+  "\t%.1f",                 //  MENU_SENSOR_IIC_TEMP_C
+  "\t%.1f",                 //  MENU_SENSOR_IIC_TEMP_F
+  "\t%.0f"                  //  MENU_SENSOR_COLOR
+};
+
+
+//******* cUiWriteLowspeed ***************************************************
+
+void      cUiWriteLowspeed(UBYTE Port,UBYTE TxBytes,UBYTE *TxBuf,UBYTE RxBytes)
 {
   Port -= MENU_PORT_1;
   pMapLowSpeed->OutBuf[Port].InPtr    = 0;
   pMapLowSpeed->OutBuf[Port].OutPtr   = 0;
 
-  pMapLowSpeed->OutBuf[Port].Buf[pMapLowSpeed->OutBuf[Port].InPtr] = ULTRA_SONIC;      // Device Adress
-  pMapLowSpeed->OutBuf[Port].InPtr++;
-  pMapLowSpeed->OutBuf[Port].Buf[pMapLowSpeed->OutBuf[Port].InPtr] = 0x41;             // Function => Set command
-  pMapLowSpeed->OutBuf[Port].InPtr++;
-  pMapLowSpeed->OutBuf[Port].Buf[pMapLowSpeed->OutBuf[Port].InPtr] = 0x02;             // Function => Set to continiues measurement
-  pMapLowSpeed->OutBuf[Port].InPtr++;
-
-  pMapLowSpeed->InBuf[Port].BytesToRx = 0;
+  while (TxBytes)
+  {
+    pMapLowSpeed->OutBuf[Port].Buf[pMapLowSpeed->OutBuf[Port].InPtr] = *TxBuf;
+    pMapLowSpeed->OutBuf[Port].InPtr++;
+    TxBuf++;
+    TxBytes--;
+  }
+  pMapLowSpeed->InBuf[Port].BytesToRx = RxBytes;
   pMapLowSpeed->ChannelState[Port]    = LOWSPEED_INIT;
   pMapLowSpeed->State                |= (COM_CHANNEL_ONE_ACTIVE << Port);
 }
 
 
+//******* cUiReadLowspeed ****************************************************
 
-//******* cUiAskUltrasonic ***************************************************
+#define   IIC_READY       0
+#define   IIC_BUSY        1
+#define   IIC_ERROR       2
 
-void      cUiAskUltrasonic(UBYTE Port)
-{
-  Port -= MENU_PORT_1;
-  pMapLowSpeed->OutBuf[Port].InPtr    = 0;
-  pMapLowSpeed->OutBuf[Port].OutPtr   = 0;
-
-  pMapLowSpeed->OutBuf[Port].Buf[pMapLowSpeed->OutBuf[Port].InPtr] = ULTRA_SONIC;       // Device Adress
-  pMapLowSpeed->OutBuf[Port].InPtr++;
-  pMapLowSpeed->OutBuf[Port].Buf[pMapLowSpeed->OutBuf[Port].InPtr] = 0x42;              // Function => Read result 1
-  pMapLowSpeed->OutBuf[Port].InPtr++;
-
-  pMapLowSpeed->InBuf[Port].BytesToRx = 1;
-  pMapLowSpeed->ChannelState[Port]    = LOWSPEED_INIT;
-  pMapLowSpeed->State                |= (COM_CHANNEL_ONE_ACTIVE << Port);
-}
-
-
-
-//******* cUiReadUltrasonic **************************************************
-
-UBYTE     cUiReadUltrasonic(UBYTE Port)
+UBYTE     cUiReadLowspeed(UBYTE Port,UBYTE RxBytes,UWORD *Value)
 {
   UBYTE   Result;
 
+  *Value = 0;
   Port -= MENU_PORT_1;
   if ((pMapLowSpeed->ChannelState[Port] == LOWSPEED_IDLE) || (pMapLowSpeed->ChannelState[Port] == LOWSPEED_DONE))
   {
-    Result = (UBYTE)pMapLowSpeed->InBuf[Port].Buf[pMapLowSpeed->InBuf[Port].OutPtr];
-    pMapLowSpeed->InBuf[Port].OutPtr++;
-    if (pMapLowSpeed->InBuf[Port].OutPtr >= SIZE_OF_LSBUF)
+    while (RxBytes)
     {
-      pMapLowSpeed->InBuf[Port].OutPtr = 0;
+      (*Value) <<= 8;
+      (*Value) |= (UWORD)(pMapLowSpeed->InBuf[Port].Buf[pMapLowSpeed->InBuf[Port].OutPtr]);
+      pMapLowSpeed->InBuf[Port].OutPtr++;
+      if (pMapLowSpeed->InBuf[Port].OutPtr >= SIZE_OF_LSBUF)
+      {
+        pMapLowSpeed->InBuf[Port].OutPtr = 0;
+      }
+      RxBytes--;
     }
-    if (Result == 0)
-    {
-      Result = 0xFF;
-    }
+    Result = IIC_READY;
   }
   else
   {
-    Result = 0xFF;
+    if (pMapLowSpeed->ErrorType[Port] == LOWSPEED_CH_NOT_READY)
+    {
+      Result = IIC_ERROR;
+    }
+    else
+    {
+      Result = IIC_BUSY;
+    }
+  }
+
+  return (Result);
+}
+
+
+//******* cUiUpdateSensor ****************************************************
+
+#define   SENSOR_SETUP          0
+#define   SENSOR_ACQUIRE        3
+#define   SENSOR_READ           8
+#define   SENSOR_STATES         10
+
+void      cUiUpdateSensor(SWORD Time)
+{
+  UBYTE   Port;
+  UBYTE   Sensor;
+  UBYTE   Result;
+  SWORD   Tmp;
+
+  if (VarsUi.SensorReset == TRUE)
+  {
+    for (Port = MENU_PORT_1;Port < MENU_PORT_INVALID;Port++)
+    {
+      VarsUi.DatalogSampleValid[Port - MENU_PORT_1] = FALSE;
+    }
+    VarsUi.SensorTimer = (MIN_SENSOR_READ_TIME / SENSOR_STATES);
+    VarsUi.SensorState = SENSOR_SETUP;
+  }
+
+  VarsUi.SensorTimer += Time;
+  if (VarsUi.SensorTimer >= (MIN_SENSOR_READ_TIME / SENSOR_STATES))
+  {
+    VarsUi.SensorTimer -= (MIN_SENSOR_READ_TIME / SENSOR_STATES);
+
+    for (Port = MENU_PORT_1;Port < MENU_PORT_INVALID;Port++)
+    {
+      Sensor = VarsUi.DatalogPort[Port - MENU_PORT_1];
+
+      if (Sensor != MENU_SENSOR_EMPTY)
+      {
+        if ((Sensor == MENU_SENSOR_MOTOR_DEG) || (Sensor == MENU_SENSOR_MOTOR_ROT))
+        {
+          if (VarsUi.SensorReset == TRUE)
+          {
+            pMapOutPut->Outputs[Port - MENU_PORT_A].Mode      &= ~(BRAKE | MOTORON);
+            pMapOutPut->Outputs[Port - MENU_PORT_A].Flags     |= UPDATE_MODE | UPDATE_SPEED | UPDATE_RESET_COUNT;
+            pMapOutPut->Outputs[Port - MENU_PORT_A].TachoCnt   = 0;
+          }
+          if (VarsUi.SensorState == SENSOR_READ)
+          {
+            VarsUi.DatalogSampleValue[Port - MENU_PORT_1] = pMapOutPut->Outputs[Port - MENU_PORT_A].TachoCnt;
+            VarsUi.DatalogSampleValid[Port - MENU_PORT_1] = TRUE;
+          }
+        }
+        else
+        {
+          pMapInput->Inputs[Port - MENU_PORT_1].SensorType   = SENSORTYPE[Sensor - MENU_SENSOR_EMPTY];
+          pMapInput->Inputs[Port - MENU_PORT_1].SensorMode   = SENSORMODE[Sensor - MENU_SENSOR_EMPTY];
+          if ((Sensor == MENU_SENSOR_ULTRASONIC_IN) || (Sensor == MENU_SENSOR_ULTRASONIC_CM))
+          {
+            if (VarsUi.SensorReset == TRUE)
+            {
+              cUiWriteLowspeed(Port,3,"\x02\x41\x02",0);
+            }
+            if (VarsUi.SensorState == SENSOR_ACQUIRE)
+            {
+              cUiWriteLowspeed(Port,2,"\x02\x42",1);
+            }
+            if (VarsUi.SensorState == SENSOR_READ)
+            {
+              Result = cUiReadLowspeed(Port,1,(UWORD*)&Tmp);
+              if (Result == IIC_READY)
+              {
+                if ((UBYTE)Tmp != 0xFF)
+                {
+                  VarsUi.DatalogSampleValue[Port - MENU_PORT_1] = (SLONG)Tmp;
+                  VarsUi.DatalogSampleValid[Port - MENU_PORT_1] = TRUE;
+                }
+                else
+                {
+                  VarsUi.DatalogSampleValid[Port - MENU_PORT_1] = FALSE;
+                }
+              }
+              else
+              {
+                VarsUi.DatalogSampleValid[Port - MENU_PORT_1] = FALSE;
+              }
+            }
+          }
+          else
+          {
+            if ((Sensor == MENU_SENSOR_IIC_TEMP_C) || (Sensor == MENU_SENSOR_IIC_TEMP_F))
+            {
+              if (VarsUi.SensorState == SENSOR_SETUP)
+              {
+                cUiWriteLowspeed(Port,3,"\x98\x01\x60",0);
+              }
+              if (VarsUi.SensorState == SENSOR_ACQUIRE)
+              {
+                cUiWriteLowspeed(Port,2,"\x98\x00",2);
+              }
+              if (VarsUi.SensorState == SENSOR_READ)
+              {
+                Result = cUiReadLowspeed(Port,2,(UWORD*)&Tmp);
+                if (Result == IIC_READY)
+                {
+//                  if (Tmp >= -14080)
+                  {
+                    if (Sensor == MENU_SENSOR_IIC_TEMP_F)
+                    {
+                      VarsUi.DatalogSampleValue[Port - MENU_PORT_1] = (SLONG)((float)(Tmp + 4544) / 14.2);
+                    }
+                    else
+                    {
+                      VarsUi.DatalogSampleValue[Port - MENU_PORT_1] = (SLONG)((float)Tmp / 25.6);
+                    }
+                    VarsUi.DatalogSampleValid[Port - MENU_PORT_1] = TRUE;
+                  }
+                }
+                else
+                {
+                  if (Result == IIC_ERROR)
+                  {
+                    VarsUi.DatalogSampleValid[Port - MENU_PORT_1] = FALSE;
+                  }
+                }
+              }
+            }
+            else
+            {
+              if (VarsUi.SensorState == SENSOR_READ)
+              {
+                if (pMapInput->Inputs[Port - MENU_PORT_1].InvalidData != INVALID_DATA)
+                {
+                  VarsUi.DatalogSampleValue[Port - MENU_PORT_1] = pMapInput->Inputs[Port - MENU_PORT_1].SensorValue;
+                  VarsUi.DatalogSampleValid[Port - MENU_PORT_1] = TRUE;
+                }
+                else
+                {
+                  VarsUi.DatalogSampleValid[Port - MENU_PORT_1] = FALSE;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    VarsUi.SensorState++;
+    if (VarsUi.SensorState >= SENSOR_STATES)
+    {
+      VarsUi.SensorState = SENSOR_SETUP;
+    }
+
+    VarsUi.SensorReset = FALSE;
+  }
+}
+
+
+//******* cUiGetCustomPctFullScale *******************************************
+
+
+UBYTE     cUiGetCustomPctFullScale(UBYTE Port,UBYTE Sensor)
+{
+  UBYTE   Result = 0;
+
+  if ((Sensor != MENU_SENSOR_MOTOR_DEG) && (Sensor != MENU_SENSOR_MOTOR_ROT))
+  {
+    Result = (UBYTE)pMapInput->Inputs[Port - MENU_PORT_1].CustomPctFullScale;
   }
 
   return (Result);
@@ -173,174 +388,16 @@ UBYTE     cUiReadUltrasonic(UBYTE Port)
 
 
 
-//******* cUiResetSensor *****************************************************
+//******* cUiGetCustomActiveStatus *******************************************
 
-void      cUiResetSensor(UBYTE Port,UBYTE Sensor) // Set sensor parameters
+
+UBYTE     cUiGetCustomActiveStatus(UBYTE Port,UBYTE Sensor)
 {
-  switch (Sensor)
+  UBYTE   Result = 0;
+
+  if ((Sensor != MENU_SENSOR_MOTOR_DEG) && (Sensor != MENU_SENSOR_MOTOR_ROT))
   {
-    case MENU_SENSOR_MOTOR_DEG :
-    {
-      pMapOutPut->Outputs[Port - MENU_PORT_A].Flags     |= UPDATE_RESET_COUNT;
-    }
-    break;
-
-    case MENU_SENSOR_MOTOR_ROT :
-    {
-      pMapOutPut->Outputs[Port - MENU_PORT_A].Flags     |= UPDATE_RESET_COUNT;
-    }
-    break;
-
-    case MENU_SENSOR_ROTATION :
-    {
-      pMapInput->Inputs[Port - MENU_PORT_1].SensorValue  = 0;
-    }
-    break;
-
-  }
-}
-
-
-
-//******* cUiSetupSensor *****************************************************
-
-void      cUiSetupSensor(UBYTE Port,UBYTE Sensor) // Set sensor parameters
-{
-  switch (Sensor)
-  {
-    case MENU_SENSOR_MOTOR_DEG :
-    {
-      pMapOutPut->Outputs[Port - MENU_PORT_A].Mode      &= ~(BRAKE | MOTORON);
-      pMapOutPut->Outputs[Port - MENU_PORT_A].Flags     |= UPDATE_MODE | UPDATE_SPEED;
-      pMapOutPut->Outputs[Port - MENU_PORT_A].TachoCnt   = 0;
-    }
-    break;
-
-    case MENU_SENSOR_MOTOR_ROT :
-    {
-      pMapOutPut->Outputs[Port - MENU_PORT_A].Mode      &= ~(BRAKE | MOTORON);
-      pMapOutPut->Outputs[Port - MENU_PORT_A].Flags     |= UPDATE_MODE | UPDATE_SPEED;
-      pMapOutPut->Outputs[Port - MENU_PORT_A].TachoCnt   = 0;
-    }
-    break;
-
-    case MENU_SENSOR_ULTRASONIC_IN :
-    {
-      pMapInput->Inputs[Port - MENU_PORT_1].SensorType   = SENSORTYPE[Sensor - MENU_SENSOR_EMPTY];
-      cUiSetupUltrasonic(Port);
-    }
-    break;
-
-    case MENU_SENSOR_ULTRASONIC_CM :
-    {
-      pMapInput->Inputs[Port - MENU_PORT_1].SensorType   = SENSORTYPE[Sensor - MENU_SENSOR_EMPTY];
-      cUiSetupUltrasonic(Port);
-    }
-    break;
-
-    default :
-    {
-      pMapInput->Inputs[Port - MENU_PORT_1].SensorType   = SENSORTYPE[Sensor - MENU_SENSOR_EMPTY];
-      pMapInput->Inputs[Port - MENU_PORT_1].SensorMode   = SENSORMODE[Sensor - MENU_SENSOR_EMPTY];
-    }
-    break;
-
-  }
-}
-
-
-
-//******* cUiAskSensor *******************************************************
-
-void      cUiAskSensor(UBYTE Port,UBYTE Sensor) // Ask for sensor data
-{
-  switch (Sensor)
-  {
-    case MENU_SENSOR_ULTRASONIC_IN :
-    {
-      cUiAskUltrasonic(Port);
-    }
-    break;
-
-    case MENU_SENSOR_ULTRASONIC_CM :
-    {
-      cUiAskUltrasonic(Port);
-    }
-    break;
-
-    default :
-    {
-    }
-    break;
-
-  }
-}
-
-
-
-//******* cUiGetSensorValue **************************************************
-
-UBYTE     cUiGetSensorValue(UBYTE Port,UBYTE Sensor,SLONG *Value)
-{
-  UBYTE   Result = FALSE;
-
-  *Value = 0L;
-  switch (Sensor)
-  {
-    case MENU_SENSOR_MOTOR_DEG :
-    {
-      *Value = pMapOutPut->Outputs[Port - MENU_PORT_A].TachoCnt;
-      Result = TRUE;
-    }
-    break;
-
-    case MENU_SENSOR_MOTOR_ROT :
-    {
-      *Value = pMapOutPut->Outputs[Port - MENU_PORT_A].TachoCnt;
-      Result = TRUE;
-    }
-    break;
-
-    case MENU_SENSOR_ULTRASONIC_IN :
-    {
-      Result = cUiReadUltrasonic(Port);
-      if (Result != 0xFF)
-      {
-        *Value = Result;
-        Result = TRUE;
-      }
-      else
-      {
-        Result = FALSE;
-      }
-    }
-    break;
-
-    case MENU_SENSOR_ULTRASONIC_CM :
-    {
-      Result = cUiReadUltrasonic(Port);
-      if (Result != 0xFF)
-      {
-        *Value = Result;
-        Result = TRUE;
-      }
-      else
-      {
-        Result = FALSE;
-      }
-    }
-    break;
-
-    default :
-    {
-      if (pMapInput->Inputs[Port - MENU_PORT_1].InvalidData != INVALID_DATA)
-      {
-        *Value = pMapInput->Inputs[Port - MENU_PORT_1].SensorValue;
-        Result = TRUE;
-      }
-    }
-    break;
-
+    Result = (UBYTE)pMapInput->Inputs[Port - MENU_PORT_1].CustomActiveStatus;
   }
 
   return (Result);
@@ -350,24 +407,51 @@ UBYTE     cUiGetSensorValue(UBYTE Port,UBYTE Sensor,SLONG *Value)
 
 //******* cUiPrintSensorInDisplayBuffer **************************************
 
-void      cUiPrintSensorInDisplayBuffer(UBYTE Port,UBYTE Sensor,UBYTE Valid,SLONG Value)
-{
-  SWORD   Tmp;
+#define   COLORNAMES      6
 
-  Tmp = sprintf((char*)VarsUi.DisplayBuffer,(char*)SENSORFORMAT[Sensor - MENU_SENSOR_EMPTY],(float)0);
-  if (Valid == TRUE)
+const     UBYTE COLORNAME[COLORNAMES][10] =
+{
+  "1. Black ",
+  "2. Blue  ",
+  "3. Green ",
+  "4. Yellow",
+  "5. Red   ",
+  "6. White "
+};
+
+
+void      cUiPrintSensorInDisplayBuffer(UBYTE Port)
+{
+  UBYTE   Sensor;
+  float   Value;
+  SWORD   Size;
+  SWORD   Index;
+
+  Port   -= MENU_PORT_1;
+  Sensor  = VarsUi.DatalogPort[Port] - MENU_SENSOR_EMPTY;
+  Value   = (float)VarsUi.DatalogSampleValue[Port]  / (float)SENSORDIVIDER[Sensor];
+  Size    = sprintf((char*)VarsUi.DisplayBuffer,(char*)SENSORFORMAT[Sensor],(float)0);
+  sprintf((char*)VarsUi.DisplayBuffer,"%*.*s",Size,Size,(char*)TXT_INVALID_SENSOR);
+
+  if (VarsUi.DatalogSampleValid[Port] == TRUE)
   {
-    if (Tmp < sprintf((char*)VarsUi.DisplayBuffer,(char*)SENSORFORMAT[Sensor - MENU_SENSOR_EMPTY],(float)Value / SENSORDIVIDER[Sensor - MENU_SENSOR_EMPTY]))
+    if (Sensor == (MENU_SENSOR_COLOR - MENU_SENSOR_EMPTY))
     {
-      sprintf((char*)VarsUi.DisplayBuffer,"%*.*s",Tmp,Tmp,(char*)TXT_INVALID_SENSOR);
+      Index = (SWORD)Value - 1;
+      if ((Index >= 0) && (Index < COLORNAMES))
+      {
+        sprintf((char*)VarsUi.DisplayBuffer,(char*)COLORNAME[Index]);
+      }
+    }
+    else
+    {
+      if (Size < sprintf((char*)VarsUi.DisplayBuffer,(char*)SENSORFORMAT[Sensor],Value))
+      {
+        sprintf((char*)VarsUi.DisplayBuffer,"%*.*s",Size,Size,(char*)TXT_INVALID_SENSOR);
+      }
     }
   }
-  else
-  {
-    sprintf((char*)VarsUi.DisplayBuffer,"%*.*s",Tmp,Tmp,(char*)TXT_INVALID_SENSOR);
-  }
 }
-
 
 
 //******* cUiReleaseSensors **************************************************
@@ -586,7 +670,7 @@ UWORD     cUiBTCommand(UBYTE Cmd,UBYTE Flag,UBYTE *pParam1,UBYTE *pParam2)
 
 //******* cUiNVxxxxx *********************************************************
 
-void      cUiNVWriteByte(void)
+void      cUiNVWrite(void)
 {
   sprintf((char*)VarsUi.NVFilename,"%s.%s",(char*)NONVOLATILE_NAME,(char*)TXT_SYS_EXT);
   VarsUi.NVTmpHandle = pMapLoader->pFunc(FINDFIRST,VarsUi.NVFilename,VarsUi.SearchFilenameBuffer,&VarsUi.NVTmpLength);
@@ -595,56 +679,34 @@ void      cUiNVWriteByte(void)
     pMapLoader->pFunc(CLOSE,(UBYTE*)&VarsUi.NVTmpHandle,NULL,NULL);
     pMapLoader->pFunc(DELETE,VarsUi.NVFilename,NULL,NULL);
   }
-  VarsUi.NVTmpLength = 1;
+  VarsUi.NVTmpLength = sizeof(NVDATA);
   VarsUi.NVTmpHandle = pMapLoader->pFunc(OPENWRITE,VarsUi.NVFilename,NULL,&VarsUi.NVTmpLength);
   pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.NVTmpHandle,(UBYTE*)&VarsUi.NVData,&VarsUi.NVTmpLength);
   pMapLoader->pFunc(CLOSE,(UBYTE*)&VarsUi.NVTmpHandle,NULL,NULL);
 }
 
-void      cUiNVWritePowerOnTimeCount(UBYTE Count)
-{
-  VarsUi.NVData &= ~0x07;
-  VarsUi.NVData |= (Count & 0x07);
-  cUiNVWriteByte();
-}
 
-UBYTE     cUiNVReadPowerOnTimeCount(void)
+void      cUiNVRead(void)
 {
-  return (VarsUi.NVData & 0x07);
-}
-
-void      cUiNVWriteVolumeCount(UBYTE Count)
-{
-  VarsUi.NVData &= ~0x70;
-  VarsUi.NVData |= ((Count << 4) & 0x70);
-  cUiNVWriteByte();
-}
-
-UBYTE     cUiNVReadVolumeCount(void)
-{
-  return ((VarsUi.NVData >> 4) & 0x07);
-}
-
-void      cUiNVReadByte(void)
-{
-  VarsUi.NVData = 0xFF;
+  VarsUi.NVData.CheckByte = 0;
   sprintf((char*)VarsUi.NVFilename,"%s.%s",(char*)NONVOLATILE_NAME,(char*)TXT_SYS_EXT);
   VarsUi.NVTmpHandle = pMapLoader->pFunc(OPENREAD,VarsUi.NVFilename,NULL,&VarsUi.NVTmpLength);
   if (!(VarsUi.NVTmpHandle & 0x8000))
   {
-    VarsUi.NVTmpLength = 1;
-    pMapLoader->pFunc(READ,(UBYTE*)&VarsUi.NVTmpHandle,&VarsUi.NVData,&VarsUi.NVTmpLength);
+    VarsUi.NVTmpLength = sizeof(NVDATA);
+    pMapLoader->pFunc(READ,(UBYTE*)&VarsUi.NVTmpHandle,(UBYTE*)&VarsUi.NVData,&VarsUi.NVTmpLength);
     pMapLoader->pFunc(CLOSE,(UBYTE*)&VarsUi.NVTmpHandle,NULL,NULL);
   }
-
-  if ((cUiNVReadPowerOnTimeCount() > (POWER_OFF_TIME_STEPS - 1)) || (cUiNVReadVolumeCount() > MAX_VOLUME))
+  if (VarsUi.NVData.CheckByte != CHECKBYTE)
   {
-    VarsUi.NVData = 0xFF;
-    cUiNVWritePowerOnTimeCount(POWER_OFF_TIME_DEFAULT);
-    cUiNVWriteVolumeCount(MAX_VOLUME);
+    VarsUi.NVData.DatalogEnabled  = DATALOGENABLED;
+    VarsUi.NVData.VolumeStep      = MAX_VOLUME;
+    VarsUi.NVData.PowerdownCode   = POWER_OFF_TIME_DEFAULT;
+    VarsUi.NVData.DatalogNumber   = 0;
+    VarsUi.NVData.CheckByte       = CHECKBYTE;
+    cUiNVWrite();
   }
 }
-
 
 
 //******* cUiFeedback ********************************************************
@@ -728,7 +790,14 @@ UBYTE     cUiFeedback(BMPMAP *Bitmap,UBYTE TextNo1,UBYTE TextNo2,UWORD Time) // 
         }
         else
         {
-          VarsUi.FBText            = cUiGetString(TextNo2);
+          if (TextNo2 == 0xFF)
+          {
+            VarsUi.FBText          = VarsUi.SelectedFilename;
+          }
+          else
+          {
+            VarsUi.FBText          = cUiGetString(TextNo2);
+          }
           VarsUi.FBPointer         = 0;
           VarsUi.FBState++;
         }
@@ -1056,7 +1125,7 @@ UBYTE     cUiVolume(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_EXIT
   {
     case MENU_INIT : // Init time counter and cursor bitmap
     {
-      VarsUi.Counter    = cUiNVReadVolumeCount() + 1;
+      VarsUi.Counter    = VarsUi.NVData.VolumeStep + 1;
 
       VarsUi.pTmp       = (UBYTE*)Cursor;
       for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)sizeof(Cursor));VarsUi.Tmp++)
@@ -1086,8 +1155,9 @@ UBYTE     cUiVolume(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_EXIT
 
     case MENU_ENTER : // Enter
     {
-      cUiNVWriteVolumeCount(VarsUi.Counter - 1);
-      IOMapUi.Volume    = cUiNVReadVolumeCount();
+      VarsUi.NVData.VolumeStep = VarsUi.Counter - 1;
+      cUiNVWrite();
+      IOMapUi.Volume    = VarsUi.NVData.VolumeStep;
       pMapSound->Volume = IOMapUi.Volume;
       Action            = MENU_EXIT;
     }
@@ -1095,7 +1165,7 @@ UBYTE     cUiVolume(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_EXIT
 
     case MENU_EXIT : // Leave
     {
-      IOMapUi.Volume    = cUiNVReadVolumeCount();
+      IOMapUi.Volume    = VarsUi.NVData.VolumeStep;
     }
     break;
 
@@ -1140,13 +1210,12 @@ typedef   struct
 }
 STRSETS;
 
-const     UBYTE PincodeFigures[]  = { "0987654321" "\x7F" "abcdefghijklmnopqrstuvwxyz         " };
-const     UBYTE FilenameFigures[] = { "0987654321" "\x7F" "abcdefghijklmnopqrstuvwxyz         " };
+const     UBYTE Figures[] = { "0987654321" "\x7F" "abcdefghijklmnopqrstuvwxyz         " };
 
 const     STRSETS StrSets[STRINGTYPES] =
 {
-  { TXT_GETUSERSTRING_PIN,      PincodeFigures,  37, SIZE_OF_BT_PINCODE - 1, 15, 10 },
-  { TXT_GETUSERSTRING_FILENAME, FilenameFigures, 37, FILENAME_LENGTH - 4   , 15, 10 }
+  { TXT_GETUSERSTRING_PIN,      Figures,  37, SIZE_OF_BT_PINCODE - 1, 15, 10 },
+  { TXT_GETUSERSTRING_FILENAME, Figures, 37, FILENAME_LENGTH - 4   , 15, 10 }
 };
 
 
@@ -1403,6 +1472,544 @@ void      cUiDrawPortNo(UBYTE *Bitmap,UBYTE MenuIconNo,UBYTE PortNo)
   }
 
 }
+
+UBYTE     cUiDataLogging(UBYTE Action)
+{
+  SBYTE   TmpBuffer[DATALOGBUFFERSIZE + 1];
+  
+  switch (Action)
+  {
+    case MENU_INIT : // Initialize all ports to empty
+    {
+// Show select
+      pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_VIEW_SELECT);
+      pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
+      pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
+      pMapDisplay->EraseMask             |= SCREEN_BIT(SCREEN_SMALL);
+
+// Init ports
+      for (VarsUi.Tmp = 0;VarsUi.Tmp < DATALOGPORTS;VarsUi.Tmp++)
+      {
+        VarsUi.DatalogPort[VarsUi.Tmp] = MENU_SENSOR_EMPTY;
+      }
+    }
+    break;
+
+    case MENU_EXIT : // Initialize all ports to empty
+    {
+// Show select
+      pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_VIEW_SELECT);
+      pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
+      pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
+      pMapDisplay->EraseMask             |= SCREEN_BIT(SCREEN_SMALL);
+    }
+    break;
+
+    case MENU_TEXT : // Write text
+    {
+// Init selected sensor and port to none
+      VarsUi.SelectedSensor    = MENU_SENSOR_EMPTY;
+      VarsUi.SelectedPort      = MENU_PORT_EMPTY;
+// Count ports
+      VarsUi.Counter           = 0;
+      for (VarsUi.Tmp = 0;VarsUi.Tmp < DATALOGPORTS;VarsUi.Tmp++)
+      {
+        if (MENU_SENSOR_EMPTY != VarsUi.DatalogPort[VarsUi.Tmp])
+        {
+// Find default port to view
+          if (VarsUi.SelectedPort == MENU_PORT_EMPTY)
+          {
+            VarsUi.SelectedPort   = VarsUi.Tmp + MENU_PORT_1;
+          }
+          VarsUi.Counter++;
+        }
+      }
+      if (VarsUi.Counter)
+      {
+// Display text
+        pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_DATALOGGING_PRESS_EXIT_TO);
+        pMapDisplay->pTextLines[TEXTLINE_4] = cUiGetString(TXT_DATALOGGING_STOP_DATALOGGING);
+
+        pMapDisplay->TextLinesCenterFlags  |= (TEXTLINE_BIT(TEXTLINE_3) | TEXTLINE_BIT(TEXTLINE_4));
+        pMapDisplay->UpdateMask            |= (TEXTLINE_BIT(TEXTLINE_3) | TEXTLINE_BIT(TEXTLINE_4));
+      }
+      else
+      {
+        cUiMenuPrevFile();
+        IOMapUi.State = NEXT_MENU;
+        VarsUi.State  = 0;
+      }
+    }
+    break;
+
+    case MENU_RUN : // Run data logging
+    {
+      switch (VarsUi.State)
+      {
+        case 0 : // Init log
+        {
+// Save menu text
+          VarsUi.MenuIconTextSave  = pMapDisplay->pMenuText;
+
+// Delete file if exist
+          sprintf((char*)VarsUi.FilenameBuffer,"%s.%s",(char*)TEMP_DATALOG_FILENAME,(char*)TXT_FILE_EXT[FILETYPE_DATALOG]);
+          VarsUi.TmpHandle = pMapLoader->pFunc(FINDFIRST,VarsUi.FilenameBuffer,VarsUi.SearchFilenameBuffer,&VarsUi.TmpLength);
+          if (!(VarsUi.TmpHandle & 0x8000))
+          {
+            pMapLoader->pFunc(CLOSE,(UBYTE*)&VarsUi.TmpHandle,NULL,NULL);
+            pMapLoader->pFunc(DELETE,VarsUi.FilenameBuffer,NULL,NULL);
+          }
+
+// Open file
+          VarsUi.TmpLength = pMapLoader->FreeUserFlash;
+          sprintf((char*)VarsUi.FilenameBuffer,"%s.%s",(char*)TEMP_DATALOG_FILENAME,(char*)TXT_FILE_EXT[FILETYPE_DATALOG]);
+          VarsUi.TmpHandle    = pMapLoader->pFunc(OPENWRITEDATA,VarsUi.FilenameBuffer,NULL,&VarsUi.TmpLength);
+          VarsUi.DatalogError = VarsUi.TmpHandle;
+          if (!(VarsUi.DatalogError & 0x8000))
+          {
+            VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"%s\t%lu",SENSORSYNCDATA,pMapCmd->SyncTime); 
+            VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+
+            VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"\t%lu",pMapCmd->SyncTick); 
+            VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+
+            VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"\t%lu",pMapCmd->Tick); 
+            VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+
+            VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"\t%lu\t-1\r\n",DATALOG_DEFAULT_SAMPLE_TIME); 
+            VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+
+            VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"%s",SENSORSDATA); 
+            VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+            for (VarsUi.Tmp = 0;(VarsUi.Tmp < DATALOGPORTS) && (!(VarsUi.DatalogError & 0x8000));VarsUi.Tmp++)
+            {
+              if (MENU_SENSOR_EMPTY != VarsUi.DatalogPort[VarsUi.Tmp])
+              {
+                VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"\t%u_%s%s",(UWORD)(VarsUi.Tmp + 1),(char*)SENSORDIRNAME[(VarsUi.DatalogPort[VarsUi.Tmp] - MENU_SENSOR_EMPTY) - 1],(char*)SENSORUNITNAME[(VarsUi.DatalogPort[VarsUi.Tmp] - MENU_SENSOR_EMPTY) - 1]); 
+                VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+              }
+            }
+            VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"\r\n"); 
+            VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+            VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"%s",SENSORTIME); 
+            VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+            for (VarsUi.Tmp = 0;(VarsUi.Tmp < DATALOGPORTS) && (!(VarsUi.DatalogError & 0x8000));VarsUi.Tmp++)
+            {
+              if (MENU_SENSOR_EMPTY != VarsUi.DatalogPort[VarsUi.Tmp])
+              {
+                VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"\t%s",(char*)SENSORDIRNAME[(VarsUi.DatalogPort[VarsUi.Tmp] - MENU_SENSOR_EMPTY) - 1]); 
+                VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+              }
+            }
+            VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"\r\n"); 
+            VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+            if (!(VarsUi.DatalogError & 0x8000))
+            {
+              VarsUi.DatalogTimer       = 0;
+              VarsUi.DatalogSampleTime  = DATALOG_DEFAULT_SAMPLE_TIME;
+              VarsUi.DatalogSampleTimer = 0;
+              VarsUi.Timer              = 0;
+              VarsUi.Update             = TRUE;
+              IOMapUi.Flags            |= UI_BUSY;
+              VarsUi.DatalogOldTick     = pMapCmd->Tick;
+              VarsUi.SensorReset        = TRUE;
+              VarsUi.State++;
+            }
+            else
+            {
+              pMapDisplay->EraseMask  |= SCREEN_BIT(SCREEN_SMALL);
+              pMapDisplay->pBitmaps[BITMAP_1]          = NULL;
+              VarsUi.State = 4;
+            }
+          }
+          else
+          {
+// File error
+            pMapDisplay->EraseMask  |= SCREEN_BIT(SCREEN_SMALL);
+            pMapDisplay->pBitmaps[BITMAP_1]          = NULL;
+            VarsUi.State = 3;
+          }
+        }
+        break;
+
+        case 1 :
+        {
+// Get real time since last
+          VarsUi.DatalogRTC          = (pMapCmd->Tick - VarsUi.DatalogOldTick);
+          VarsUi.DatalogOldTick      = pMapCmd->Tick;
+// Update all timers
+          VarsUi.DatalogTimer       += VarsUi.DatalogRTC;
+          VarsUi.DatalogSampleTimer += VarsUi.DatalogRTC;
+          VarsUi.ReadoutTimer       += VarsUi.DatalogRTC;
+// Update sensor values
+          cUiUpdateSensor((SWORD)VarsUi.DatalogRTC);
+// Check for select change
+          if (VarsUi.Update == TRUE)
+          {
+            VarsUi.Update = FALSE;
+            VarsUi.SelectedSensor                    = VarsUi.DatalogPort[VarsUi.SelectedPort - MENU_PORT_1];
+            pMapDisplay->pMenuIcons[MENUICON_CENTER] = cUiMenuGetIconImage(cUiMenuSearchSensorIcon(VarsUi.SelectedSensor));
+            pMapDisplay->pMenuIcons[MENUICON_LEFT]   = NULL;
+            pMapDisplay->pMenuIcons[MENUICON_RIGHT]  = NULL;
+
+            pMapDisplay->EraseMask                   = SCREEN_BIT(SCREEN_LARGE);
+            pMapDisplay->pBitmaps[BITMAP_1]          = (BMPMAP*)Display;
+            pMapDisplay->UpdateMask                  = (BITMAP_BIT(BITMAP_1) | MENUICON_BITS | SPECIAL_BIT(TOPLINE) | SPECIAL_BIT(FRAME_SELECT));
+
+            pMapDisplay->pBitmaps[BITMAP_2]          = (BMPMAP*)VarsUi.PortBitmapLeft;
+            pMapDisplay->pBitmaps[BITMAP_3]          = (BMPMAP*)VarsUi.PortBitmapCenter;
+            pMapDisplay->pBitmaps[BITMAP_4]          = (BMPMAP*)VarsUi.PortBitmapRight;
+
+            cUiDrawPortNo(VarsUi.PortBitmapCenter,MENUICON_CENTER,VarsUi.SelectedPort - MENU_PORT_EMPTY);
+            pMapDisplay->UpdateMask                 |= BITMAP_BIT(BITMAP_3);
+
+
+
+            if (VarsUi.Counter == 2)
+            {
+              VarsUi.Tmp = VarsUi.SelectedPort;
+              do
+              {
+                VarsUi.Tmp++;
+                if (VarsUi.Tmp >= MENU_PORT_INVALID)
+                {
+                  VarsUi.Tmp = MENU_PORT_1;
+                }
+              }
+              while (VarsUi.DatalogPort[VarsUi.Tmp - MENU_PORT_1] == MENU_SENSOR_EMPTY);
+              if (VarsUi.Tmp > VarsUi.SelectedPort)
+              {
+                pMapDisplay->pMenuIcons[MENUICON_RIGHT] = cUiMenuGetIconImage(cUiMenuSearchSensorIcon(VarsUi.DatalogPort[VarsUi.Tmp - MENU_PORT_1]));
+                cUiDrawPortNo(VarsUi.PortBitmapRight,MENUICON_RIGHT,VarsUi.Tmp - MENU_PORT_EMPTY);
+                pMapDisplay->UpdateMask                |= BITMAP_BIT(BITMAP_4);
+              }
+              else
+              {
+                pMapDisplay->pMenuIcons[MENUICON_LEFT]  = cUiMenuGetIconImage(cUiMenuSearchSensorIcon(VarsUi.DatalogPort[VarsUi.Tmp - MENU_PORT_1]));
+                cUiDrawPortNo(VarsUi.PortBitmapLeft,MENUICON_LEFT,VarsUi.Tmp - MENU_PORT_EMPTY);
+                pMapDisplay->UpdateMask                |= BITMAP_BIT(BITMAP_2);
+              }
+            }
+            if (VarsUi.Counter > 2)
+            {
+              VarsUi.Tmp = VarsUi.SelectedPort;
+              do
+              {
+                VarsUi.Tmp++;
+                if (VarsUi.Tmp >= MENU_PORT_INVALID)
+                {
+                  VarsUi.Tmp = MENU_PORT_1;
+                }
+              }
+              while (VarsUi.DatalogPort[VarsUi.Tmp - MENU_PORT_1] == MENU_SENSOR_EMPTY);
+              pMapDisplay->pMenuIcons[MENUICON_RIGHT] = cUiMenuGetIconImage(cUiMenuSearchSensorIcon(VarsUi.DatalogPort[VarsUi.Tmp - MENU_PORT_1]));
+              cUiDrawPortNo(VarsUi.PortBitmapRight,MENUICON_RIGHT,VarsUi.Tmp - MENU_PORT_EMPTY);
+              pMapDisplay->UpdateMask                |= BITMAP_BIT(BITMAP_4);
+
+              VarsUi.Tmp = VarsUi.SelectedPort;
+              do
+              {
+                VarsUi.Tmp--;
+                if (VarsUi.Tmp <= MENU_PORT_EMPTY)
+                {
+                  VarsUi.Tmp = MENU_PORT_INVALID - 1;
+                }
+              }
+              while (VarsUi.DatalogPort[VarsUi.Tmp - MENU_PORT_1] == MENU_SENSOR_EMPTY);
+              pMapDisplay->pMenuIcons[MENUICON_LEFT]  = cUiMenuGetIconImage(cUiMenuSearchSensorIcon(VarsUi.DatalogPort[VarsUi.Tmp - MENU_PORT_1]));
+              cUiDrawPortNo(VarsUi.PortBitmapLeft,MENUICON_LEFT,VarsUi.Tmp - MENU_PORT_EMPTY);
+              pMapDisplay->UpdateMask                |= BITMAP_BIT(BITMAP_2);
+
+
+            }
+            VarsUi.ReadoutTimer                       = DISPLAY_VIEW_UPDATE;
+          }
+// Write sample if timeout
+          if (VarsUi.DatalogSampleTimer >= VarsUi.DatalogSampleTime)
+          {
+            VarsUi.DatalogSampleTimer -= VarsUi.DatalogSampleTime;
+
+            VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"%lu",VarsUi.DatalogTimer - VarsUi.DatalogSampleTime); 
+            VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+            for (VarsUi.Tmp = 0;(VarsUi.Tmp < DATALOGPORTS) && (!(VarsUi.DatalogError & 0x8000));VarsUi.Tmp++)
+            {
+              if (MENU_SENSOR_EMPTY != VarsUi.DatalogPort[VarsUi.Tmp])
+              {
+                if (VarsUi.DatalogSampleValid[VarsUi.Tmp] == TRUE)
+                {
+                  VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,(char*)SENSORFORMAT2[(VarsUi.DatalogPort[VarsUi.Tmp] - MENU_SENSOR_EMPTY) - 1],(float)VarsUi.DatalogSampleValue[VarsUi.Tmp] / SENSORDIVIDER[VarsUi.DatalogPort[VarsUi.Tmp] - MENU_SENSOR_EMPTY]); 
+                  VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+                }
+                else
+                {
+                  VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"\t-"); 
+                  VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+                }
+              }
+            }
+            VarsUi.TmpLength      = (ULONG)sprintf((char*)TmpBuffer,"\r\n"); 
+            VarsUi.DatalogError  |= pMapLoader->pFunc(WRITE,(UBYTE*)&VarsUi.TmpHandle,(UBYTE*)TmpBuffer,&VarsUi.TmpLength);
+          }
+// Refresh display
+          if (++VarsUi.ReadoutTimer >= DISPLAY_VIEW_UPDATE)
+          {
+            VarsUi.ReadoutTimer = 0;
+
+// Display sensor value
+            cUiPrintSensorInDisplayBuffer(VarsUi.SelectedPort);
+            pMapDisplay->pTextLines[TEXTLINE_4]      = VarsUi.DisplayBuffer;
+            pMapDisplay->TextLinesCenterFlags       |= TEXTLINE_BIT(TEXTLINE_4);
+            pMapDisplay->UpdateMask                 |= TEXTLINE_BIT(TEXTLINE_4);
+          }
+
+// Test for file error
+          if ((VarsUi.DatalogError & 0x8000))
+          {
+            pMapDisplay->EraseMask  |= SCREEN_BIT(SCREEN_SMALL);
+            pMapDisplay->pBitmaps[BITMAP_1]          = NULL;
+            VarsUi.State = 4;
+          }
+
+// Test for break;
+          switch (cUiReadButtons())
+          {
+            case BUTTON_EXIT :
+            {
+              VarsUi.State++;
+            }
+            break;
+
+            case BUTTON_LEFT :
+            {
+              VarsUi.Tmp = VarsUi.SelectedPort;
+              do
+              {
+                VarsUi.Tmp--;
+                if (VarsUi.Tmp <= MENU_PORT_EMPTY)
+                {
+                  VarsUi.Tmp = MENU_PORT_INVALID - 1;
+                }
+              }
+              while (VarsUi.DatalogPort[VarsUi.Tmp - MENU_PORT_1] == MENU_SENSOR_EMPTY);
+              if ((VarsUi.Counter > 2) || (VarsUi.Tmp < VarsUi.SelectedPort))
+              {
+                VarsUi.SelectedPort = VarsUi.Tmp;
+              }
+              VarsUi.Update = TRUE;
+            }
+            break;
+
+            case BUTTON_RIGHT :
+            {
+              VarsUi.Tmp = VarsUi.SelectedPort;
+              do
+              {
+                VarsUi.Tmp++;
+                if (VarsUi.Tmp >= MENU_PORT_INVALID)
+                {
+                  VarsUi.Tmp = MENU_PORT_1;
+                }
+              }
+              while (VarsUi.DatalogPort[VarsUi.Tmp - MENU_PORT_1] == MENU_SENSOR_EMPTY);
+              if ((VarsUi.Counter > 2) || (VarsUi.Tmp > VarsUi.SelectedPort))
+              {
+                VarsUi.SelectedPort = VarsUi.Tmp;
+              }
+              VarsUi.Update = TRUE;
+            }
+            break;
+
+          }
+          IOMapUi.Flags    |= UI_RESET_SLEEP_TIMER;
+        }
+        break;
+
+        case 2 :
+        {
+// Close file
+          pMapLoader->pFunc(CROPDATAFILE,(UBYTE*)&VarsUi.TmpHandle,NULL,NULL);
+
+// Clean up
+          pMapDisplay->pMenuText                    = VarsUi.MenuIconTextSave;
+          cUiReleaseSensors();
+
+          IOMapUi.Flags &= ~UI_BUSY;
+          IOMapUi.State  =  RIGHT_PRESSED;
+          VarsUi.State   = 0;
+        }
+        break;
+
+        case 3 : // Display memory full text
+        {
+          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_DL_ERROR_MEMORY_FULL_1,TXT_FB_DL_ERROR_MEMORY_FULL_2,DISPLAY_SHOW_ERROR_TIME))
+          {
+            cUiMenuPrevFile();
+            IOMapUi.State = NEXT_MENU;
+            VarsUi.State  = 0;
+          }
+        }
+        break;
+
+        case 4 : // Display memory full text
+        {
+          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_DL_ERROR_MEMORY_FULL_1,TXT_FB_DL_ERROR_MEMORY_FULL_2,DISPLAY_SHOW_ERROR_TIME))
+          {
+            VarsUi.State  = 2;
+          }
+        }
+        break;
+
+      }
+    }
+    break;
+
+    case MENU_SAVE :                    // Save datalog file
+    {
+      switch (VarsUi.State)
+      {
+        case 0 :
+        {
+          VarsUi.NVData.DatalogNumber++;
+          if (VarsUi.NVData.DatalogNumber > MAX_DATALOGS)
+          {
+            VarsUi.NVData.DatalogNumber = 1;
+          }
+          cUiNVWrite();
+          sprintf((char*)VarsUi.SelectedFilename,"%s%u.%s",(char*)UI_DATALOG_FILENAME,VarsUi.NVData.DatalogNumber,TXT_FILE_EXT[FILETYPE_DATALOG]);
+          VarsUi.State++;
+        }
+        break;
+
+        case 1 :
+        {
+// Rename TEMP_DATALOG_FILENAME to VarsUi.SelectedFilename(user filename)
+          sprintf((char*)VarsUi.FilenameBuffer,"%s.%s",(char*)TEMP_DATALOG_FILENAME,(char*)TXT_FILE_EXT[FILETYPE_DATALOG]);
+          VarsUi.TmpHandle = pMapLoader->pFunc(RENAMEFILE,VarsUi.FilenameBuffer,VarsUi.SelectedFilename,&VarsUi.TmpLength);
+          VarsUi.State++;
+        }
+        break;
+
+        case 2 : // Display saved text
+        {
+          if (!cUiFeedback((BMPMAP*)Info,TXT_FB_DL_FILE_SAVED_INFO,0xFF,DISPLAY_SHOW_FILENAME_TIME))
+          {
+            VarsUi.State++;
+          }
+        }
+        break;
+
+        default :
+        {
+          cUiMenuPrevFile();
+          IOMapUi.State = NEXT_MENU;
+          VarsUi.State  = 0;
+        }
+        break;
+
+      }
+    }
+    break;
+
+    case MENU_DELETE : // Delete datalog file
+    {
+      switch (VarsUi.State)
+      {
+        case 0 :
+        {
+// Delete file if exist
+          sprintf((char*)VarsUi.FilenameBuffer,"%s.%s",(char*)TEMP_DATALOG_FILENAME,(char*)TXT_FILE_EXT[FILETYPE_DATALOG]);
+          pMapLoader->pFunc(DELETE,VarsUi.FilenameBuffer,NULL,NULL);
+          VarsUi.State++;
+        }
+        break;
+
+        case 1 :
+        {
+          pMapDisplay->EraseMask             |= (TEXTLINE_BIT(TEXTLINE_3) | TEXTLINE_BIT(TEXTLINE_4) | TEXTLINE_BIT(TEXTLINE_5) | MENUICON_BITS | SPECIAL_BIT(MENUTEXT));
+          VarsUi.Timer                        = DISPLAY_SHOW_TIME;
+          VarsUi.State++;
+        }
+        break;
+
+        case 2 :
+        {
+          if (++VarsUi.Timer >= DISPLAY_SHOW_TIME)
+          {
+            pMapDisplay->EraseMask           |= TEXTLINE_BIT(TEXTLINE_3);
+            VarsUi.State++;
+          }
+        }
+        break;
+
+        default :
+        {
+          VarsUi.State  = 0;
+        }
+        break;
+
+      }
+    }
+    break;
+
+    case MENU_SELECT : // Save sensor
+    {
+      pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_VIEW_SELECT);
+      pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
+      pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
+
+      VarsUi.DatalogPort[VarsUi.SelectedPort - MENU_PORT_1]        = VarsUi.SelectedSensor;
+      IOMapUi.State = EXIT_PRESSED;
+    }
+    break;
+
+    default :
+    {
+      switch (VarsUi.State)
+      {
+        case 0 :
+        {
+          if ((Action > MENU_SENSOR_EMPTY) && (Action < MENU_SENSOR_INVALID))
+          {
+            VarsUi.SelectedSensor = Action;
+          }
+          if ((Action > MENU_PORT_EMPTY) && (Action < MENU_PORT_INVALID))
+          {
+            VarsUi.SelectedPort = Action;
+            if (VarsUi.DatalogPort[VarsUi.SelectedPort - MENU_PORT_1] != MENU_SENSOR_EMPTY)
+            {
+
+    // Port occupied
+              pMapDisplay->pTextLines[TEXTLINE_4] = cUiGetString(TXT_DATALOGGING_PORT_OCCUPIED);
+              pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_4);
+              pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_4);
+              VarsUi.Timer = 0;
+              VarsUi.State++;
+            }
+          }
+        }
+        break;
+
+        default :
+        {
+          if ((++VarsUi.Timer >= DISPLAY_SHOW_TIME) || (BUTTON_NONE != cUiReadButtons()))
+          {
+            pMapDisplay->EraseMask |= TEXTLINE_BIT(TEXTLINE_4);
+            cUiMenuPrev();
+            IOMapUi.State           = NEXT_MENU;
+            VarsUi.State            = 0;
+          }
+        }
+        break;
+
+      }
+    }
+    break;
+
+  }
+
+  return (VarsUi.State);
+}
+
 
 //******* cUiRunning **********************************************************
 
@@ -2221,7 +2828,6 @@ UBYTE     cUiFileDelete(UBYTE Action)
 }
 
 
-
 //******* cUiView ************************************************************
 
 UBYTE     cUiView(UBYTE Action) // MENU_INIT
@@ -2238,6 +2844,11 @@ UBYTE     cUiView(UBYTE Action) // MENU_INIT
           pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
           pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
           pMapDisplay->EraseMask             |= SCREEN_BIT(SCREEN_SMALL);
+// Init ports
+          for (VarsUi.Tmp = 0;VarsUi.Tmp < DATALOGPORTS;VarsUi.Tmp++)
+          {
+            VarsUi.DatalogPort[VarsUi.Tmp] = MENU_SENSOR_EMPTY;
+          }
         }
         break;
 
@@ -2250,17 +2861,18 @@ UBYTE     cUiView(UBYTE Action) // MENU_INIT
           if ((Action >= MENU_PORT_1) && (Action <= MENU_PORT_C))
           {
             VarsUi.SelectedPort = Action;
-            IOMapUi.Flags |= UI_BUSY;
+            
+            VarsUi.DatalogPort[VarsUi.SelectedPort - MENU_PORT_1] = VarsUi.SelectedSensor;
 
-            cUiSetupSensor(VarsUi.SelectedPort,VarsUi.SelectedSensor);
-            cUiResetSensor(VarsUi.SelectedPort,VarsUi.SelectedSensor);
+            IOMapUi.Flags |= UI_BUSY;
             pMapDisplay->EraseMask             |= SCREEN_BIT(SCREEN_LARGE);
             pMapDisplay->pBitmaps[BITMAP_1]     = (BMPMAP*)Display;
             pMapDisplay->UpdateMask             = BITMAP_BIT(BITMAP_1);
             IOMapUi.Flags                      |=  UI_REDRAW_STATUS;
             VarsUi.ReadoutTimer                 = 0;;
-            VarsUi.Timer                        = 0;
             VarsUi.State++;
+
+            VarsUi.SensorReset = TRUE;
           }
         }
         break;
@@ -2272,23 +2884,11 @@ UBYTE     cUiView(UBYTE Action) // MENU_INIT
     case 1 :
     {
       VarsUi.ReadoutTimer++;
-      VarsUi.Timer++;
-      if (VarsUi.Timer == MIN_SENSOR_READ_TIME)
-      {
-        // Ask sensors for data
-        cUiAskSensor(VarsUi.SelectedPort,VarsUi.SelectedSensor);
-      }
-      if (VarsUi.Timer >= (MIN_SENSOR_READ_TIME * 2))
-      {
-        // Read sensor data
-        VarsUi.ViewSampleValid = cUiGetSensorValue(VarsUi.SelectedPort,VarsUi.SelectedSensor,&VarsUi.ViewSampleValue);
-        VarsUi.Timer = 0;
-      }
-
+      cUiUpdateSensor(1);
       if (VarsUi.ReadoutTimer >= DISPLAY_VIEW_UPDATE)
       {
         VarsUi.ReadoutTimer = 0;
-        cUiPrintSensorInDisplayBuffer(VarsUi.SelectedPort,VarsUi.SelectedSensor,VarsUi.ViewSampleValid,VarsUi.ViewSampleValue);
+        cUiPrintSensorInDisplayBuffer(VarsUi.SelectedPort);
         pMapDisplay->pTextLines[TEXTLINE_4] = VarsUi.DisplayBuffer;
         pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_4);
         pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_4);
@@ -2306,7 +2906,7 @@ UBYTE     cUiView(UBYTE Action) // MENU_INIT
       }
       if (VarsUi.Tmp == BUTTON_ENTER)
       {
-        cUiResetSensor(VarsUi.SelectedPort,VarsUi.SelectedSensor);
+        VarsUi.SensorReset = TRUE;
       }
     }
     break;
@@ -3123,7 +3723,7 @@ UBYTE     cUiBtConnect(UBYTE Action) // Select connection no and insert device
             {
               if (VarsUi.BTResult == REQPIN)
               {
-                sprintf((char*)pMapSound->SoundFilename,"%s.%s",(char*)UI_ATTENTION_SOUND,(char*)TXT_SOUND_EXT);
+                sprintf((char*)pMapSound->SoundFilename,"%s.%s",(char*)UI_ATTENTION_SOUND,(char*)TXT_FILE_EXT[FILETYPE_SOUND]);
                 pMapSound->Volume =  IOMapUi.Volume;
                 pMapSound->Mode   =  SOUND_ONCE;
                 pMapSound->Flags |=  SOUND_UPDATE;
@@ -3363,7 +3963,7 @@ UBYTE     cUiPowerOffTime(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_E
   {
     case MENU_INIT : // Init time counter and cursor bitmap
     {
-      VarsUi.Counter        = cUiNVReadPowerOnTimeCount() + 1;
+      VarsUi.Counter        = VarsUi.NVData.PowerdownCode + 1;
 
       VarsUi.pTmp           = (UBYTE*)Cursor;
       for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)sizeof(Cursor));VarsUi.Tmp++)
@@ -3391,8 +3991,9 @@ UBYTE     cUiPowerOffTime(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_E
 
     case MENU_ENTER : // Enter
     {
-      cUiNVWritePowerOnTimeCount(VarsUi.Counter - 1);
-      IOMapUi.SleepTimeout  = PowerOffTimeSteps[cUiNVReadPowerOnTimeCount()];
+      VarsUi.NVData.PowerdownCode = VarsUi.Counter - 1;
+      cUiNVWrite();
+      IOMapUi.SleepTimeout  = PowerOffTimeSteps[VarsUi.NVData.PowerdownCode];
       Action                = MENU_EXIT;
     }
     break;
@@ -3440,7 +4041,7 @@ UBYTE     cUiBTConnectRequest(UBYTE Action)
       {
         case 0 :
         {
-          sprintf((char*)pMapSound->SoundFilename,"%s.%s",(char*)UI_ATTENTION_SOUND,(char*)TXT_SOUND_EXT);
+          sprintf((char*)pMapSound->SoundFilename,"%s.%s",(char*)UI_ATTENTION_SOUND,(char*)TXT_FILE_EXT[FILETYPE_SOUND]);
           pMapSound->Volume =  IOMapUi.Volume;
           pMapSound->Mode   =  SOUND_ONCE;
           pMapSound->Flags |=  SOUND_UPDATE;
@@ -3714,7 +4315,7 @@ FUNCTION  Functions[] =                 // Use same index as FUNC_NO
   cUiVolume,
   cUiFileRun,
   cUiFileDelete,
-  0,
+  cUiDataLogging,
   cUiOnBrickProgramming,
   0,
   cUiBTConnectRequest,

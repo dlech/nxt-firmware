@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 9:42                                     $
+// Revision date   $Date:: 24-04-08 14:33                                    $
 //
 // Filename        $Workfile:: d_bt.c                                        $
 //
-// Version         $Revision:: 21                                            $
+// Version         $Revision:: 3                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_bt.c     $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_bt.c $
 //
 // Platform        C
 //
@@ -39,7 +39,6 @@ void      dBtInit(void)
   SETTimeout(0);
   BTInit;
   BTInitPIOPins;			
-  BTInitADC;
 }
 
 void      dBtSetBcResetPinLow(void)

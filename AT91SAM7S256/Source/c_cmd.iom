@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date: 14-06-06 8:09 $
+// Revision date   $Date: 3-02-09 9:28 $
 //
 // Filename        $Workfile:: c_cmd.iom                                     $
 //
-// Version         $Revision: 21 $
+// Version         $Revision: 5 $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_cmd.iom  $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_cmd. $
 //
 // Platform        C
 //
@@ -28,12 +28,13 @@
 //
 
 #define STAT_MSG_EMPTY_MAILBOX 64 //0x40 Specified mailbox contains no new messages
-
+#define STAT_MSG_BUFFERWRAP 16 //0x10 Datalog buffer not being read fast enough
 #define STAT_COMM_PENDING 32 //0x20 Pending setup operation in progress
 
-#define STOP_REQ      5 //0x05 Abort current program
-#define BREAKOUT_REQ  4 //0x04 Break multi-instruction interpreter loop; give I/O a chance to run
-#define PC_OVERRIDE   3 //0x03 Move program counter according to ScratchPC value
+#define TIMES_UP       6 //0x06 Return to let drivers run
+#define ROTATE_QUEUE  5 //0x05 Give a slice to another queue
+#define STOP_REQ      4 //0x04 Abort current program
+#define BREAKOUT_REQ  3 //0x03 Break multi-instruction interpreter loop; give I/O a chance to run
 #define CLUMP_SUSPEND 2 //0x02 Place clump in stasis; execute others until this one returns to RunQ
 #define CLUMP_DONE    1 //0x01 Finish and reset this clump; execute others until this one is rescheduled
 
@@ -99,9 +100,30 @@ enum
   RC_GET_CURR_PROGRAM,
   RC_GET_BUTTON_STATE,
   RC_MESSAGE_READ,
+  RC_RESERVED1,
+  RC_RESERVED2,
+  RC_RESERVED3,
+  RC_RESERVED4,
+  RC_RESERVED5,
+  RC_DATALOG_READ,
+  RC_DATALOG_SET_TIMES,
+  RC_BT_GET_CONTACT_COUNT,
+  RC_BT_GET_CONTACT_NAME,
+  RC_BT_GET_CONN_COUNT,
+  RC_BT_GET_CONN_NAME,
+  RC_SET_PROPERTY,
+  RC_GET_PROPERTY,
+  RC_UPDATE_RESET_COUNT,
+
   NUM_RC_OPCODES
 };
 
+// selectors for RC Get and Set properties
+enum {
+RC_PROP_BTONOFF,
+RC_PROP_SOUND_LEVEL,
+RC_PROP_SLEEP_TIMEOUT
+};
 
 //
 //Published status of last program to be activated
@@ -135,7 +157,6 @@ typedef enum
 //Current firmware version defined in c_loader.iom as FIRMWAREVERSION
 //This is the oldest compatible version in the same system
 #define VM_OLDEST_COMPATIBLE_VERSION 0x0004
-
 //
 //IO Map for Command Module
 // pRCHandler: Function pointer to handler for remote control protocol
@@ -173,6 +194,9 @@ typedef struct
   UBYTE FileName[FILENAME_LENGTH + 1];
 
   ULONG MemoryPool[POOL_MAX_SIZE / 4];
+
+  ULONG SyncTime;
+  ULONG SyncTick;
 } IOMAPCMD;
 
 #endif //CCMD_IOM

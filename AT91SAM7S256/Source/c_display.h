@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Dktochpe                                        $
+// Reviser         $Author:: Dkandlun                                        $
 //
-// Revision date   $Date:: 17-02-06 8:45                                     $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: c_display.h                                   $
 //
-// Version         $Revision:: 8                                             $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_display. $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_disp $
 //
 // Platform        C
 //

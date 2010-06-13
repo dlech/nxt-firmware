@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Dktochpe                                        $
+// Reviser         $Author: Dkflebun $
 //
-// Revision date   $Date:: 17-02-06 8:45                                     $
+// Revision date   $Date: 9-06-08 13:35 $
 //
 // Filename        $Workfile:: c_display.c                                   $
 //
-// Version         $Revision:: 36                                            $
+// Version         $Revision: 2 $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_display. $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_disp $
 //
 // Platform        C
 //
@@ -349,23 +349,13 @@ void      cDisplayFrame(SCREEN_CORDINATE *pCord)
 
 void      cDisplayEraseLine(UBYTE Line)
 {
-  UBYTE   Tmp;
-
-  for (Tmp = 0;Tmp < DISPLAY_WIDTH;Tmp++)
-  {
-    IOMapDisplay.Display[Line * DISPLAY_WIDTH + Tmp] = 0x00;
-  }
+  memset(&IOMapDisplay.Display[Line * DISPLAY_WIDTH], 0x00, DISPLAY_WIDTH);
 }
 
 
 void      cDisplayErase(void)
 {
-  UBYTE   Tmp;
-
-  for (Tmp = 0;Tmp < (DISPLAY_HEIGHT / 8);Tmp++)
-  {
-    cDisplayEraseLine(Tmp);
-  }
+  memset(&IOMapDisplay.Display[0], 0x00, DISPLAY_WIDTH*DISPLAY_HEIGHT/8);
 }
 
 

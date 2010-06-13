@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 10:06                                    $
+// Revision date   $Date:: 14-01-09 10:33                                    $
 //
 // Filename        $Workfile:: d_input.h                                     $
 //
-// Version         $Revision:: 6                                             $
+// Version         $Revision:: 12                                            $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_input.h  $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_inpu $
 //
 // Platform        C
 //
@@ -33,5 +33,16 @@ void      dInputSetDigi0(UBYTE Port);
 void      dInputSetDigi1(UBYTE Port);
 void      dInputRead0(UBYTE Port, UBYTE *pData);
 void      dInputRead1(UBYTE Port, UBYTE *pData);
+
+UBYTE     dInputGetColor(UBYTE No, UWORD *pCol);
+
+void      dInputColorTx(UBYTE Port, UBYTE Data);
+void      dInputReadCal(UBYTE Port, UBYTE *pData);
+UBYTE     dInputCheckColorStatus(UBYTE Port);
+void      dInputGetAllColors(COLORSTRUCT *pRaw, UBYTE Status);
+void      dInputSetColorClkInput(void);
+void      dInputClearColor100msTimer(UBYTE No);
+UBYTE     dInputChkColor100msTimer(UBYTE No);
+
 
 #endif

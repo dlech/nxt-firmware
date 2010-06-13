@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 19-09-06 15:05                                    $
+// Revision date   $Date:: 19-02-09 18:51                                    $
 //
 // Filename        $Workfile:: d_lowspeed.r                                  $
 //
-// Version         $Revision:: 24                                            $
+// Version         $Revision:: 4                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_lowspeed $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_lows $
 //
 // Platform        C
 //
@@ -51,6 +51,7 @@ typedef   struct
   UBYTE ReStartBit;
   UBYTE ComDeviceAddress;
   UBYTE RxWaitCnt;
+  UBYTE ClkStatus;
 }LOWSPEEDPARAMETERS;
 
 static LOWSPEEDPARAMETERS LowSpeedData[4];
@@ -271,8 +272,8 @@ ULONG CLK_PINS[4] = {CHANNEL_ONE_CLK, CHANNEL_TWO_CLK, CHANNEL_THREE_CLK, CHANNE
 										       }\
 										     }\
 										   }\
+                                                                                   LowSpeedData[ChannelNr].ClkStatus = 0;\
                                          }
-
 
 #define SETClkHigh(ChannelNr)            {\
 										   if (ChannelNr == 0)\
@@ -300,6 +301,7 @@ ULONG CLK_PINS[4] = {CHANNEL_ONE_CLK, CHANNEL_TWO_CLK, CHANNEL_THREE_CLK, CHANNE
 										       }\
 										     }\
 										   }\
+                                                                                   LowSpeedData[ChannelNr].ClkStatus = 1;\
                                          }
 
 #define SETDataLow(ChannelNr)            {\
@@ -444,35 +446,37 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
 
   for (ChannelNr = 0; ChannelNr < NO_OF_LOWSPEED_COM_CHANNEL; ChannelNr++)
   {
-    switch(LowSpeedData[ChannelNr].ChannelState)
+    if (((LowSpeedData[ChannelNr].ClkStatus == 1) && (PinStatus & CLK_PINS[ChannelNr])) || (((LowSpeedData[ChannelNr].ClkStatus == 0) && (!(PinStatus & CLK_PINS[ChannelNr])))))
     {
-      case LOWSPEED_IDLE:
+      switch(LowSpeedData[ChannelNr].ChannelState)
       {
-      }
-      break;
-
-      case LOWSPEED_TX_STOP_BIT:
-      {
-        SETDataHigh(ChannelNr);
-        LowSpeedData[ChannelNr].ChannelState = LOWSPEED_IDLE;                                     //Now we have send a STOP sequence, disable this channel
-      }
-      break;
-
-      case LOWSPEED_TRANSMITTING:
-      {
-        switch(LowSpeedData[ChannelNr].TxState)
+        case LOWSPEED_IDLE:
         {
-          case TX_DATA_MORE_DATA:
-          {
-            PinStatus |= CLK_PINS[ChannelNr];
-            LowSpeedData[ChannelNr].TxState = TX_DATA_CLK_HIGH;
-          }
-          break;
+        }
+        break;
 
-          case TX_DATA_CLK_HIGH:
+        case LOWSPEED_TX_STOP_BIT:
+        {
+          SETDataHigh(ChannelNr);
+          LowSpeedData[ChannelNr].ChannelState = LOWSPEED_IDLE;                                     //Now we have send a STOP sequence, disable this channel
+        }
+        break;
+
+        case LOWSPEED_TRANSMITTING:
+        {
+          switch(LowSpeedData[ChannelNr].TxState)
           {
-            SETClkLow(ChannelNr);
-            if (LowSpeedData[ChannelNr].MaskBit == 0)     				                           //Is Byte Done, then we need a ack from receiver
+            case TX_DATA_MORE_DATA:
+            {
+              PinStatus |= CLK_PINS[ChannelNr];
+              LowSpeedData[ChannelNr].TxState = TX_DATA_CLK_HIGH;
+            }
+            break;
+
+            case TX_DATA_CLK_HIGH:
+            {
+              SETClkLow(ChannelNr);
+              if (LowSpeedData[ChannelNr].MaskBit == 0)     				                           //Is Byte Done, then we need a ack from receiver
             {
               SETDataToInput(ChannelNr);                                                             //Set datapin to input
               LowSpeedData[ChannelNr].TxState = TX_DATA_READ_ACK_CLK_LOW;
@@ -723,6 +727,18 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
 
       default:
       break;
+      }
+    }
+    else
+    {
+
+      if (LOWSPEED_IDLE != LowSpeedData[ChannelNr].ChannelState)
+      {
+        //Data communication error !
+        LowSpeedData[ChannelNr].TxByteCnt = 0;
+        SETClkHigh(ChannelNr);
+        LowSpeedData[ChannelNr].ChannelState = LOWSPEED_TX_STOP_BIT;
+      }
     }
   }
 }
@@ -758,20 +774,21 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
 #define TxData(ChannelNumber, Status, DataOutBuffer, NumberOfByte) {\
 											     if (ChannelNumber == LOWSPEED_CHANNEL1)\
 											     {\
-											       if (GetDataComOnePinLevel && GetClkComOnePinLevel)\
+											       if ((GetDataComOnePinLevel && GetClkComOnePinLevel) && (LowSpeedData[LOWSPEED_CHANNEL1].ChannelState == LOWSPEED_IDLE))\
 										           {\
 									                 *AT91C_PIOA_PER   = CHANNEL_ONE_CLK | CHANNEL_ONE_DATA; /* Enable PIO on PA20 & PA28 */\
 												     *AT91C_PIOA_OER   = CHANNEL_ONE_CLK | CHANNEL_ONE_DATA; /* PA20 & PA28 set to Output  */\
 												     *AT91C_PIOA_PPUDR = CHANNEL_ONE_CLK | CHANNEL_ONE_DATA; /* Disable Pull-up resistor  */\
 												     SETClkComOneHigh;\
-									                 LowSpeedData[LOWSPEED_CHANNEL1].pComOutBuffer = DataOutBuffer;\
+                                                                                                      SETDataComOneLow;\
+                                                                                                     LowSpeedData[LOWSPEED_CHANNEL1].ClkStatus = 1;\
+                                                                                                     LowSpeedData[LOWSPEED_CHANNEL1].pComOutBuffer = DataOutBuffer;\
 									                 LowSpeedData[LOWSPEED_CHANNEL1].ComDeviceAddress = *LowSpeedData[LOWSPEED_CHANNEL1].pComOutBuffer;\
 									                 LowSpeedData[LOWSPEED_CHANNEL1].MaskBit = MASK_BIT_8;\
 										             LowSpeedData[LOWSPEED_CHANNEL1].TxByteCnt = NumberOfByte;\
-										             LowSpeedData[LOWSPEED_CHANNEL1].ChannelState = LOWSPEED_TRANSMITTING;\
 									                 LowSpeedData[LOWSPEED_CHANNEL1].TxState = TX_DATA_CLK_HIGH;\
-										             SETDataComOneLow;\
 										             LowSpeedData[LOWSPEED_CHANNEL1].AckStatus = 0;\
+                                                                                             LowSpeedData[LOWSPEED_CHANNEL1].ChannelState = LOWSPEED_TRANSMITTING;\
 									                 Status = 1;\
 									               }\
 									               else\
@@ -781,20 +798,21 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
 											     }\
 											     if (ChannelNumber == LOWSPEED_CHANNEL2)\
 											     {\
-											       if (GetDataComTwoPinLevel && GetClkComTwoPinLevel)\
+											       if ((GetDataComTwoPinLevel && GetClkComTwoPinLevel) && (LowSpeedData[LOWSPEED_CHANNEL2].ChannelState == LOWSPEED_IDLE))\
 										           {\
 									                 *AT91C_PIOA_PER   = CHANNEL_TWO_CLK | CHANNEL_TWO_DATA; /* Enable PIO on PA20 & PA28 */\
 												     *AT91C_PIOA_OER   = CHANNEL_TWO_CLK | CHANNEL_TWO_DATA; /* PA20 & PA28 set to Output  */\
 												     *AT91C_PIOA_PPUDR = CHANNEL_TWO_CLK | CHANNEL_TWO_DATA; /* Disable Pull-up resistor  */\
 												     SETClkComTwoHigh;\
+										             SETDataComTwoLow;\
+                                                                                             LowSpeedData[LOWSPEED_CHANNEL2].ClkStatus = 1;\
 									                 LowSpeedData[LOWSPEED_CHANNEL2].pComOutBuffer = DataOutBuffer;\
 									                 LowSpeedData[LOWSPEED_CHANNEL2].ComDeviceAddress = *LowSpeedData[LOWSPEED_CHANNEL2].pComOutBuffer;\
 									                 LowSpeedData[LOWSPEED_CHANNEL2].MaskBit = MASK_BIT_8;\
 										             LowSpeedData[LOWSPEED_CHANNEL2].TxByteCnt = NumberOfByte;\
-										             LowSpeedData[LOWSPEED_CHANNEL2].ChannelState = LOWSPEED_TRANSMITTING;\
 									                 LowSpeedData[LOWSPEED_CHANNEL2].TxState = TX_DATA_CLK_HIGH;\
-										             SETDataComTwoLow;\
 										             LowSpeedData[LOWSPEED_CHANNEL2].AckStatus = 0;\
+   										             LowSpeedData[LOWSPEED_CHANNEL2].ChannelState = LOWSPEED_TRANSMITTING;\
 									                 Status = 1;\
 									               }\
 									               else\
@@ -804,20 +822,21 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
 											     }\
 											     if (ChannelNumber == LOWSPEED_CHANNEL3)\
 											     {\
-											       if (GetDataComThreePinLevel && GetClkComThreePinLevel)\
+											       if ((GetDataComThreePinLevel && GetClkComThreePinLevel) && (LowSpeedData[LOWSPEED_CHANNEL3].ChannelState == LOWSPEED_IDLE))\
 										           {\
 									                 *AT91C_PIOA_PER   = CHANNEL_THREE_CLK | CHANNEL_THREE_DATA; /* */\
 												     *AT91C_PIOA_OER   = CHANNEL_THREE_CLK | CHANNEL_THREE_DATA; /* */\
 												     *AT91C_PIOA_PPUDR = CHANNEL_THREE_CLK | CHANNEL_THREE_DATA; /* */\
 												     SETClkComThreeHigh;\
+                                                                                                      SETDataComThreeLow;\
+                                                                                                      LowSpeedData[LOWSPEED_CHANNEL3].ClkStatus = 1;\
 									                 LowSpeedData[LOWSPEED_CHANNEL3].pComOutBuffer = DataOutBuffer;\
 									                 LowSpeedData[LOWSPEED_CHANNEL3].ComDeviceAddress = *LowSpeedData[LOWSPEED_CHANNEL3].pComOutBuffer;\
 									                 LowSpeedData[LOWSPEED_CHANNEL3].MaskBit = MASK_BIT_8;\
 										             LowSpeedData[LOWSPEED_CHANNEL3].TxByteCnt = NumberOfByte;\
-										             LowSpeedData[LOWSPEED_CHANNEL3].ChannelState = LOWSPEED_TRANSMITTING;\
 									                 LowSpeedData[LOWSPEED_CHANNEL3].TxState = TX_DATA_CLK_HIGH;\
-										             SETDataComThreeLow;\
 										             LowSpeedData[LOWSPEED_CHANNEL3].AckStatus = 0;\
+ 										             LowSpeedData[LOWSPEED_CHANNEL3].ChannelState = LOWSPEED_TRANSMITTING;\
 									                 Status = 1;\
 									               }\
 									               else\
@@ -827,20 +846,21 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
 											     }\
 											     if (ChannelNumber == LOWSPEED_CHANNEL4)\
 											     {\
-											       if (GetDataComFourPinLevel && GetClkComFourPinLevel)\
+											       if ((GetDataComFourPinLevel && GetClkComFourPinLevel) && (LowSpeedData[LOWSPEED_CHANNEL4].ChannelState == LOWSPEED_IDLE))\
 										           {\
 									                 *AT91C_PIOA_PER   = CHANNEL_FOUR_CLK | CHANNEL_FOUR_DATA; /* */\
 												     *AT91C_PIOA_OER   = CHANNEL_FOUR_CLK | CHANNEL_FOUR_DATA; /* */\
 												     *AT91C_PIOA_PPUDR = CHANNEL_FOUR_CLK | CHANNEL_FOUR_DATA; /* */\
 												     SETClkComFourHigh;\
+                                                                                                     SETDataComFourLow;\
+                                                                                                     LowSpeedData[LOWSPEED_CHANNEL4].ClkStatus = 1;\
 									                 LowSpeedData[LOWSPEED_CHANNEL4].pComOutBuffer = DataOutBuffer;\
 									                 LowSpeedData[LOWSPEED_CHANNEL4].ComDeviceAddress = *LowSpeedData[LOWSPEED_CHANNEL4].pComOutBuffer;\
 									                 LowSpeedData[LOWSPEED_CHANNEL4].MaskBit = MASK_BIT_8;\
 										             LowSpeedData[LOWSPEED_CHANNEL4].TxByteCnt = NumberOfByte;\
-										             LowSpeedData[LOWSPEED_CHANNEL4].ChannelState = LOWSPEED_TRANSMITTING;\
 									                 LowSpeedData[LOWSPEED_CHANNEL4].TxState = TX_DATA_CLK_HIGH;\
-										             SETDataComFourLow;\
 										             LowSpeedData[LOWSPEED_CHANNEL4].AckStatus = 0;\
+   										             LowSpeedData[LOWSPEED_CHANNEL4].ChannelState = LOWSPEED_TRANSMITTING;\
 									                 Status = 1;\
 									               }\
 									               else\
@@ -863,7 +883,7 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
 #define STATUSTxCom(ChannelNumber, Status)     {\
 											     if (LowSpeedData[ChannelNumber].ChannelState != 0)\
 											     {\
-											       if (LowSpeedData[ChannelNumber].TxByteCnt == 0)\
+											       if ((LowSpeedData[ChannelNumber].TxByteCnt == 0) && (LowSpeedData[ChannelNumber].ChannelState != LOWSPEED_RESTART_CONDITION))\
 											       {\
 											         if (LowSpeedData[ChannelNumber].MaskBit == 0)\
 											         {\
@@ -873,7 +893,7 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
 											           }\
 											           else\
 											           {\
-											             Status = 0xFF; /* TX ERROR */\
+                                                                                                     Status = 0xFF; /* TX ERROR */\
 											           }\
 											         }\
 											         else\

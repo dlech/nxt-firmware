@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 8:27                                     $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: d_loader.r                                    $
 //
-// Version         $Revision:: 8                                             $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_loader.r $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_load $
 //
 // Platform        C
 //

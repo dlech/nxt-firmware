@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 10:06                                    $
+// Revision date   $Date:: 14-01-09 10:33                                    $
 //
 // Filename        $Workfile:: c_input.h                                     $
 //
-// Version         $Revision:: 9                                             $
+// Version         $Revision:: 7                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_input.h  $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_inpu $
 //
 // Platform        C
 //
@@ -37,12 +37,26 @@ extern    const HEADER cInput;
 
 typedef   struct
 {
-  UWORD   InvalidTimer[NO_OF_INPUTS];
-  UBYTE   InputDebounce[NO_OF_INPUTS];
-  UBYTE   EdgeCnt[NO_OF_INPUTS];
-  UBYTE   LastAngle[NO_OF_INPUTS];
-  UBYTE   OldSensorType[NO_OF_INPUTS];
-  UBYTE   SampleCnt[NO_OF_INPUTS];
+  UBYTE   ColorInputDebounce [NO_OF_COLORS];
+  UBYTE   ColorEdgeCnt       [NO_OF_COLORS];
+  UBYTE   ColorLastAngle     [NO_OF_COLORS];
+  UBYTE   ColorSampleCnt     [NO_OF_COLORS];
+  UBYTE   ColorInitState;
+  UBYTE   ReadCnt;
+} VARSCOLOR;
+
+
+typedef   struct
+{
+  UWORD     InvalidTimer  [NO_OF_INPUTS];
+  UBYTE     InputDebounce [NO_OF_INPUTS];
+  UBYTE     EdgeCnt       [NO_OF_INPUTS];
+  UBYTE     LastAngle     [NO_OF_INPUTS];
+  UBYTE     OldSensorType [NO_OF_INPUTS];
+  UBYTE     SampleCnt     [NO_OF_INPUTS];
+  VARSCOLOR VarsColor     [NO_OF_INPUTS];
+  UBYTE     ColorCnt;
+  UBYTE     ColorStatus;
 }VARSINPUT;
 
 void      cInputInit(void* pHeader);

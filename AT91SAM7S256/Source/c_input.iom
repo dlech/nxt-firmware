@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 10:06                                    $
+// Revision date   $Date:: 24-09-08 15:23                                    $
 //
 // Filename        $Workfile:: c_input.iom                                   $
 //
-// Version         $Revision:: 15                                            $
+// Version         $Revision:: 16                                            $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_input.io $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_inpu $
 //
 // Platform        C
 //
@@ -22,20 +22,26 @@
 /* Constants related to sensor type  */
 enum
 {
-  NO_SENSOR           = 0,
-  SWITCH              = 1,
-  TEMPERATURE         = 2,
-  REFLECTION          = 3,
-  ANGLE               = 4,
-  LIGHT_ACTIVE        = 5,
-  LIGHT_INACTIVE      = 6,
-  SOUND_DB            = 7,
-  SOUND_DBA           = 8,
-  CUSTOM              = 9,
+  NO_SENSOR           =  0,
+  SWITCH              =  1,
+  TEMPERATURE         =  2,
+  REFLECTION          =  3,
+  ANGLE               =  4,
+  LIGHT_ACTIVE        =  5,
+  LIGHT_INACTIVE      =  6,
+  SOUND_DB            =  7,
+  SOUND_DBA           =  8,
+  CUSTOM              =  9,
   LOWSPEED            = 10,
   LOWSPEED_9V         = 11,
   HIGHSPEED           = 12,
-  NO_OF_SENSOR_TYPES  = 13
+  COLORFULL           = 13,
+  COLORRED            = 14,
+  COLORGREEN          = 15,
+  COLORBLUE           = 16,
+  COLORNONE           = 17,
+  COLOREXIT           = 18, /* For internal use when going from color or Lamp to no_sensor*/
+  NO_OF_SENSOR_TYPES  = 18
 };
 
 /* Constants related to sensor mode */
@@ -69,12 +75,57 @@ enum
 
 enum
 {
-  INVALID_DATA   = 0x01
+  INVALID_DATA      = 0x01
 };
+
+/* Constants related to Colorstruct */
+enum
+{
+  RED,
+  GREEN,
+  BLUE,
+  BLANK,
+  NO_OF_COLORS
+};
+
+
+/* Constants related to color sensor value using */
+/* Color sensor as color detector                */
+enum
+{
+  BLACKCOLOR   = 1,
+  BLUECOLOR    = 2,
+  GREENCOLOR   = 3,
+  YELLOWCOLOR  = 4,
+  REDCOLOR     = 5,
+  WHITECOLOR   = 6
+};
+
+
+/* Constants related to Color CalibrationState */
+/* When STARTCAL is TRUE then calibration is   */
+/* in progress                                 */
+enum
+{
+  SENSORCAL     = 0x01,
+  SENSOROFF     = 0x02,
+  RUNNINGCAL    = 0x20,
+  STARTCAL      = 0x40,
+  RESETCAL      = 0x80,
+};
+
+enum
+{
+  CAL_POINT_0,
+  CAL_POINT_1,
+  CAL_POINT_2,
+  NO_OF_POINTS
+};
+
 
 typedef   struct
 {
-  UWORD   CustomZeroOffset;    /* Set the offset of the custom sensor                          */
+  UWORD   CustomZeroOffset;    /* Set the offset of the custom sensor  */
   UWORD   ADRaw;
   UWORD   SensorRaw;
   SWORD   SensorValue;
@@ -90,17 +141,32 @@ typedef   struct
   UBYTE   CustomActiveStatus;  /* Sets the active or inactive state of the custom sensor       */
 
   UBYTE   InvalidData;         /* Indicates wether data is invalid (1) or valid (0)            */
-  
+
   UBYTE   Spare1;
   UBYTE   Spare2;
   UBYTE   Spare3;
 
-}INPUT;
-
+}INPUTSTRUCT;
 
 typedef   struct
 {
-  INPUT   Inputs[NO_OF_INPUTS];
+
+  ULONG   Calibration[NO_OF_POINTS][NO_OF_COLORS];
+  UWORD   CalLimits[NO_OF_POINTS - 1];
+  UWORD   ADRaw[NO_OF_COLORS];
+  UWORD   SensorRaw[NO_OF_COLORS];
+  SWORD   SensorValue[NO_OF_COLORS];
+  UBYTE   Boolean[NO_OF_COLORS];
+  UBYTE   CalibrationState;
+  UBYTE   Free1;
+  UBYTE   Free2;
+  UBYTE   Free3;
+}COLORSTRUCT;
+
+typedef   struct
+{
+  INPUTSTRUCT   Inputs[NO_OF_INPUTS];
+  COLORSTRUCT   Colors[NO_OF_INPUTS];
 }IOMAPINPUT;
 
 #endif

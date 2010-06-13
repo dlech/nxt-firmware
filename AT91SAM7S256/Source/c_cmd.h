@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 24-07-06 8:52                                     $
+// Revision date   $Date: 10-07-08 13:22 $
 //
 // Filename        $Workfile:: c_cmd.h                                       $
 //
-// Version         $Revision:: 43                                            $
+// Version         $Revision: 8 $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_cmd.h    $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_cmd. $
 //
 // Platform        C
 //
@@ -27,7 +27,7 @@
 #endif
 
 #include "c_cmd_bytecodes.h"
-#define SYSCALL_COUNT 34
+#define SYSCALL_COUNT 48
 
 extern    const HEADER cCmd;
 
@@ -54,7 +54,7 @@ void      cCmdExit(void);
 //Define it as 0 to compile alternate implementation for testing (see bottom of c_cmd.c)
 //
 #define ENABLE_VM 1
-
+#undef ARM_DEBUG
 //
 //VM_BENCHMARK enables extra instrumentation code to measure VM performance.
 //When enabled, a file named "benchmark.txt" is produced every time a program completes.
@@ -84,7 +84,7 @@ void cCmdWriteBenchmarkFile();
 //Assert definitions behind ARM_DEBUG aren't quite as handy as WIN_DEBUG,
 // but they do record the code line causing the last assert failure.
 //
-#elif defined ARM_DEBUG
+#elif defined(ARM_DEBUG)
 #define NXT_ASSERT(expr) if (expr) {}\
                          else\
                          {\
@@ -107,9 +107,6 @@ void cCmdWriteBenchmarkFile();
 //!!!JLOFTUS Replace with NXT_STATUS?  Same for ASSERTS? Others? Risk factors?
 //
 typedef SBYTE NXT_STATUS;
-
-//dTimerRead() constantly returns latest system MS tick, so empty loop is convenient macro
-#define BUSY_WAIT_NEXT_MS while (IOMapCmd.Tick == dTimerRead())
 
 #if ENABLE_VM
 
@@ -134,14 +131,15 @@ enum
   TC_UWORD,
   TC_SWORD,
   TC_ULONG,
-  TC_SLONG,
+  TC_SLONG, TC_LAST_INT_SCALAR= TC_SLONG,
 
   //Aggregate types containing one or more scalar
   TC_ARRAY,
   TC_CLUSTER,
 
   //Mutex tracks current holder and any waiting clumps
-  TC_MUTEX
+  TC_MUTEX,
+  TC_FLOAT, TC_LAST_VALID= TC_FLOAT
 };
 
 //Sizes (in bytes) of each scalar type
@@ -151,6 +149,7 @@ enum
 #define SIZE_SWORD 2
 #define SIZE_ULONG 4
 #define SIZE_SLONG 4
+#define SIZE_FLOAT 4
 
 //MUTEX record is a struct containing 3 8-bit CLUMP_IDs, packed into 32-bit word
 //See MUTEX_Q typedef
@@ -250,14 +249,13 @@ typedef UBYTE FILE_HANDLE;
 typedef UWORD DV_INDEX; //Dope Vector Index: Index into the DopeVectorArray
 
 //DOPE_VECTOR struct: One instance exists in the DopeVectorArray for every array in the dataspace.
-//!!! BackPtr is an unused field.  Intended to enable compaction of DopeVectorArray.
 typedef struct
 {
   UWORD Offset;
   UWORD ElemSize;
   UWORD Count;
-  UWORD BackPtr;
-  DV_INDEX Link;
+  DV_INDEX BackLink; // points to previous DV
+  DV_INDEX Link; // points to next DV
 } DOPE_VECTOR;
 
 //
@@ -278,7 +276,7 @@ typedef struct
 //Macro to shorten common DVA access code
 #define DV_ARRAY VarsCmd.MemMgr.pDopeVectorArray
 //# of nodes to alloc when the Dope Vector Array is full
-#define DV_ARRAY_GROWTH_COUNT 5
+#define DV_ARRAY_GROWTH_COUNT 25
 //Flag value for invalid Offset fields in DVs
 #define NOT_AN_OFFSET 0xFFFF
 //Check for legal index into DVA
@@ -322,6 +320,36 @@ typedef struct
 #define SET_WRITE_MSG(QueueID, DVIndex) (VarsCmd.MessageQueues[(QueueID)].Messages[VarsCmd.MessageQueues[(QueueID)].WriteIndex] = (DVIndex))
 #define SET_READ_MSG(QueueID, DVIndex) (VarsCmd.MessageQueues[(QueueID)].Messages[VarsCmd.MessageQueues[(QueueID)].ReadIndex] = (DVIndex))
 
+//
+// Datalog Queuing
+//
+// The datalog queue is loosely modeled around the message queue except that there is only one queue, not an array of them.
+//
+
+// A datalog has one less byte of 'header' info so different max size
+#define MAX_DATALOG_SIZE    60
+
+// The number of datalog messages to buffer
+#define DATALOG_QUEUE_DEPTH  30
+
+// A DATALOG_MESSAGE is a dynamically sized string, so we use a DV_INDEX to get to its information
+typedef DV_INDEX DATALOG_MESSAGE;
+
+//
+// DATALOG_QUEUE keeps track of last messages read and written (acts as a circular buffer)
+typedef struct
+{
+  UWORD ReadIndex;
+  UWORD WriteIndex;
+  DATALOG_MESSAGE Datalogs[DATALOG_QUEUE_DEPTH];
+} DATALOG_QUEUE;
+
+//Handy macros for accessing the DATALOG_QUEUE
+#define GET_WRITE_DTLG() (VarsCmd.DatalogBuffer.Datalogs[VarsCmd.DatalogBuffer.WriteIndex])
+#define GET_READ_DTLG() (VarsCmd.DatalogBuffer.Datalogs[VarsCmd.DatalogBuffer.ReadIndex])
+#define SET_WRITE_DTLG(DVIndex) (VarsCmd.DatalogBuffer.Datalogs[VarsCmd.DatalogBuffer.WriteIndex] = (DVIndex))
+#define SET_READ_DTLG(DVIndex) (VarsCmd.DatalogBuffer.Datalogs[VarsCmd.DatalogBuffer.ReadIndex] = (DVIndex))
+
 
 //
 //Definitions related to dataflow scheduling
@@ -336,6 +364,7 @@ typedef UBYTE CLUMP_ID;
 //
 #define NOT_A_CLUMP 0xFF
 #define MAX_CLUMPS  255
+#define INSTR_MAX_COUNT 20
 
 //CLUMP_Q struct for tracking head and tail of a queue of clumps
 typedef struct
@@ -359,30 +388,32 @@ typedef struct
 //
 // Clump Record, run-time book-keeping for each clump
 //
-// CodeStart: Start of this clump's bytecodes
-// CodeEnd: End of this clump's bytecodes
+// CodeStart: Start of this clump's bytecodes, absolute address
+// CodeEnd: End of this clump's bytecodes, absolute address
 // PC: "program counter" -- current offset into codespace relative to CodeStart
 // InitFireCount: Initial count of upstream dependencies
 // CurrFireCount: Run-time count of unsatisfied dependencies
 // Link: ID of next clump in the queue.  NOT_A_CLUMP denotes end or bad link.
 //
-// Priority: number of instructions to run per pass on this clump
+// clumpScalarDispatchHints: this clump only uses scalar data args, can be interpretted with faster dispatch tables
 //
 // pDependents: pointer to list of downstream dependents' ClumpIDs
+// awakenTime: If a clump is on rest queue for sleep, this is the time at which it will return to runQueue
 // DependentCount: Count of downstream dependents
 //
 typedef struct
 {
-  CODE_INDEX  CodeStart;
-  CODE_INDEX  CodeEnd;
-  CODE_INDEX PC;
+  CODE_WORD*  CodeStart;
+  CODE_WORD*  CodeEnd;
+  CODE_WORD*  PC;
   UBYTE     InitFireCount;
   UBYTE     CurrFireCount; //AKA ShortCount
   CLUMP_ID  Link;
 
-  UBYTE     Priority;
+  UBYTE     clumpScalarDispatchHints;
 
   CLUMP_ID* pDependents;
+  ULONG     awakenTime;
   UBYTE     DependentCount;
 } CLUMP_REC;
 
@@ -430,7 +461,6 @@ typedef enum
 //AllClumpsCount: Count of CLUMP_RECs in list
 //
 //RunQ: Head and tail of run queue (elements in-place in AllClumps list)
-//ScratchPC: Temp PC value for control flow instructions
 //
 //pDataspaceTOC: Pointer to DSTOC entries (stored in flash)
 //DataspaceCount: Count of entries in DSTOC
@@ -485,8 +515,7 @@ typedef struct
   MEM_MGR   MemMgr;
 
   CLUMP_Q    RunQ;
-  CODE_INDEX ScratchPC;
-  CLUMP_ID   CallerClump;
+  CLUMP_Q    RestQ;
 
   UBYTE ActiveProgHandle;
   UBYTE ActiveProgName[FILENAME_LENGTH + 1];
@@ -503,6 +532,8 @@ typedef struct
   UBYTE DirtyDisplay;
 
   ULONG StartTick;
+
+  DATALOG_QUEUE DatalogBuffer;
 
 #if VM_BENCHMARK
   ULONG InstrCount;
@@ -562,13 +593,17 @@ NXT_STATUS cCmdInflateDSDefaults(UBYTE* pDSDefaults, UWORD *pDefaultsOffset, DS_
 //Clump queuing
 void cCmdEnQClump(CLUMP_Q * Queue, CLUMP_ID NewClump);
 void cCmdDeQClump(CLUMP_Q * Queue, CLUMP_ID Clump);
-void cCmdRotateQ(CLUMP_Q * Queue);
+void cCmdRotateQ();
 UBYTE cCmdIsClumpOnQ(CLUMP_Q * Queue, CLUMP_ID Clump);
 UBYTE cCmdIsQSane(CLUMP_Q * Queue);
 
+// Rest queue functions
+NXT_STATUS cCmdSleepClump(ULONG time);
+UBYTE cCmdCheckRestQ(ULONG currTime);
+
 //Mutex queuing
-NXT_STATUS cCmdAcquireMutex(MUTEX_Q * Mutex, CLUMP_ID Clump);
-NXT_STATUS cCmdReleaseMutex(MUTEX_Q * Mutex, CLUMP_ID Clump);
+NXT_STATUS cCmdAcquireMutex(MUTEX_Q * Mutex);
+NXT_STATUS cCmdReleaseMutex(MUTEX_Q * Mutex);
 
 //Conditionally schedule dependents of given clump (Begin and End specify subset of list)
 NXT_STATUS cCmdSchedDependents(CLUMP_ID Clump, SWORD Begin, SWORD End);
@@ -585,21 +620,13 @@ UBYTE cCmdIsClumpIDSane(CLUMP_ID Clump);
 
 //Instruction masking macros -- get the interesting bits out of an encoded instruction word
 #define COMP_CODE(pInstr)   ((UBYTE)((((pInstr)[0]) & 0x0700) >> 8))
-#define INSTR_SIZE(pInstr)  ((UBYTE)((((pInstr)[0]) & 0xF000) >> 12))
+#define INSTR_SIZE(wd)      ((wd) >> 12) & 0x0F;
 
-#ifdef USE_SHORT_OPS
-//!!! IS_SHORT_OP and SHORT_OP_CODE do not check for insane (out of bounds) data. Accessor function would be safer.
 #define IS_SHORT_OP(pInstr)   ((UBYTE)((((pInstr)[0]) & 0x0800) >> 8) == 8)
 #define SHORT_OP_CODE(pInstr) COMP_CODE(pInstr)
 #define SHORT_ARG(pInstr)     ((SBYTE) (((pInstr)[0]) & 0x00FF))
 //ShortOpMap defined in c_cmd_bytecodes.h
-#define OP_CODE(pInstr)       (IS_SHORT_OP(pInstr) ? ShortOpMap[SHORT_OP_CODE(pInstr)] : (UBYTE) (((pInstr)[0]) & 0x00FF))
-#else
-#define OP_CODE(pInstr)       ((UBYTE) (((pInstr)[0]) & 0x00FF))
-#endif
-
-//Access count of codewords belonging to Clump. If no clump specified, return count of all codewords in program.
-CODE_INDEX cCmdGetCodespaceCount(CLUMP_ID Clump);
+#define OP_CODE(pInstr)       (UBYTE) (((pInstr)[0]) & 0x00FF)
 
 //
 //Memory pool management
@@ -615,10 +642,9 @@ NXT_STATUS cCmdDVArrayAlloc(DV_INDEX DVIndex, UWORD NewCount);
 
 NXT_STATUS cCmdAllocSubArrayDopeVectors(DS_ELEMENT_ID DSElementID, UWORD Offset);
 NXT_STATUS cCmdFreeSubArrayDopeVectors(DS_ELEMENT_ID DSElementID, UWORD Offset);
-NXT_STATUS cCmdAllocDopeVector(DV_INDEX *pIndex, UWORD ElemSize, UWORD BackPtr);
+NXT_STATUS cCmdAllocDopeVector(DV_INDEX *pIndex, UWORD ElemSize);
 NXT_STATUS cCmdFreeDopeVector(DV_INDEX DVIndex);
 NXT_STATUS cCmdGrowDopeVectorArray(UWORD NewCount);
-NXT_STATUS cCmdCompactDopeVectorArray(void);
 
 UWORD cCmdCalcArrayElemSize(DS_ELEMENT_ID DSElementID);
 
@@ -639,17 +665,34 @@ NXT_STATUS cCmdMessageRead(UWORD QueueID, UBYTE * pData, UWORD Length, UBYTE Rem
 NXT_STATUS cCmdMessageGetSize(UWORD QueueID, UWORD * Size);
 
 //
+// Datalog Queue management
+//
+
+NXT_STATUS cCmdDatalogWrite(UBYTE * pData, UWORD Length);
+NXT_STATUS cCmdDatalogRead(UBYTE * pData, UWORD Length, UBYTE Remove);
+NXT_STATUS cCmdDatalogGetSize(UWORD * Size);
+
+//
+// Color Sensor
+//
+
+NXT_STATUS cCmdColorSensorRead (UBYTE Port, SWORD* SensorValue, UWORD* RawArray, UWORD* NormalizedArray,
+								SWORD* ScaledArray, UBYTE* InvalidData);
+
+//
 //Dataspace management
 //
 
 #define IS_AGGREGATE_TYPE(TypeCode) ((TypeCode == TC_ARRAY) || (TypeCode == TC_CLUSTER))
+// use carefully, only where tc will be a scalar int
+#define QUICK_UNSIGNED_TEST(TypeCode) ((TypeCode) & 0x1)
 #define IS_SIGNED_TYPE(TypeCode) (((TypeCode) == TC_SBYTE) || ((TypeCode) == TC_SWORD) || ((TypeCode) == TC_SLONG))
+//!!!BDUGGAN add TC_FLOAT?
 
 //Test if DS_ELEMENT_ID is sane at run-time (valid for indexing DS TOC)
 UBYTE cCmdIsDSElementIDSane(DS_ELEMENT_ID Index);
 
 DS_ELEMENT_ID cCmdGetDataspaceCount(void);
-TYPE_CODE cCmdDSType(DS_ELEMENT_ID DSElementID);
 
 //Pointer accessors to resolve actual data locations in RAM
 void* cCmdDSPtr(DS_ELEMENT_ID DSElementID, UWORD Offset);
@@ -669,6 +712,7 @@ NXT_STATUS cCmdUnflattenFromByteArray(UBYTE * pByteArray, UWORD * pByteOffset, D
 //Comparison evaluation.  Comparison codes defined in c_cmd_bytecodes.h.
 //cCmdCompare operates on scalars passed as ULONGs -- type-specific comparisons done inside function.
 UBYTE cCmdCompare(UBYTE CompCode, ULONG Val1, ULONG Val2, TYPE_CODE TypeCode1, TYPE_CODE TypeCode2);
+UBYTE cCmdCompareFlt(UBYTE CompCode, float Val1, float Val2, TYPE_CODE TypeCode1, TYPE_CODE TypeCode2);
 //cCmdCompareAggregates does polymorphic comparisons (with recursive helper function).
 NXT_STATUS cCmdCompareAggregates(UBYTE CompCode, UBYTE *ReturnBool, DATA_ARG Arg2, UWORD Offset2, DATA_ARG Arg3, UWORD Offset3);
 NXT_STATUS cCmdRecursiveCompareAggregates(UBYTE CompCode, UBYTE *ReturnBool, UBYTE *Finished, DATA_ARG Arg2, UWORD Offset2, DATA_ARG Arg3, UWORD Offset3);
@@ -689,36 +733,53 @@ TYPE_CODE cCmdArrayType(DS_ELEMENT_ID DSElementID);
 
 //General data accessors (DS and IO Map)
 void * cCmdResolveDataArg(DATA_ARG DataArg, UWORD Offset, TYPE_CODE * TypeCode);
+void * cCmdResolveIODataArg(DATA_ARG DataArg, ULONG Offset, TYPE_CODE * TypeCode);
 ULONG cCmdGetVal(void * pVal, TYPE_CODE TypeCode);
 void cCmdSetVal(void * pVal, TYPE_CODE TypeCode, ULONG NewVal);
-UWORD cCmdSizeOf(TYPE_CODE TypeCode);
+
+// Calibration routines
+void cCmdLoadCalibrationFiles(void);
+NXT_STATUS cCmdComputeCalibratedValue(UBYTE *nm, SWORD *raw);
+void cCmdUpdateCalibrationCache(UBYTE *nm, SWORD min, SWORD max);
 
 //
 //Interpreter functions
 //
 
 //Clump-based "master" interpreter
-NXT_STATUS cCmdInterpFromClump(CLUMP_ID Clump);
+NXT_STATUS cCmdInterpFromClump();
 
 //Function pointer typedef for sub-interpreters
 typedef NXT_STATUS (*pInterp)(CODE_WORD * const);
+typedef NXT_STATUS (*pInterpShort)(CODE_WORD * const);
 
 //Sub-interpreter dispatch functions
 NXT_STATUS cCmdInterpNoArg(CODE_WORD * const pCode);
 NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode);
 NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode);
+NXT_STATUS cCmdInterpScalarUnop2(CODE_WORD * const pCode);
 NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode);
+NXT_STATUS cCmdInterpScalarBinop(CODE_WORD * const pCode);
 NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode);
 
-#define INTERP_COUNT 5
+NXT_STATUS cCmdInterpShortError(CODE_WORD * const pCode);
+NXT_STATUS cCmdInterpShortSubCall(CODE_WORD * const pCode);
+NXT_STATUS cCmdInterpShortMove(CODE_WORD * const pCode);
+NXT_STATUS cCmdInterpShortAcquire(CODE_WORD * const pCode);
+NXT_STATUS cCmdInterpShortRelease(CODE_WORD * const pCode);
+
+NXT_STATUS cCmdMove(DATA_ARG Arg1, DATA_ARG Arg2);
 
 //Polymorphic interpreter functions
 NXT_STATUS cCmdInterpPolyUnop2(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset1, DATA_ARG Arg2, UWORD Offset2);
 ULONG cCmdUnop2(CODE_WORD const Code, ULONG Operand, TYPE_CODE TypeCode);
+float cCmdUnop2Flt(CODE_WORD const Code, float Operand, TYPE_CODE TypeCode);
 
 NXT_STATUS cCmdInterpPolyBinop(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset1, DATA_ARG Arg2, UWORD Offset2, DATA_ARG Arg3, UWORD Offset3);
 ULONG cCmdBinop(CODE_WORD const Code, ULONG LeftOp, ULONG RightOp, TYPE_CODE LeftType, TYPE_CODE RightType);
-
+float cCmdBinopFlt(CODE_WORD const Code, float LeftOp, float RightOp, TYPE_CODE LeftType, TYPE_CODE RightType);
+void cCmdSetValFlt(void * pVal, TYPE_CODE TypeCode, float NewVal);
+float cCmdGetValFlt(void * pVal, TYPE_CODE TypeCode);
 //
 //Support functions for lowspeed (I2C devices, i.e. ultrasonic sensor) communications
 //
@@ -770,12 +831,29 @@ NXT_STATUS cCmdWrapRandomNumber(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapGetStartTick(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapMessageWrite(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapMessageRead(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapDatalogWrite(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapCommBTCheckStatus(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapCommBTWrite(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapCommBTRead(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapKeepAlive(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapIOMapRead(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapIOMapWrite(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapColorSensorRead (UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapDatalogGetTimes(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapSetSleepTimeout(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapListFiles(UBYTE * ArgV[]);
+
+// Handlers for dynamically added syscalls
+NXT_STATUS cCmdWrapCommHSWrite(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapCommHSRead(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapCommHSCheckStatus(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapCommBTOnOff(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapCommBTConnection(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapReadSemData(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapWriteSemData(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapUpdateCalibCacheInfo(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapComputeCalibValue(UBYTE * ArgV[]);
+
 
 //Handler for remote control protocol packets -- called from comm module via IO map function pointer
 UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen);

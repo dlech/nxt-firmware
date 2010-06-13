@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Dktochpe                                        $
+// Reviser         $Author:: Dkandlun                                        $
 //
-// Revision date   $Date:: 20-12-05 12:28                                    $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: d_display.r                                   $
 //
-// Version         $Revision:: 18                                            $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_display. $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_disp $
 //
 // Platform        C
 //

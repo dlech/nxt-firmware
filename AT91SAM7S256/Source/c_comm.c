@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 9:42                                     $
+// Revision date   $Date: 8-09-08 14:11 $
 //
 // Filename        $Workfile:: c_comm.c                                      $
 //
-// Version         $Revision:: 172                                           $
+// Version         $Revision: 7 $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_comm.c   $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_comm $
 //
 // Platform        C
 //
@@ -126,6 +126,7 @@ void      cCommsDisconnectAll(UBYTE *pNextState);
 void      cCommsBtReset(UBYTE *pNextState);
 void      cCommPinCode(UBYTE *pPinCode);
 void      cCommClrConnTable(void);
+SBYTE     cCommSearchBTDevTableForName(UBYTE*);
 
 void      cCommInit(void* pHeader)
 {
@@ -328,6 +329,24 @@ void      cCommExit(void)
   dBtExit();
 }
 
+
+UBYTE     cCommCheckSysFileType(UBYTE *pName)
+{
+  UBYTE   RtnVal;
+  UBYTE   TmpFilename[FILENAME_LENGTH + 1];
+
+  RtnVal = FALSE;
+  cCommCpyToUpper(TmpFilename, &pName[1], (UBYTE)(FILENAME_LENGTH + 1));
+  if ((0 != strstr((PSZ)(TmpFilename), ".RXE")) ||
+      (0 != strstr((PSZ)(TmpFilename), ".SYS")) ||
+      (0 != strstr((PSZ)(TmpFilename), ".RTM")))
+  {
+    RtnVal = TRUE;
+  }
+  return(RtnVal);
+}
+
+
 UWORD     cCommInterprete(UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pLength, UBYTE CmdBit, UWORD MsgLength)
 {
   UWORD   ReturnStatus;
@@ -469,18 +488,12 @@ UWORD     cCommInterpreteCmd(UBYTE Cmd, UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pL
   {
     case OPENWRITE:
     {
-      UBYTE TmpFilename[FILENAME_LENGTH + 1];
-
       FileLength  = pInBuf[21];
       FileLength += (ULONG)pInBuf[22] << 8;
       FileLength += (ULONG)pInBuf[23] << 16;
       FileLength += (ULONG)pInBuf[24] << 24;
 
-      cCommCpyToUpper(TmpFilename, &pInBuf[1], (UBYTE)(FILENAME_LENGTH + 1));
-
-      if ((0 != strstr((PSZ)(TmpFilename), ".RXE")) ||
-          (0 != strstr((PSZ)(TmpFilename), ".SYS")) ||
-          (0 != strstr((PSZ)(TmpFilename), ".RTM")))
+      if(TRUE == cCommCheckSysFileType(&pInBuf[1]))
       {
         Status = pMapLoader->pFunc(OPENWRITELINEAR, &pInBuf[1], NULL, &FileLength);
       }
@@ -564,8 +577,14 @@ UWORD     cCommInterpreteCmd(UBYTE Cmd, UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pL
       FileLength += (ULONG)pInBuf[23] << 16;
       FileLength += (ULONG)pInBuf[24] << 24;
 
-      Status = pMapLoader->pFunc(OPENWRITEDATA, &pInBuf[1], NULL, &FileLength);
-
+      if(TRUE == cCommCheckSysFileType(&pInBuf[1]))
+      {
+        Status = ILLEGALFILENAME;
+      }
+      else
+      {
+        Status = pMapLoader->pFunc(OPENWRITEDATA, &pInBuf[1], NULL, &FileLength);
+      }
       pOutBuf[0] = LOADER_ERR_BYTE(Status);
       pOutBuf[1] = LOADER_HANDLE(Status);
       *pLength = 2;
@@ -599,6 +618,14 @@ UWORD     cCommInterpreteCmd(UBYTE Cmd, UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pL
         dUsbRemoveHandle(pInBuf[1]);
       }
       Status = pMapLoader->pFunc(CLOSE, &(pInBuf[1]), NULL, &FileLength);
+      pOutBuf[0] = LOADER_ERR_BYTE(Status);
+      pOutBuf[1] = LOADER_HANDLE(Status);
+      *pLength = 2;
+    }
+    break;
+    case CROPDATAFILE:
+    {
+      Status = pMapLoader->pFunc(CROPDATAFILE, &(pInBuf[1]), NULL, &FileLength);
       pOutBuf[0] = LOADER_ERR_BYTE(Status);
       pOutBuf[1] = LOADER_HANDLE(Status);
       *pLength = 2;
@@ -1181,7 +1208,7 @@ UWORD     cCommReceivedBtData(void)
       }
       else
       {
-        
+
         /* ActiveUpdate has to be idle because BC4 can send stream data even if CMD */
         /* mode has been requested - dont try to interprete the data                */
         /* VarsComm.CmdSwitchCnt != 0 if a transition to Cmd mode is in process     */
@@ -3175,7 +3202,7 @@ void      cCommsSetCmdMode(UBYTE *pNextState)
       /* stream status has been cleared now wait until buffers has been emptied */
       if (TRUE == dBtTxEnd())
       {
-        
+
         /* Wait 100 ms after last byte has been sent to BC4 - else BC4 can crash */
         if (++(VarsComm.BtCmdModeWaitCnt) > 100)
         {
@@ -3435,6 +3462,7 @@ UWORD     cCommReq(UBYTE Cmd, UBYTE Param1, UBYTE Param2, UBYTE Param3, UBYTE *p
 {
   ULONG   Length;
   UWORD   ReturnVal;
+  SBYTE   foundIndex= 0;
 
   ReturnVal = BTBUSY;
   *pRetVal  = BTBUSY;
@@ -3473,11 +3501,14 @@ UWORD     cCommReq(UBYTE Cmd, UBYTE Param1, UBYTE Param2, UBYTE Param3, UBYTE *p
         }
       }
       break;
-
+      case CONNECTBYNAME: // redo Param1, then fall through existing CONNECT code
+        foundIndex= cCommSearchBTDevTableForName(pName);
+        if(foundIndex != -1)
+          Param1= foundIndex;
       case CONNECT:
       {
 
-        if (BLUETOOTH_HANDLE_UNDEFIEND == IOMapComm.BtConnectTable[Param2].HandleNr)
+        if (BLUETOOTH_HANDLE_UNDEFIEND == IOMapComm.BtConnectTable[Param2].HandleNr && foundIndex != -1)
         {
 
           /* Connection not occupied */
@@ -3577,7 +3608,7 @@ UWORD     cCommReq(UBYTE Cmd, UBYTE Param1, UBYTE Param2, UBYTE Param3, UBYTE *p
         /* to be sent. pName is the pointer to the data      */
         if (Param1 <= sizeof(VarsComm.BtModuleOutBuf.Buf))
         {
-          if ('\0' != IOMapComm.BtConnectTable[VarsComm.BtCmdData.ParamTwo].Name[0])
+          if ('\0' != IOMapComm.BtConnectTable[Param2].Name[0])
           {
             VarsComm.BtCmdData.ParamOne   = Param1;
             VarsComm.BtCmdData.ParamTwo   = Param2;
@@ -3655,4 +3686,15 @@ void      cCommClrConnTable(void)
   IOMapComm.BrickData.BtStateStatus &= ~(BT_CONNECTION_0_ENABLE | BT_CONNECTION_1_ENABLE | BT_CONNECTION_2_ENABLE | BT_CONNECTION_3_ENABLE);
   pMapUi->BluetoothState            &= ~BT_STATE_CONNECTED;
   pMapUi->Flags                     |=  UI_REDRAW_STATUS;
+}
+
+  /* search the BT table */
+SBYTE cCommSearchBTDevTableForName(UBYTE *name) {
+  UBYTE   Tmp;
+  for (Tmp = 0; Tmp < SIZE_OF_BT_DEVICE_TABLE; Tmp++)
+  {
+    if (0 == strcmp((char*)(IOMapComm.BtDeviceTable[Tmp].Name), (char*)name))
+      return Tmp;
+  }
+  return -1;
 }

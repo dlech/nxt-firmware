@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<Project>
+  <Desktop>
+    <Static>
+      <Debug-Log><PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Build</Factory></Window><Window><Factory>Breakpoints</Factory></Window><Window><Factory>Watch</Factory></Window><Window><Factory>Find-in-Files</Factory></Window><Window><Factory>Register</Factory></Window><Window><Factory>Disassembly</Factory></Window></Windows></PreferedWindows></Debug-Log>
+      <Workspace>
+        <ColumnWidths>
+          
+          
+          
+          
+        <Column0>257</Column0><Column1>27</Column1><Column2>27</Column2><Column3>27</Column3></ColumnWidths>
+      </Workspace>
+      <Disassembly>
+        <PreferedWindows>
+          
+          
+          
+          
+        <Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows>
+        
+        
+        
+      <MixedMode>1</MixedMode><CodeCovEnabled>0</CodeCovEnabled><CodeCovShow>0</CodeCovShow></Disassembly>
+      <Build>
+        
+        
+        
+        
+      <ColumnWidth0>20</ColumnWidth0><ColumnWidth1>915</ColumnWidth1><ColumnWidth2>244</ColumnWidth2><ColumnWidth3>61</ColumnWidth3><PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Debug-Log</Factory></Window><Window><Factory>Breakpoints</Factory></Window><Window><Factory>Watch</Factory></Window><Window><Factory>Find-in-Files</Factory></Window><Window><Factory>Register</Factory></Window><Window><Factory>Disassembly</Factory></Window></Windows></PreferedWindows></Build>
+      <Watch>
+        <Format>
+          <struct_types/>
+          <watch_formats>
+            
+          <Fmt><Key>{W}Watch-0:FILEVERSION</Key><Value>4</Value></Fmt><Fmt><Key>{W}Watch-0:TimerValue</Key><Value>4</Value></Fmt><Fmt><Key>{W}Watch-1:AT91C_PITC_CPIV</Key><Value>4</Value></Fmt><Fmt><Key>{W}Watch-1:I2CTimerValue</Key><Value>4</Value></Fmt><Fmt><Key>{W}Watch-2:ErrorCode</Key><Value>4</Value></Fmt><Fmt><Key>{W}Watch-2:FileSize</Key><Value>4</Value></Fmt><Fmt><Key>{W}Watch-2:Handle</Key><Value>4</Value></Fmt></watch_formats>
+        </Format>
+        <PreferedWindows>
+          
+          
+          
+          
+        <Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Debug-Log</Factory></Window><Window><Factory>Build</Factory></Window><Window><Factory>Breakpoints</Factory></Window><Window><Factory>Find-in-Files</Factory></Window><Window><Factory>Register</Factory></Window><Window><Factory>Disassembly</Factory></Window></Windows></PreferedWindows>
+        
+        
+        
+        
+      <Column0>113</Column0><Column1>156</Column1><Column2>100</Column2><Column3>100</Column3></Watch>
+      <Memory>
+        <PreferedWindows>
+          
+          
+          
+          
+        <Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows>
+        
+        
+      <FindDirection>1</FindDirection><FindAsHex>0</FindAsHex></Memory>
+      <Register><PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Debug-Log</Factory></Window><Window><Factory>Build</Factory></Window><Window><Factory>Breakpoints</Factory></Window><Window><Factory>Watch</Factory></Window><Window><Factory>Find-in-Files</Factory></Window><Window><Factory>Disassembly</Factory></Window></Windows></PreferedWindows></Register>
+    <Breakpoints><PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Debug-Log</Factory></Window><Window><Factory>Build</Factory></Window><Window><Factory>Watch</Factory></Window><Window><Factory>Find-in-Files</Factory></Window><Window><Factory>Register</Factory></Window><Window><Factory>Disassembly</Factory></Window></Windows></PreferedWindows></Breakpoints><CallStack><PreferedWindows><Position>1</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows><ViewArgs>1</ViewArgs></CallStack><Find-in-Files><ColumnWidth0>440</ColumnWidth0><ColumnWidth1>62</ColumnWidth1><ColumnWidth2>754</ColumnWidth2><PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Debug-Log</Factory></Window><Window><Factory>Build</Factory></Window><Window><Factory>Breakpoints</Factory></Window><Window><Factory>Watch</Factory></Window><Window><Factory>Register</Factory></Window><Window><Factory>Disassembly</Factory></Window></Windows></PreferedWindows></Find-in-Files></Static>
+    <Windows>
+      
+      
+      
+      
+    <Wnd1>
+        <Tabs>
+          <Tab>
+            <Identity>TabID-4195-23593</Identity>
+            <TabName>Workspace</TabName>
+            <Factory>Workspace</Factory>
+            <Session>
+              
+            <NodeDict><ExpandedNode>LMS_V02</ExpandedNode></NodeDict></Session>
+          </Tab>
+        </Tabs>
+        
+      <SelectedTab>0</SelectedTab></Wnd1><Wnd0><Tabs><Tab><Identity>TabID-11197-31354</Identity><TabName>Disassembly</TabName><Factory>Disassembly</Factory><Session/></Tab></Tabs><SelectedTab>0</SelectedTab></Wnd0></Windows>
+    <Editor>
+      
+      
+      
+      
+    <Pane><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_display.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>668</SelStart><SelEnd>668</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_display.r</Filename><XPos>0</XPos><YPos>259</YPos><SelStart>11363</SelStart><SelEnd>11363</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\c_ioctrl.c</Filename><XPos>0</XPos><YPos>36</YPos><SelStart>1417</SelStart><SelEnd>1417</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\m_sched.c</Filename><XPos>0</XPos><YPos>39</YPos><SelStart>1211</SelStart><SelEnd>1211</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_bt.c</Filename><XPos>0</XPos><YPos>117</YPos><SelStart>2429</SelStart><SelEnd>2429</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_input.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>603</SelStart><SelEnd>603</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\c_ui.c</Filename><XPos>0</XPos><YPos>1375</YPos><SelStart>36567</SelStart><SelEnd>36567</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\c_sound.c</Filename><XPos>0</XPos><YPos>62</YPos><SelStart>1914</SelStart><SelEnd>1914</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_loader.r</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>638</SelStart><SelEnd>638</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\c_output.c</Filename><XPos>0</XPos><YPos>133</YPos><SelStart>4839</SelStart><SelEnd>4839</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_button.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>632</SelStart><SelEnd>632</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\c_display.c</Filename><XPos>0</XPos><YPos>801</YPos><SelStart>19634</SelStart><SelEnd>19634</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\c_input.c</Filename><XPos>1</XPos><YPos>185</YPos><SelStart>6947</SelStart><SelEnd>6947</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\SAM7S256\include\sam7s256.c</Filename><XPos>0</XPos><YPos>30</YPos><SelStart>994</SelStart><SelEnd>994</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_ioctrl.r</Filename><XPos>0</XPos><YPos>133</YPos><SelStart>10772</SelStart><SelEnd>10772</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_timer.c</Filename><XPos>0</XPos><YPos>24</YPos><SelStart>574</SelStart><SelEnd>574</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_ioctrl.c</Filename><XPos>0</XPos><YPos>6</YPos><SelStart>711</SelStart><SelEnd>711</SelEnd></Tab><ActiveTab>16</ActiveTab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\c_cmd.c</Filename><XPos>0</XPos><YPos>1116</YPos><SelStart>33574</SelStart><SelEnd>33574</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_output.c</Filename><XPos>0</XPos><YPos>225</YPos><SelStart>9950</SelStart><SelEnd>9950</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\SAM7S256\Include\Cstartup.s79</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\c_loader.c</Filename><XPos>0</XPos><YPos>92</YPos><SelStart>2451</SelStart><SelEnd>2460</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\c_comm.c</Filename><XPos>0</XPos><YPos>575</YPos><SelStart>16718</SelStart><SelEnd>16718</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_loader.c</Filename><XPos>0</XPos><YPos>349</YPos><SelStart>10885</SelStart><SelEnd>10893</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\SAM7S256\Include\ctype.h</Filename><XPos>0</XPos><YPos>83</YPos><SelStart>2117</SelStart><SelEnd>2117</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\SAM7S256\Include\xlocale_c.h</Filename><XPos>0</XPos><YPos>79</YPos><SelStart>2124</SelStart><SelEnd>2124</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>C:\Projects\LMS2006\Sys01\Main_V02\Firmware\Source\d_loader.h</Filename><XPos>0</XPos><YPos>41</YPos><SelStart>1537</SelStart><SelEnd>1547</SelEnd></Tab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
+    <Positions>
+      
+      
+      
+      
+      
+    <Top><Row0><Sizes><Toolbar-003be838><key>iaridepm1</key></Toolbar-003be838></Sizes></Row0><Row1><Sizes><Toolbar-037fec88><key>debuggergui1</key></Toolbar-037fec88></Sizes></Row1></Top><Left><Row0><Sizes><Wnd1><Rect><Top>-2</Top><Left>-2</Left><Bottom>682</Bottom><Right>331</Right><x>-2</x><y>-2</y><xscreen>0</xscreen><yscreen>0</yscreen><sizeHorzCX>0</sizeHorzCX><sizeHorzCY>0</sizeHorzCY><sizeVertCX>260156</sizeVertCX><sizeVertCY>721518</sizeVertCY></Rect></Wnd1></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd0><Rect><Top>-2</Top><Left>-2</Left><Bottom>198</Bottom><Right>1282</Right><x>-2</x><y>-2</y><xscreen>1284</xscreen><yscreen>200</yscreen><sizeHorzCX>1003125</sizeHorzCX><sizeHorzCY>210970</sizeHorzCY><sizeVertCX>156250</sizeVertCX><sizeVertCY>210970</sizeVertCY></Rect></Wnd0></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
+  </Desktop>
+</Project>
+
+

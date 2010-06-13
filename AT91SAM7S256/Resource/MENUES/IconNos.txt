@@ -15,9 +15,9 @@ Index	Current file	New file		Comments
 0C	UltrasonicCm	(SensorUltrasonicCm)
 0D	TempC	 	(SensorTempC)
 0E	TempF	 	(SensorTempF)
-0F
-10
-11
+0F	IicTempC	
+10	IicTempF
+11	Color
 12	Port1					Ports
 13	Port2
 14	Port3
@@ -94,5 +94,3 @@ Index	Current file	New file		Comments
 5B	Invisibel	(Invisible)
 5C	BTOn
 5D	BTOff
-5E
-5F

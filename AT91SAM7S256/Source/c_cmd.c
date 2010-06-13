@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 28-03-07 14:53                                    $
+// Revision date   $Date: 24-06-09 8:53 $
 //
 // Filename        $Workfile:: c_cmd.c                                       $
 //
-// Version         $Revision:: 67                                            $
+// Version         $Revision: 14 $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_cmd.c    $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_cmd. $
 //
 // Platform        C
 //
@@ -15,7 +15,7 @@
 //
 // File Description:
 // This file contains the virtual machine implementation to run bytecode
-// programs compatible with LEGO MINDSTORMS NXT Software 1.0.
+// programs compatible with LEGO MINDSTORMS NXT Software 2.0.
 //
 // This module (c_cmd) is also responsible for reading the system timer
 // (d_timer) and returning on 1 ms timer boundaries.
@@ -34,6 +34,7 @@
 #include "c_display.iom"
 #include "c_comm.iom"
 #include "c_lowspeed.iom"
+#include  "m_sched.h"
 
 #include "c_cmd.h"
 #include "c_cmd_bytecodes.h"
@@ -41,11 +42,41 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h> // for sqrt, abs, and trig stuff
 
+#define VMProfilingCode 0
 
 static  IOMAPCMD  IOMapCmd;
 static  VARSCMD   VarsCmd;
 static  HEADER    **pHeaders;
+static  ULONG     gInstrsToExecute;
+static  SLONG gPCDelta;
+#define NUM_INTERP_FUNCS 16
+#define NUM_SHORT_INTERP_FUNCS 8
+#define VAR_INSTR_SIZE 0xE
+// important to cast since most args are assigned from signed value, and locals may be ULONG
+#define GetDataArg(arg) ((UWORD)(arg))
+#if VMProfilingCode
+static  ULONG     ExecutedInstrs= 0, CmdCtrlTime= 0, OverheadTime= 0, CmdCtrlCalls= 0, LeaveTime= 0, NotFirstCall= 0, LastAvgCount= 0;
+static ULONG CmdCtrlClumpTime[256];
+typedef struct  {
+  ULONG Time;
+  ULONG Count;
+  ULONG Avg;
+  ULONG Max;
+} VMInstrProfileInfo;
+static VMInstrProfileInfo InstrProfile[OPCODE_COUNT];
+static VMInstrProfileInfo SysCallProfile[SYSCALL_COUNT];
+static VMInstrProfileInfo InterpFuncProfile[NUM_INTERP_FUNCS];
+static VMInstrProfileInfo ShortInstrProfile[NUM_SHORT_OPCODE_COUNT];
+#endif
+
+#define cCmdDSType(Arg) (VarsCmd.pDataspaceTOC[(Arg)].TypeCode)
+#define cCmdDSScalarPtr(DSElementID, Offset) (VarsCmd.pDataspace + VarsCmd.pDataspaceTOC[DSElementID].DSOffset + Offset)
+#define cCmdSizeOf(TC) (TC_Size_Table[(TC)])
+
+#define scalarBinopDispatchMask 0x1
+#define scalarUnop2DispatchMask 0x2
 
 const     HEADER  cCmd =
 {
@@ -67,21 +98,59 @@ const     HEADER  cCmd =
 // (the graphics implementation was split off for practical file management reasons)
 #include "c_cmd_drawing.inc"
 
-
 //
 //Function pointers to sub-interpreters
-//This table is indexed by arity
+//This table is indexed by instr size
 //Unary operations can have arity of 1 or 2 (some need a destination)
 //All instructions taking 4 or more operands are handled as "Other"
+// Table uses NoArg for illegal instr sizes such as zero and odd sizes
 //
-static pInterp InterpFuncs[INTERP_COUNT] =
+static pInterp InterpFuncs[NUM_INTERP_FUNCS] =
 {
   cCmdInterpNoArg,
-  cCmdInterpUnop1,
-  cCmdInterpUnop2,
-  cCmdInterpBinop,
-  cCmdInterpOther
+  cCmdInterpNoArg,
+  cCmdInterpNoArg, // size 2
+  cCmdInterpNoArg,
+  cCmdInterpUnop1, // size 4
+  cCmdInterpNoArg,
+  cCmdInterpUnop2, // size 6 general poly is cCmdInterpUnop2, scalar is cCmdInterpScalarUnop2
+  cCmdInterpNoArg,
+  cCmdInterpBinop, // size 8, general poly is cCmdInterpBinop, scalar is cCmdInterpScalarBinop
+  cCmdInterpNoArg,
+  cCmdInterpOther, // size 10
+  cCmdInterpNoArg,
+  cCmdInterpOther, // size 12
+  cCmdInterpNoArg,
+  cCmdInterpOther, // size 14
+  cCmdInterpNoArg
 };
+
+static pInterpShort ShortInterpFuncs[NUM_SHORT_INTERP_FUNCS] =
+{
+  cCmdInterpShortMove,
+  cCmdInterpShortAcquire,
+  cCmdInterpShortRelease,
+  cCmdInterpShortSubCall,
+  cCmdInterpShortError,
+  cCmdInterpShortError,
+  cCmdInterpShortError,
+  cCmdInterpShortError
+};
+
+ULONG TC_Size_Table[]= {
+  0, // void
+  SIZE_UBYTE,
+  SIZE_SBYTE,
+  SIZE_UWORD,
+  SIZE_SWORD,
+  SIZE_ULONG,
+  SIZE_SLONG,
+  SIZE_UWORD, // array
+  0, // cluster
+  SIZE_MUTEX,
+  SIZE_FLOAT
+};
+
 
 //
 //Function pointers to SysCall implementations
@@ -94,35 +163,51 @@ static pSysCall SysCallFuncs[SYSCALL_COUNT] =
   cCmdWrapFileOpenAppend,
   cCmdWrapFileRead,
   cCmdWrapFileWrite,
-  cCmdWrapFileClose,
+  cCmdWrapFileClose, // 5
   cCmdWrapFileResolveHandle,
   cCmdWrapFileRename,
   cCmdWrapFileDelete,
   cCmdWrapSoundPlayFile,
-  cCmdWrapSoundPlayTone,
+  cCmdWrapSoundPlayTone, // 10
   cCmdWrapSoundGetState,
   cCmdWrapSoundSetState,
   cCmdWrapDrawText,
   cCmdWrapDrawPoint,
-  cCmdWrapDrawLine,
+  cCmdWrapDrawLine, // 15
   cCmdWrapDrawCircle,
   cCmdWrapDrawRect,
   cCmdWrapDrawPicture,
   cCmdWrapSetScreenMode,
-  cCmdWrapReadButton,
+  cCmdWrapReadButton, // 20
   cCmdWrapCommLSWrite,
   cCmdWrapCommLSRead,
   cCmdWrapCommLSCheckStatus,
   cCmdWrapRandomNumber,
-  cCmdWrapGetStartTick,
+  cCmdWrapGetStartTick, // 25
   cCmdWrapMessageWrite,
   cCmdWrapMessageRead,
   cCmdWrapCommBTCheckStatus,
   cCmdWrapCommBTWrite,
-  cCmdWrapCommBTRead,
+  cCmdWrapCommBTRead, // 30
   cCmdWrapKeepAlive,
   cCmdWrapIOMapRead,
-  cCmdWrapIOMapWrite
+  cCmdWrapIOMapWrite,
+  cCmdWrapColorSensorRead,
+  cCmdWrapCommBTOnOff, // 35
+  cCmdWrapCommBTConnection,
+  cCmdWrapCommHSWrite,
+  cCmdWrapCommHSRead,
+  cCmdWrapCommHSCheckStatus,
+  cCmdWrapReadSemData, //40
+  cCmdWrapWriteSemData,
+  cCmdWrapComputeCalibValue,
+  cCmdWrapUpdateCalibCacheInfo,
+  cCmdWrapDatalogWrite,
+  cCmdWrapDatalogGetTimes,  //45
+  cCmdWrapSetSleepTimeout,
+  cCmdWrapListFiles //47
+
+  // don't forget to update SYSCALL_COUNT in c_cmd.h
 };
 
 //
@@ -234,6 +319,39 @@ void ** IO_PTRS[2] =
   IO_PTRS_OUT
 };
 
+// Data used to indicate usage of motor ports, or usage requests
+UBYTE gUsageSemData, gRequestSemData;
+
+UBYTE     cCmdBTGetDeviceType(UBYTE *pCOD)
+{
+  ULONG   COD;
+  UBYTE   Result;
+  UBYTE   Tmp;
+
+  COD      = 0;
+  for (Tmp = 0;Tmp < SIZE_OF_CLASS_OF_DEVICE;Tmp++)
+  {
+    COD  <<= 8;
+    COD   |= (ULONG)*pCOD;
+    pCOD++;
+  }
+
+  Result   = DEVICETYPE_UNKNOWN;
+  if ((COD & 0x00001FFF) == 0x00000804)
+  {
+    Result = DEVICETYPE_NXT;
+  }
+  if ((COD & 0x00001F00) == 0x00000200)
+  {
+    Result = DEVICETYPE_PHONE;
+  }
+  if ((COD & 0x00001F00) == 0x00000100)
+  {
+    Result = DEVICETYPE_PC;
+  }
+
+  return (Result);
+}
 
 //cCmdHandleRemoteCommands is the registered handler for "direct" command protocol packets
 //It is only intended to be called via c_comm's main protocol handler
@@ -311,7 +429,7 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
 
       case RC_PLAY_SOUND_FILE:
       {
-        if (LOADER_ERR(pMapLoader->pFunc(FINDFIRST, (&pInBuf[2]), NULL, NULL)) != SUCCESS)
+        if (LOADER_ERR(LStatus = pMapLoader->pFunc(FINDFIRST, (&pInBuf[2]), NULL, NULL)) != SUCCESS)
         {
           RCStatus = ERR_RC_ILLEGAL_VAL;
           break;
@@ -735,6 +853,159 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
       }
       break;
 
+      // remote-only command to read from datalog buffer
+      // pInBuf[1] = Remove? (bool)
+      case RC_DATALOG_READ:
+      {
+        if (SendResponse == TRUE)
+        {
+          RCStatus = cCmdDatalogGetSize(&Count);
+          pOutBuf[ResponseLen] = Count;
+          ResponseLen++;
+
+          if (!IS_ERR(RCStatus) && Count > 0)
+          {
+            pData = &(pOutBuf[ResponseLen]);
+            RCStatus = cCmdDatalogRead(pData, Count, (pInBuf[1]));
+            //If cCmdDatalogRead encountered an error, there is no real data in the buffer, so clear it out (below)
+            if (IS_ERR(RCStatus))
+              Count = 0;
+            else
+              ResponseLen += Count;
+          }
+
+          //Pad remaining data bytes with zeroes
+          Count = MAX_DATALOG_SIZE - Count;
+          memset(&(pOutBuf[ResponseLen]), 0, Count);
+          ResponseLen += Count;
+        }
+      }
+      break;
+      case RC_DATALOG_SET_TIMES:
+      {
+        //SyncTime SLONG
+        memcpy((PSZ)&IOMapCmd.SyncTime, (PSZ)&(pInBuf[1]), 4);
+        IOMapCmd.SyncTick= dTimerReadNoPoll();
+      }
+      break;
+
+      case RC_BT_GET_CONN_COUNT:
+        if (SendResponse == TRUE) {
+          pOutBuf[ResponseLen]= SIZE_OF_BT_CONNECT_TABLE;
+          ResponseLen++;
+          }
+      break;
+      case RC_BT_GET_CONN_NAME: // param in is index, param out is name
+        if (SendResponse == TRUE) { // get index from inbuf
+          i = pInBuf[1];
+          if(i < SIZE_OF_BT_CONNECT_TABLE) { // unsigned, so guaranteed >= 0
+            pOutBuf[ResponseLen] = cCmdBTGetDeviceType(pMapComm->BtConnectTable[i].ClassOfDevice);
+            memcpy((PSZ)(&(pOutBuf[ResponseLen+1])), (PSZ)(pMapComm->BtConnectTable[i].Name), SIZE_OF_BT_NAME + 1);
+            ResponseLen += SIZE_OF_BT_NAME + 2;
+          }
+          else {
+            pOutBuf[ResponseLen] = 0;
+            ResponseLen += SIZE_OF_BT_NAME + 2;
+          }
+        }
+      break;
+      case RC_BT_GET_CONTACT_COUNT:
+        if (SendResponse == TRUE) {
+          pOutBuf[ResponseLen]= SIZE_OF_BT_DEVICE_TABLE;
+          ResponseLen++;
+          }
+      break;
+      case RC_BT_GET_CONTACT_NAME:
+        if (SendResponse == TRUE) { // get index from inbuf
+          i = pInBuf[1];
+          if(i < SIZE_OF_BT_DEVICE_TABLE && (pMapComm->BtDeviceTable[i].DeviceStatus & BT_DEVICE_KNOWN)) {  // unsigned, so guaranteed >= 0
+            (pOutBuf[ResponseLen])= cCmdBTGetDeviceType(pMapComm->BtDeviceTable[i].ClassOfDevice);
+            memcpy((PSZ)(&(pOutBuf[ResponseLen+1])), (PSZ)(pMapComm->BtDeviceTable[i].Name), SIZE_OF_BT_NAME + 1);
+            ResponseLen += SIZE_OF_BT_NAME + 2;
+          }
+          else
+          {
+            pOutBuf[ResponseLen] = 0;
+            memset((PSZ)(&(pOutBuf[ResponseLen+1])), 0, SIZE_OF_BT_NAME + 1);
+            ResponseLen += SIZE_OF_BT_NAME + 2;
+          }
+        }
+      break;
+    case RC_SET_PROPERTY: // label/value pairs
+        i = pInBuf[1];
+        switch(i) {
+          case RC_PROP_BTONOFF: {
+            UWORD retVal, status;
+            if(pInBuf[2])
+              status= pMapComm->pFunc(BTON, 0, 0, 0, NULL, &retVal);
+            else
+              status= pMapComm->pFunc(BTOFF, 0, 0, 0, NULL, &retVal);
+
+            RCStatus= (status == SUCCESS) ? retVal : status;
+          }
+          break;
+          case RC_PROP_SOUND_LEVEL: {
+            UBYTE volume= pInBuf[2];
+            if(volume > 4)
+              volume= 4;
+            pMapSound->Volume= volume; // apparently stored in two places
+            pMapUi->Volume= volume;
+          }
+          break;
+          case RC_PROP_SLEEP_TIMEOUT: { // ulong millisecs to sleep
+            ULONG value;
+            memcpy((PSZ)&value, (PSZ)&(pInBuf[2]), 4);
+            pMapUi->SleepTimeout= value / 60000;
+          }
+          break;
+          default:
+            //Unknown property -- still inform client to not expect any response bytes
+            NXT_BREAK;
+            RCStatus = ERR_RC_UNKNOWN_CMD;
+          break;
+        }
+      break;
+    case RC_GET_PROPERTY: // label/value pairs
+        if (SendResponse == TRUE) { // get index from inbuf
+          i = pInBuf[1];
+          switch(i) {
+            case RC_PROP_BTONOFF:
+              pOutBuf[ResponseLen]= pMapUi->BluetoothState != BT_STATE_OFF;
+              ResponseLen++;
+            break;
+            case RC_PROP_SOUND_LEVEL: {
+              pOutBuf[ResponseLen]= pMapSound->Volume;
+              ResponseLen++;
+              }
+            break;
+            case RC_PROP_SLEEP_TIMEOUT: {
+              ULONG value= (pMapUi->SleepTimeout * 60 * 1000);
+              memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)&value, 4);
+              ResponseLen += 4;
+            }
+            break;
+            default:
+              //Unknown property -- still inform client to not expect any response bytes
+              NXT_BREAK;
+              RCStatus = ERR_RC_UNKNOWN_CMD;
+            break;
+          }
+        }
+      break;
+    case RC_UPDATE_RESET_COUNT:
+      {
+        i = pInBuf[1];
+
+        //Don't do anything if illegal port specification is made
+        if (i >= NO_OF_OUTPUTS)
+        {
+          RCStatus = ERR_RC_ILLEGAL_VAL;
+          break;
+        }
+
+        pMapOutPut->Outputs[i].Flags |= UPDATE_RESET_COUNT;
+      }
+      break;
       default:
       {
         //Unknown remote command -- still inform client to not expect any response bytes
@@ -884,6 +1155,8 @@ void      cCmdInit(void* pHeader)
 
   dTimerInit();
   IOMapCmd.Tick = dTimerRead();
+  IOMapCmd.SyncTime= 0;
+  IOMapCmd.SyncTick= 0;
 
   return;
 }
@@ -891,13 +1164,113 @@ void      cCmdInit(void* pHeader)
 
 void cCmdCtrl(void)
 {
-  UBYTE Continue = TRUE;
   NXT_STATUS Status = NO_ERR;
-  ULONG i;
-  CLUMP_ID CurrClumpID;
 
   switch (VarsCmd.VMState)
   {
+    case VM_RUN_FREE:
+    case VM_RUN_SINGLE:
+    {
+ #if VMProfilingCode
+    ULONG EnterTime= dTimerReadHiRes(), FinishTime;
+    CmdCtrlCalls ++;
+#endif
+    ULONG Continue;
+
+#if VM_BENCHMARK
+      //IOMapCmd.Tick currently holds the tick from the end of last cCmdCtrl call.
+      //If we don't come back here before dTimerRead() increments, the m_sched loop has taken *at least* 1 ms.
+      if (IOMapCmd.Tick != dTimerRead())
+      {
+        VarsCmd.OverTimeCount++;
+        //Record maximum magnitude of schedule loop overage, in millisecs
+        if (dTimerRead() - IOMapCmd.Tick > VarsCmd.MaxOverTimeLength)
+          VarsCmd.MaxOverTimeLength = dTimerRead() - IOMapCmd.Tick;
+      }
+      VarsCmd.CmdCtrlCount++;
+#endif
+      //Abort current program if cancel button is pressed
+      if (IOMapCmd.DeactivateFlag == TRUE || pMapButton->State[BTN1] & PRESSED_EV)
+      {
+        IOMapCmd.DeactivateFlag = FALSE;
+
+        //Clear pressed event so it doesn't get double-counted by UI
+        pMapButton->State[BTN1] &= ~PRESSED_EV;
+
+        //Go to VM_RESET1 state and report abort
+        VarsCmd.VMState = VM_RESET1;
+        IOMapCmd.ProgStatus = PROG_ABORT;
+        break;
+      }
+
+      //Assert that we have an active program
+      NXT_ASSERT(VarsCmd.ActiveProgHandle != NOT_A_HANDLE);
+
+      //Handle any resting clumps that are ready to awaken
+      cCmdCheckRestQ(IOMapCmd.Tick); // not using result, yet
+      //Execute from at least one clump
+      do
+      {
+        //Execute instructions from a clump up to INSTR_MAX, to end of millisec,
+        //Finishing/suspending a clump, BREAKOUT_REQ, or any errors will cause a return
+#if VMProfilingCode
+          ULONG ClumpEnterTime= dTimerReadHiRes();
+          CLUMP_ID clump= VarsCmd.RunQ.Head;
+#endif
+          Status = cCmdInterpFromClump();
+#if VMProfilingCode
+          CmdCtrlClumpTime[clump] += dTimerReadHiRes() - ClumpEnterTime;
+#endif
+
+        //If RunQ and RestQ are empty, program is done, or wacko
+        if (!cCmdIsClumpIDSane(VarsCmd.RunQ.Head)) {
+          Continue = FALSE;
+          if(!cCmdIsClumpIDSane(VarsCmd.RestQ.Head)) {
+            VarsCmd.VMState = VM_RESET1;
+            IOMapCmd.ProgStatus = PROG_OK;
+          }
+        }
+        else if (Status == CLUMP_SUSPEND || Status == CLUMP_DONE)
+          Continue = TRUE; // queue isn't empty, didn't timeout
+          //Only rotate RunQ on a "normal" finish, i.e. no error, clump end, or breakout request
+        else if (Status == ROTATE_QUEUE) { // done and suspend do their own
+          cCmdRotateQ();
+          Continue= TRUE;
+        }
+       else if (Status == TIMES_UP) {
+          cCmdRotateQ();
+          Continue = FALSE;
+        }
+        else if (IS_ERR(Status)) // mem error is handled in InterpFromClump if possible
+        {
+          Continue = FALSE;
+          VarsCmd.VMState = VM_RESET1;
+          IOMapCmd.ProgStatus = PROG_ERROR;
+        }
+        else if (Status == STOP_REQ)
+        {
+          Continue = FALSE;
+          VarsCmd.VMState = VM_RESET1;
+          IOMapCmd.ProgStatus = PROG_OK;
+        }
+        else if (Status == BREAKOUT_REQ)
+        {
+          Continue = FALSE;
+        }
+      } while (Continue == TRUE);
+#if VMProfilingCode
+      FinishTime= dTimerReadHiRes();
+      if(NotFirstCall)
+        OverheadTime += EnterTime - LeaveTime;
+      else
+        NotFirstCall= 1;
+      CmdCtrlTime += FinishTime - EnterTime;
+      LeaveTime= FinishTime;
+#endif
+      // May busy wait to postpone to 1ms schedule
+      while (IOMapCmd.Tick == dTimerRead());
+    }
+    break;
     case VM_IDLE:
     {
       //If there's a new program to activate...
@@ -922,6 +1295,10 @@ void cCmdCtrl(void)
           VarsCmd.VMState = VM_RUN_FREE;
           IOMapCmd.ProgStatus = PROG_RUNNING;
           VarsCmd.StartTick = IOMapCmd.Tick;
+          if(VarsCmd.VMState == VM_RUN_FREE)
+           gInstrsToExecute = 20;
+          else
+            gInstrsToExecute= 1;
 
 #if VM_BENCHMARK
           //Re-init benchmark
@@ -942,9 +1319,9 @@ void cCmdCtrl(void)
           pMapUi->Flags |= (UI_DISABLE_LEFT_RIGHT_ENTER | UI_DISABLE_EXIT);
         }
       }
-
-      break;
+    while (IOMapCmd.Tick == dTimerRead()); // delay until scheduled time
     }
+    break;
 
     //Initialize VM internal state data and devices which must respond immediately to program ending
     case VM_RESET1:
@@ -985,6 +1362,7 @@ void cCmdCtrl(void)
       VarsCmd.CommStatReset = (SWORD)BTBUSY;
 
       VarsCmd.VMState = VM_RESET2;
+      while (IOMapCmd.Tick == dTimerRead()); // delay until scheduled time
     }
     break;
 
@@ -1012,126 +1390,13 @@ void cCmdCtrl(void)
         VarsCmd.VMState = VM_IDLE;
         IOMapCmd.ProgStatus = PROG_IDLE;
       }
+    while (IOMapCmd.Tick == dTimerRead()); // delay until scheduled time
+    }
       break;
-    }
-
-    case VM_RUN_FREE:
-    case VM_RUN_SINGLE:
-    {
-
-#if VM_BENCHMARK
-      //IOMapCmd.Tick currently holds the tick from the end of last cCmdCtrl call.
-      //If we don't come back here before dTimerRead() increments, the m_sched loop has taken *at least* 1 ms.
-      if (IOMapCmd.Tick != dTimerRead())
-      {
-        VarsCmd.OverTimeCount++;
-        //Record maximum magnitude of schedule loop overage, in millisecs
-        if (dTimerRead() - IOMapCmd.Tick > VarsCmd.MaxOverTimeLength)
-          VarsCmd.MaxOverTimeLength = dTimerRead() - IOMapCmd.Tick;
-      }
-      VarsCmd.CmdCtrlCount++;
-#endif
-      //Abort current program if cancel button is pressed
-      if (IOMapCmd.DeactivateFlag == TRUE || pMapButton->State[BTN1] & PRESSED_EV)
-      {
-        IOMapCmd.DeactivateFlag = FALSE;
-
-        //Clear pressed event so it doesn't get double-counted by UI
-        pMapButton->State[BTN1] &= ~PRESSED_EV;
-
-        //Go to VM_RESET1 state and report abort
-        VarsCmd.VMState = VM_RESET1;
-        IOMapCmd.ProgStatus = PROG_ABORT;
-        break;
-      }
-
-      //Assert that we have an active program
-      NXT_ASSERT(VarsCmd.ActiveProgHandle != NOT_A_HANDLE);
-
-      //Execute from at least one clump
-      do
-      {
-        if (cCmdIsClumpIDSane(VarsCmd.RunQ.Head))
-        {
-          //Stash and dequeue RunQ's head clump
-          CurrClumpID = VarsCmd.RunQ.Head;
-
-          //Execute at least one instruction from current clump
-          //Execute up to 'Priority' instructions as long as we are in VM_FREE_RUN mode
-          //Finishing/suspending a clump, BREAKOUT_REQ, or any errors will also end this loop
-          i = 0;
-          do
-          {
-            //Interpret one instruction per call, advancing PC as needed
-            Status = cCmdInterpFromClump(CurrClumpID);
-
-#if VM_BENCHMARK
-            VarsCmd.InstrCount++;
-#endif
-
-            NXT_ASSERT(!IS_ERR(Status));
-            if (IS_ERR(Status) || Status == CLUMP_DONE || Status == CLUMP_SUSPEND || Status == BREAKOUT_REQ || Status == STOP_REQ)
-            {
-              //We're done with this clump or breaking out prematurely,
-              //so break the multi-instruction loop
-              break;
-            }
-            else
-            {
-              //Count up one more instruction for this pass
-              i++;
-            }
-          } while (VarsCmd.VMState == VM_RUN_FREE && i < VarsCmd.pAllClumps[CurrClumpID].Priority);
-
-          //Only rotate RunQ on a "normal" finish, i.e. no error, clump end, or breakout request
-          if (!(IS_ERR(Status) || Status == CLUMP_DONE || Status == CLUMP_SUSPEND || Status == BREAKOUT_REQ))
-            cCmdRotateQ(&(VarsCmd.RunQ));
-        }
-
-        //Re-evaluate conditions for stopping the dataflow scheduler
-        //Halt program on all errors
-        if (IS_ERR(Status))
-        {
-          Continue = FALSE;
-
-          VarsCmd.VMState = VM_RESET1;
-          IOMapCmd.ProgStatus = PROG_ERROR;
-        }
-        else if (Status == BREAKOUT_REQ)
-        {
-          Continue = FALSE;
-        }
-        //If RunQ is empty or user requested early termination, program is done
-        else if (!cCmdIsClumpIDSane(VarsCmd.RunQ.Head) || Status == STOP_REQ)
-        {
-          Continue = FALSE;
-
-          VarsCmd.VMState = VM_RESET1;
-          IOMapCmd.ProgStatus = PROG_OK;
-        }
-        //VM_RUN_FREE means continue executing until a new ms tick rolls over
-        else if (VarsCmd.VMState == VM_RUN_FREE)
-        {
-          Continue = (IOMapCmd.Tick == dTimerRead());
-        }
-        //Otherwise execute only one pass per call
-        else //VarsCmd.VMState == VM_RUN_SINGLE
-        {
-          VarsCmd.VMState = VM_RUN_PAUSE;
-          Continue = FALSE;
-        }
-
-      } while (Continue == TRUE);
-
-    break;
-    }
   }//END state machine switch
 
-  //Busy wait to always maintain 1ms period
-  BUSY_WAIT_NEXT_MS;
-
   //Set tick to new value for next time 'round
-  IOMapCmd.Tick = dTimerRead();
+  IOMapCmd.Tick = dTimerReadNoPoll();
 
   return;
 }
@@ -1280,6 +1545,8 @@ NXT_STATUS cCmdReadFileHeader(UBYTE* pData, ULONG DataSize,
 
   VarsCmd.RunQ.Head = NOT_A_CLUMP;
   VarsCmd.RunQ.Tail = NOT_A_CLUMP;
+  VarsCmd.RestQ.Head = NOT_A_CLUMP;
+  VarsCmd.RestQ.Tail  = NOT_A_CLUMP;
 
   //Reset codespace pointer
   VarsCmd.pCodespace = (CODE_WORD*)(pData + pFileOffsets->Codespace);
@@ -1325,7 +1592,9 @@ NXT_STATUS cCmdInflateDSDefaults(UBYTE* pDSDefaults, UWORD *pDefaultsOffset, DS_
 
   TypeCode = cCmdDSType(DSElementID);
 
-  if (TypeCode == TC_CLUSTER)
+  if (TypeCode > TC_LAST_VALID)
+    return ERR_INSTR;
+  else if (TypeCode == TC_CLUSTER)
   {
     Count = cCmdClusterCount(DSElementID);
     //Advance DSElementID to sub-type
@@ -1369,6 +1638,19 @@ NXT_STATUS cCmdInflateDSDefaults(UBYTE* pDSDefaults, UWORD *pDefaultsOffset, DS_
   return Status;
 }
 
+void cCmdRefreshActiveClump(CLUMP_ID CurrID)
+{
+  CLUMP_REC *  clumpRecPtr= &(VarsCmd.pAllClumps[CurrID]);
+
+  if(clumpRecPtr->clumpScalarDispatchHints & scalarBinopDispatchMask)
+    InterpFuncs[8]= cCmdInterpScalarBinop;
+  else
+    InterpFuncs[8]= cCmdInterpBinop;
+  if(clumpRecPtr->clumpScalarDispatchHints & scalarUnop2DispatchMask)
+    InterpFuncs[6]= cCmdInterpScalarUnop2;
+  else
+    InterpFuncs[6]= cCmdInterpUnop2;
+}
 
 NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
 {
@@ -1427,18 +1709,18 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
   pCursor = (pData + FileOffsets.Clumps);
   for (i = 0; i < VarsCmd.AllClumpsCount; i++)
   {
-    VarsCmd.pAllClumps[i].InitFireCount  = *(UBYTE*)(pCursor + i * VM_FILE_CLUMP_REC_SIZE);
-    VarsCmd.pAllClumps[i].DependentCount = *(UBYTE*)(pCursor + (i * VM_FILE_CLUMP_REC_SIZE) + 1);
-    VarsCmd.pAllClumps[i].CodeStart      = *(UWORD*)(pCursor + (i * VM_FILE_CLUMP_REC_SIZE) + 2);
+    CLUMP_REC *clumpPtr= &VarsCmd.pAllClumps[i];
+    clumpPtr->InitFireCount  = *(UBYTE*)(pCursor + i * VM_FILE_CLUMP_REC_SIZE);
+    clumpPtr->DependentCount = *(UBYTE*)(pCursor + (i * VM_FILE_CLUMP_REC_SIZE) + 1);
+    clumpPtr->CodeStart      = *(UWORD*)(pCursor + (i * VM_FILE_CLUMP_REC_SIZE) + 2) + VarsCmd.pCodespace;
 
     //Initialize remaining CLUMP_REC fields
-    VarsCmd.pAllClumps[i].PC = 0;
-    VarsCmd.pAllClumps[i].Priority = 20;
-    VarsCmd.pAllClumps[i].Link = NOT_A_CLUMP;
+    clumpPtr->PC = clumpPtr->CodeStart;
+    clumpPtr->Link = NOT_A_CLUMP;
 
     //Activate any clumps with CurrFireCount of 0
-    VarsCmd.pAllClumps[i].CurrFireCount = VarsCmd.pAllClumps[i].InitFireCount;
-    if (VarsCmd.pAllClumps[i].CurrFireCount == 0)
+    clumpPtr->CurrFireCount = clumpPtr->InitFireCount;
+    if (clumpPtr->CurrFireCount == 0)
       cCmdEnQClump(&(VarsCmd.RunQ), (CLUMP_ID)i);
   }
 
@@ -1446,28 +1728,89 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
   pCursor += VarsCmd.AllClumpsCount * VM_FILE_CLUMP_REC_SIZE;
   for (i = 0; i < VarsCmd.AllClumpsCount; i++)
   {
-    if (VarsCmd.pAllClumps[i].DependentCount > 0)
+    CLUMP_REC *clumpPtr= &VarsCmd.pAllClumps[i];
+    if (clumpPtr->DependentCount > 0)
     {
-      VarsCmd.pAllClumps[i].pDependents = (CLUMP_ID*)(pCursor);
+      clumpPtr->pDependents = (CLUMP_ID*)(pCursor);
 
-      pCursor += (VarsCmd.pAllClumps[i].DependentCount * sizeof(CLUMP_ID));
+      pCursor += (clumpPtr->DependentCount * sizeof(CLUMP_ID));
     }
     else
-      VarsCmd.pAllClumps[i].pDependents = NULL;
+      clumpPtr->pDependents = NULL;
 
     //Patch up CodeEnd value based on CodeStart of next clump or last overall codeword
     if (i < (VarsCmd.AllClumpsCount - 1))
-      VarsCmd.pAllClumps[i].CodeEnd = VarsCmd.pAllClumps[i+1].CodeStart - 1;
+      clumpPtr->CodeEnd = (clumpPtr+1)->CodeStart - 1;
     else
-      VarsCmd.pAllClumps[i].CodeEnd = VarsCmd.CodespaceCount - 1;
+      clumpPtr->CodeEnd = VarsCmd.CodespaceCount - 1 + VarsCmd.pCodespace;
 
     //Test for empty/insane clump code definitions
-    NXT_ASSERT(VarsCmd.pAllClumps[i].CodeStart < VarsCmd.pAllClumps[i].CodeEnd);
+    NXT_ASSERT(clumpPtr->CodeStart < clumpPtr->CodeEnd);
   }
 
+  // Check if the instructions within a clump are polymorphic and mark which table to dispatch from
+  for (i = 0; i < VarsCmd.AllClumpsCount; i++)
+  { // Check type on Boolean, math, ArrInit and ArrIndex, ingore GetSet I/O as these are always scalar
+    // do we need to check for DataArg encodings to I/O map??? GM
+    // Get Opcode and size of each instr, if ^^, check Arg types for Array or Cluster
+    CLUMP_REC *clumpPtr= &VarsCmd.pAllClumps[i];
+    CODE_WORD *pInstr = clumpPtr->CodeStart, *lastPC = clumpPtr->CodeEnd;
+    ULONG InstrSize, opCode, shortOp, isT2Agg, isT3Agg, isScalarBinop= TRUE, isScalarUnop2= TRUE;
+    TYPE_CODE t1, t2, t3;
+    ULONG instrWord;
+   do
+    {
+      instrWord= *(UWORD*)pInstr;
+      opCode= OP_CODE(pInstr);
+      shortOp= (instrWord>>8) & 0x0F;
+      InstrSize = INSTR_SIZE(instrWord);
+      if (InstrSize == VAR_INSTR_SIZE)
+        InstrSize = ((UWORD*)pInstr)[1];
+      if(shortOp <= 7) // no shorts are binOps
+      {
+        t2= cCmdDSType(pInstr[2]);
+        isT2Agg= IS_AGGREGATE_TYPE(t2);
+        if(InstrSize == 8) {
+        t3= cCmdDSType(pInstr[3]);
+        isT3Agg= IS_AGGREGATE_TYPE(t3);
+          if(isT2Agg || isT3Agg) {
+            if(opCode == OP_CMP) {
+              UBYTE isString2, isString3;
+              isString2= (t2  == TC_ARRAY) && cCmdDSType(INC_ID(pInstr[2])) == TC_UBYTE;
+              isString3= (t3  == TC_ARRAY) && cCmdDSType(INC_ID(pInstr[3])) == TC_UBYTE;
+              t1= cCmdDSType(pInstr[1]);
+              if((!isString2 || !isString3) || t1 == TC_ARRAY) // allow strings to go scalar, don't let through element compares of bytes or Bools
+                isScalarBinop= FALSE;
+            }
+            else if(opCode == OP_BRCMP)
+              isScalarBinop= FALSE;
+          }
+        }
+        else if(InstrSize == 6 && isT2Agg && (opCode == OP_NOT || opCode == OP_BRTST))
+          isScalarUnop2= FALSE;
+      }
+      pInstr += InstrSize/2;
+    } while((isScalarBinop || isScalarUnop2) && pInstr < lastPC);
+    if(isScalarBinop)
+      clumpPtr->clumpScalarDispatchHints |= scalarBinopDispatchMask;
+    else
+      clumpPtr->clumpScalarDispatchHints &= ~scalarBinopDispatchMask;
+
+    if(isScalarUnop2)
+      clumpPtr->clumpScalarDispatchHints |= scalarUnop2DispatchMask;
+    else
+      clumpPtr->clumpScalarDispatchHints &= ~scalarUnop2DispatchMask;
+
+  }
   //Programs with no active clumps constitutes an activation error
   if (VarsCmd.RunQ.Head == NOT_A_CLUMP)
     return (ERR_FILE);
+  else
+  {
+    // now that we know which clumps are scalar and poly, refresh dispatch table to match head
+    cCmdRefreshActiveClump(VarsCmd.RunQ.Head);
+
+  }
 
   //Initialize dataspace with default values from file
   //!!! This would be a good place to enforce check against potentially
@@ -1491,6 +1834,13 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
   //Copy Dynamic defaults from file
   memmove(VarsCmd.pDataspace + VarsCmd.DSStaticSize, pData + FileOffsets.DSDefaults + FileOffsets.DynamicDefaults, FileOffsets.DynamicDefaultsSize);
 
+  // fix memmgr links. old files contain unused backPtrs, we now use these to store backLink
+  DV_INDEX prev= NOT_A_DS_ID;
+  for (i = VarsCmd.MemMgr.Head; i != NOT_A_DS_ID; i = DV_ARRAY[i].Link) {
+    DV_ARRAY[i].BackLink= prev;
+    prev= i;
+  }
+
   //Verify the MemMgr ended up where we said it would
   if ((UBYTE *)VarsCmd.MemMgr.pDopeVectorArray != VarsCmd.pDataspace + DV_ARRAY[0].Offset)
   {
@@ -1510,9 +1860,27 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
     }
   }
 
+  //Initialize datalog queue
+  VarsCmd.DatalogBuffer.ReadIndex = 0;
+  VarsCmd.DatalogBuffer.WriteIndex = 0;
+  for (j = 0; j < DATALOG_QUEUE_DEPTH; j++)
+  {
+    VarsCmd.DatalogBuffer.Datalogs[j] = NOT_A_DS_ID;
+  }
+
+  // now that we've loaded program, prime memmgr dopevectors based upon number of handles in ds.
+  ULONG numHandles= DV_ARRAY[0].Count/2;
+  if(numHandles > 200)
+    numHandles= 200;
+  Status = cCmdGrowDopeVectorArray(numHandles);
+
   if (cCmdVerifyMemMgr() != TRUE)
     return (ERR_FILE);
 
+  gUsageSemData= 0;
+  gRequestSemData= 0;
+  // preload all calibration coefficients into mem
+  cCmdLoadCalibrationFiles();
   return (Status);
 }
 
@@ -1541,8 +1909,6 @@ void cCmdDeactivateProgram()
 
   VarsCmd.RunQ.Head = NOT_A_CLUMP;
   VarsCmd.RunQ.Tail = NOT_A_CLUMP;
-  VarsCmd.ScratchPC = 0;
-  VarsCmd.CallerClump = NOT_A_CLUMP;
 
   if (VarsCmd.ActiveProgHandle != NOT_A_HANDLE)
   {
@@ -1561,7 +1927,7 @@ void cCmdDeactivateProgram()
     tmp = i;
     //Close file
     if (*(VarsCmd.FileHandleTable[i]) != 0)
-      pMapLoader->pFunc(CLOSE, &tmp, NULL, NULL);
+      pMapLoader->pFunc(CROPDATAFILE, &tmp, NULL, NULL);
   }
 
   //Clear FileHandleTable
@@ -1646,6 +2012,8 @@ void cCmdEnQClump(CLUMP_Q * Queue, CLUMP_ID NewClump)
 
     Queue->Head = NewClump;
     Queue->Tail = NewClump;
+    if(Queue == &(VarsCmd.RunQ))
+      cCmdRefreshActiveClump(NewClump);
   }
   //Otherwise, tack onto the end
   else
@@ -1679,18 +2047,21 @@ void cCmdDeQClump(CLUMP_Q * Queue, CLUMP_ID Clump)
     //If we just removed the last clump, patch up the queue's tail
     if (Queue->Head == NOT_A_CLUMP)
       Queue->Tail = NOT_A_CLUMP;
+    else if(Queue == &(VarsCmd.RunQ))
+      cCmdRefreshActiveClump(Queue->Head);
   }
   //Else, look through rest of list looking for a link to our clump
   else
   {
     do
     {
-      LinkID = VarsCmd.pAllClumps[CurrID].Link;
+      CLUMP_REC *clumpPtr= &VarsCmd.pAllClumps[CurrID];
+      LinkID = clumpPtr->Link;
 
       //If we find a link to our clump, patch up predecessor's link
-      if (VarsCmd.pAllClumps[CurrID].Link == Clump)
+      if (clumpPtr->Link == Clump)
       {
-        VarsCmd.pAllClumps[CurrID].Link = VarsCmd.pAllClumps[Clump].Link;
+        clumpPtr->Link = VarsCmd.pAllClumps[Clump].Link;
         VarsCmd.pAllClumps[Clump].Link = NOT_A_CLUMP;
 
         //If we just removed the tail, patch tail
@@ -1707,10 +2078,11 @@ void cCmdDeQClump(CLUMP_Q * Queue, CLUMP_ID Clump)
 
 
 //Rotate head to tail and advance head for given Queue
-void cCmdRotateQ(CLUMP_Q * Queue)
+void cCmdRotateQ()
 {
   CLUMP_ID CurrID;
   CLUMP_REC * pClumpRec;
+  CLUMP_Q * Queue = &VarsCmd.RunQ;
 
   //Make sure Queue is sane
   NXT_ASSERT(cCmdIsQSane(Queue) == TRUE);
@@ -1729,6 +2101,10 @@ void cCmdRotateQ(CLUMP_Q * Queue)
     pClumpRec = &(VarsCmd.pAllClumps[Queue->Tail]);
     pClumpRec->Link = CurrID;
     Queue->Tail = CurrID;
+
+    // reinit clump info
+    CurrID= Queue->Head;
+    cCmdRefreshActiveClump(Queue->Head);
 
     //Make sure we didn't make any really stupid mistakes
     NXT_ASSERT(cCmdIsQSane(Queue) == TRUE);
@@ -1798,9 +2174,10 @@ UBYTE cCmdIsQSane(CLUMP_Q * Queue)
 // Mutex queuing functions
 //
 
-NXT_STATUS cCmdAcquireMutex(MUTEX_Q * Mutex, CLUMP_ID Clump)
+NXT_STATUS cCmdAcquireMutex(MUTEX_Q * Mutex)
 {
   NXT_STATUS Status = NO_ERR;
+  CLUMP_ID Clump= VarsCmd.RunQ.Head; // save off before queue changes below
 
   NXT_ASSERT(Mutex != NULL && cCmdIsClumpIDSane(Clump));
 
@@ -1825,8 +2202,11 @@ NXT_STATUS cCmdAcquireMutex(MUTEX_Q * Mutex, CLUMP_ID Clump)
 }
 
 
-NXT_STATUS cCmdReleaseMutex(MUTEX_Q * Mutex, CLUMP_ID Clump)
+NXT_STATUS cCmdReleaseMutex(MUTEX_Q * Mutex)
 {
+#if WIN_DEBUG || defined(ARM_DEBUG)
+  CLUMP_ID Clump= VarsCmd.RunQ.Head;
+#endif
   NXT_ASSERT(Mutex != NULL);
   //!!! don't actually need to pass in Owner clump, but provides nice error checking for now
   // Might want to return an error/warning if we see a Release on an free mutex, though...
@@ -1847,6 +2227,36 @@ NXT_STATUS cCmdReleaseMutex(MUTEX_Q * Mutex, CLUMP_ID Clump)
   return (NO_ERR);
 }
 
+// No instruction to do this yet, but put current clump to sleep until awakeTime occurs
+NXT_STATUS cCmdSleepClump(ULONG time)
+{
+  CLUMP_ID Clump= VarsCmd.RunQ.Head; // save off before queue changes below
+  CLUMP_REC * pClump = &(VarsCmd.pAllClumps[Clump]);
+  cCmdDeQClump(&(VarsCmd.RunQ), Clump);
+  cCmdEnQClump(&(VarsCmd.RestQ), Clump);
+  pClump->awakenTime= time;
+  return CLUMP_SUSPEND;
+}
+
+UBYTE cCmdCheckRestQ(ULONG currTime)
+{
+  UBYTE awakened= FALSE;
+  CLUMP_ID curr, next;
+  CLUMP_REC * pClump;
+  curr= VarsCmd.RestQ.Head;
+  while(curr != NOT_A_CLUMP) {
+    pClump= &(VarsCmd.pAllClumps[curr]);
+    next= pClump->Link;
+    if(pClump->awakenTime <= currTime) {
+      pClump->awakenTime= 0; // not necessary, but for debugging identification
+      cCmdDeQClump(&(VarsCmd.RestQ), curr);
+      cCmdEnQClump(&(VarsCmd.RunQ), curr);
+      awakened= TRUE;
+    }
+    curr= next;
+  }
+  return awakened;
+}
 
 NXT_STATUS cCmdSchedDependents(CLUMP_ID Clump, SWORD Begin, SWORD End)
 {
@@ -1891,8 +2301,9 @@ NXT_STATUS cCmdSchedDependent(CLUMP_ID Clump, CLUMP_ID TargetClump)
   NXT_ASSERT(cCmdIsClumpIDSane(Clump));
   NXT_ASSERT(cCmdIsClumpIDSane(TargetClump));
 
-  VarsCmd.pAllClumps[TargetClump].CurrFireCount--;
-  if (VarsCmd.pAllClumps[TargetClump].CurrFireCount == 0)
+  CLUMP_REC *clumpPtr= &VarsCmd.pAllClumps[TargetClump];
+  clumpPtr->CurrFireCount--;
+  if (clumpPtr->CurrFireCount == 0)
     cCmdEnQClump(&(VarsCmd.RunQ), TargetClump);
 
   return (NO_ERR);
@@ -1914,25 +2325,31 @@ UBYTE cCmdIsClumpIDSane(CLUMP_ID Clump)
 void cCmdInitPool(void)
 {
   ULONG i;
+  ULONG *poolPtr;
 
   //VarsCmd.Pool is a UBYTE pointer to ULONG array
   //This was done to enforce portable alignment.
   VarsCmd.Pool = (UBYTE*)(IOMapCmd.MemoryPool);
 
-  for (i = 0; i < (POOL_MAX_SIZE / 4); i++)
-    ((SLONG*)(POOL_START))[i] = 0xDEADBEEF;
+  for (i = (POOL_MAX_SIZE / 4), poolPtr= (ULONG*)&(POOL_START)[0]; i>0; i--, poolPtr++)
+    *poolPtr = 0xDEADBEEF;
 
   VarsCmd.PoolSize = 0;
 }
 
 
+#if VMProfilingCode
+ULONG memMgrTime= 0;
+#endif
 NXT_STATUS cCmdDSArrayAlloc(DS_ELEMENT_ID DSElementID, UWORD Offset, UWORD NewCount)
 {
   NXT_STATUS Status = NO_ERR;
   UWORD DVIndex;
   UWORD OldCount;
   UWORD i;
-
+#if VMProfilingCode
+  ULONG enterTime= dTimerReadHiRes();
+#endif
   NXT_ASSERT(cCmdIsDSElementIDSane(DSElementID));
 
   //Only arrays are valid here
@@ -1942,9 +2359,15 @@ NXT_STATUS cCmdDSArrayAlloc(DS_ELEMENT_ID DSElementID, UWORD Offset, UWORD NewCo
   DVIndex = cCmdGetDVIndex(DSElementID, Offset);
   OldCount = DV_ARRAY[DVIndex].Count;
 
+  if(OldCount == NewCount)
+    goto allocExit;
   Status = cCmdDVArrayAlloc(DVIndex, NewCount);
+
   if (Status < NO_ERR)
-    return Status;
+    goto allocExit;
+
+  if(!IS_AGGREGATE_TYPE(cCmdDSType(INC_ID(DSElementID))))
+    goto allocExit;
 
   if (OldCount > NewCount)
   {
@@ -1953,22 +2376,25 @@ NXT_STATUS cCmdDSArrayAlloc(DS_ELEMENT_ID DSElementID, UWORD Offset, UWORD NewCo
     {
       Status = cCmdFreeSubArrayDopeVectors(INC_ID(DSElementID), ARRAY_ELEM_OFFSET(DVIndex, i));
       if (IS_ERR(Status))
-        return Status;
+        goto allocExit;
     }
   }
   else if (OldCount < NewCount)
   {
     //Alloc dope vectors for sub-arrays. Set up DVIndexes
-    for (i = OldCount; i < NewCount; i++)
+    for (i = OldCount; i < NewCount;  i++)
     {
       Status = cCmdAllocSubArrayDopeVectors(INC_ID(DSElementID), ARRAY_ELEM_OFFSET(DVIndex, i));
       if (IS_ERR(Status))
-        return Status;
+        goto allocExit;
     }
   }
 
   NXT_ASSERT(cCmdVerifyMemMgr());
-
+allocExit:
+#if VMProfilingCode
+  memMgrTime += dTimerReadHiRes() - enterTime;
+#endif
   return Status;
 }
 
@@ -2044,11 +2470,13 @@ NXT_STATUS cCmdDVArrayAlloc(DV_INDEX DVIndex, UWORD NewCount)
     VarsCmd.PoolSize += ArraySize;
     VarsCmd.DataspaceSize += ArraySize;
 
-    //Move Array Data
-    memmove(pData, VarsCmd.pDataspace + DV_ARRAY[DVIndex].Offset, (UWORD)(DV_ARRAY[DVIndex].ElemSize * DV_ARRAY[DVIndex].Count));
-    //!!! Clear mem so we make sure we don't reference stale data. Not strictly needed.
-    memset(VarsCmd.pDataspace + DV_ARRAY[DVIndex].Offset, 0xFF, (UWORD)(DV_ARRAY[DVIndex].ElemSize * DV_ARRAY[DVIndex].Count));
-
+    //Move old Array Data to new allocation
+    if(OldCount)
+      memmove(pData, VarsCmd.pDataspace + DV_ARRAY[DVIndex].Offset, (UWORD)(DV_ARRAY[DVIndex].ElemSize * OldCount));
+    //!!! Clear mem so old mem doesn't contain stale data. Not strictly needed.
+#if WIN_DEBUG || defined(ARM_DEBUG)
+    memset(VarsCmd.pDataspace + DV_ARRAY[DVIndex].Offset, 0xFF, (UWORD)(DV_ARRAY[DVIndex].ElemSize * OldCount));
+#endif
     //Update dope vector
     DV_ARRAY[DVIndex].Offset = pData - VarsCmd.pDataspace;
     DV_ARRAY[DVIndex].Count = NewCount;
@@ -2094,7 +2522,7 @@ NXT_STATUS cCmdAllocSubArrayDopeVectors(DS_ELEMENT_ID DSElementID, UWORD Offset)
       //     It'd be nice to not have to recalculate it.
       ElemSize = cCmdCalcArrayElemSize((DS_ELEMENT_ID)(DSElementID + i));
       DVIndexOffset = VarsCmd.pDataspaceTOC[DSElementID + i].DSOffset + Offset;
-      Status = cCmdAllocDopeVector(&DVIndex, ElemSize, DVIndexOffset);
+      Status = cCmdAllocDopeVector(&DVIndex, ElemSize);
       if (IS_ERR(Status))
         return Status;
 
@@ -2156,7 +2584,7 @@ NXT_STATUS cCmdFreeSubArrayDopeVectors(DS_ELEMENT_ID DSElementID, UWORD Offset)
 }
 
 
-NXT_STATUS cCmdAllocDopeVector(DV_INDEX *pIndex, UWORD ElemSize, UWORD BackPtr)
+NXT_STATUS cCmdAllocDopeVector(DV_INDEX *pIndex, UWORD ElemSize)
 {
   NXT_STATUS Status = NO_ERR;
 
@@ -2168,11 +2596,14 @@ NXT_STATUS cCmdAllocDopeVector(DV_INDEX *pIndex, UWORD ElemSize, UWORD BackPtr)
       return Status;
   }
 
-  NXT_ASSERT(VarsCmd.MemMgr.FreeHead != NOT_A_DS_ID);
+  if(VarsCmd.MemMgr.FreeHead == NOT_A_DS_ID)
+    return ERR_MEM;
 
   //Remove DV from free list
   *pIndex = VarsCmd.MemMgr.FreeHead;
-  VarsCmd.MemMgr.FreeHead = DV_ARRAY[VarsCmd.MemMgr.FreeHead].Link;
+  VarsCmd.MemMgr.FreeHead = DV_ARRAY[*pIndex].Link;
+  if(VarsCmd.MemMgr.FreeHead != NOT_A_DS_ID)
+    DV_ARRAY[VarsCmd.MemMgr.FreeHead].BackLink= NOT_A_DS_ID;
   //Add DV to tail of MemMgr list
   Status = cCmdMemMgrInsertAtTail(*pIndex);
 
@@ -2180,7 +2611,6 @@ NXT_STATUS cCmdAllocDopeVector(DV_INDEX *pIndex, UWORD ElemSize, UWORD BackPtr)
   DV_ARRAY[*pIndex].Offset = NOT_AN_OFFSET;
   DV_ARRAY[*pIndex].ElemSize = ElemSize;
   DV_ARRAY[*pIndex].Count = 0;
-  DV_ARRAY[*pIndex].BackPtr = BackPtr;
 
   NXT_ASSERT(cCmdVerifyMemMgr());
 
@@ -2196,7 +2626,7 @@ NXT_STATUS cCmdAllocDopeVector(DV_INDEX *pIndex, UWORD ElemSize, UWORD BackPtr)
 NXT_STATUS cCmdFreeDopeVector(DV_INDEX DVIndex)
 {
   NXT_STATUS Status = NO_ERR;
-  DV_INDEX i;
+  DV_INDEX prev, post;
 
   //Bounds check
   NXT_ASSERT(DVIndex < DV_ARRAY[0].Count);
@@ -2205,33 +2635,33 @@ NXT_STATUS cCmdFreeDopeVector(DV_INDEX DVIndex)
   DV_ARRAY[DVIndex].Count = 0;
   DV_ARRAY[DVIndex].ElemSize = 0;
   DV_ARRAY[DVIndex].Offset = NOT_AN_OFFSET;
-  DV_ARRAY[DVIndex].BackPtr = NOT_AN_OFFSET;
 
   //Remove from MemMgr list
   if (DVIndex == VarsCmd.MemMgr.Head)
   {
     VarsCmd.MemMgr.Head = DV_ARRAY[DVIndex].Link;
+    if(VarsCmd.MemMgr.Head != NOT_A_DS_ID)
+      DV_ARRAY[VarsCmd.MemMgr.Head].BackLink= NOT_A_DS_ID;
   }
   else
   {
-    //Walk MemMgr list to find previous.
-    //!!! Could speed this up if MemMgr list were doubly linked
-    for (i = VarsCmd.MemMgr.Head; i != NOT_A_DS_ID; i = DV_ARRAY[i].Link)
-    {
-      if (DV_ARRAY[i].Link == DVIndex)
-      {
-        DV_ARRAY[i].Link = DV_ARRAY[DVIndex].Link;
-        if (DVIndex == VarsCmd.MemMgr.Tail)
-          VarsCmd.MemMgr.Tail = i;
-        break;
-      }
-    }
+    // patchup middle or end of list.
+    prev= DV_ARRAY[DVIndex].BackLink;
+    post= DV_ARRAY[DVIndex].Link;
+    NXT_ASSERT(prev != NOT_A_DS_ID);
+
+    DV_ARRAY[prev].Link = post;
+    if(post != NOT_A_DS_ID)
+      DV_ARRAY[post].BackLink= prev;
+    if (DVIndex == VarsCmd.MemMgr.Tail)
+      VarsCmd.MemMgr.Tail = prev;
     //Make sure we found the previous DV, otherwise this DV was not in the the list (already freed?)
-    NXT_ASSERT(i != NOT_A_DS_ID);
   }
 
-  //Push on to free list
+  //Push onto free list
   DV_ARRAY[DVIndex].Link = VarsCmd.MemMgr.FreeHead;
+  DV_ARRAY[DVIndex].BackLink = NOT_A_DS_ID;
+  DV_ARRAY[VarsCmd.MemMgr.FreeHead].BackLink= DVIndex;
   VarsCmd.MemMgr.FreeHead = DVIndex;
 
   NXT_ASSERT(cCmdVerifyMemMgr());
@@ -2291,7 +2721,9 @@ NXT_STATUS cCmdGrowDopeVectorArray(UWORD NewNodesCount)
     DV_ARRAY[i].Offset = 0xFFFF;
     DV_ARRAY[i].ElemSize = 0;
     DV_ARRAY[i].Count = 0;
-    DV_ARRAY[i].BackPtr = 0xFFFF;
+    DV_ARRAY[i].BackLink = NOT_A_DS_ID;
+    if(VarsCmd.MemMgr.FreeHead != NOT_A_DS_ID)
+      DV_ARRAY[VarsCmd.MemMgr.FreeHead].BackLink = i;
     DV_ARRAY[i].Link = VarsCmd.MemMgr.FreeHead;
     VarsCmd.MemMgr.FreeHead = i;
   }
@@ -2302,13 +2734,6 @@ NXT_STATUS cCmdGrowDopeVectorArray(UWORD NewNodesCount)
   NXT_ASSERT(cCmdVerifyMemMgr());
 
   return Status;
-}
-
-NXT_STATUS cCmdCompactDopeVectorArray(void)
-{
-  //!!! Not implemented. Needs BackPtr support.
-  NXT_BREAK;
-  return ERR_ARG;
 }
 
 
@@ -2348,7 +2773,7 @@ UWORD cCmdCalcArrayElemSize(DS_ELEMENT_ID DSElementID)
 
 NXT_STATUS cCmdMemMgrMoveToTail(DV_INDEX DVIndex)
 {
-  DV_INDEX i;
+  DV_INDEX prev, post;
 
   //Bounds check
   NXT_ASSERT(DVIndex < DV_ARRAY[0].Count);
@@ -2357,26 +2782,25 @@ NXT_STATUS cCmdMemMgrMoveToTail(DV_INDEX DVIndex)
   if (DVIndex == VarsCmd.MemMgr.Tail)
     return NO_ERR;
 
-  if (DVIndex == VarsCmd.MemMgr.Head)
+  if (DVIndex == VarsCmd.MemMgr.Head) {
     VarsCmd.MemMgr.Head = DV_ARRAY[DVIndex].Link;
+    DV_ARRAY[VarsCmd.MemMgr.Head].BackLink= NOT_A_DS_ID;
+  }
   else
   {
-    //Walk MemMgr list to find previous.
-    //!!! Could speed this up if MemMgr list were doubly linked
-    for (i = VarsCmd.MemMgr.Head; i != NOT_A_DS_ID; i = DV_ARRAY[i].Link)
-    {
-      if (DV_ARRAY[i].Link == DVIndex)
-      {
-        DV_ARRAY[i].Link = DV_ARRAY[DVIndex].Link;
-        break;
-      }
-    }
-    //Make sure we found the previous DV, otherwise this DV was not in the the list
-    NXT_ASSERT(i != NOT_A_DS_ID);
+    // connect to middle or end of list.
+    prev= DV_ARRAY[DVIndex].BackLink;
+    post= DV_ARRAY[DVIndex].Link;
+    NXT_ASSERT(prev != NOT_A_DS_ID);
+    DV_ARRAY[prev].Link = post;
+    if(post != NOT_A_DS_ID)
+      DV_ARRAY[post].BackLink= prev;
   }
 
   DV_ARRAY[DVIndex].Link = NOT_A_DS_ID;
-  DV_ARRAY[VarsCmd.MemMgr.Tail].Link = DVIndex;
+  DV_ARRAY[DVIndex].BackLink = VarsCmd.MemMgr.Tail;
+  if(VarsCmd.MemMgr.Tail != NOT_A_DS_ID)
+    DV_ARRAY[VarsCmd.MemMgr.Tail].Link = DVIndex;
   VarsCmd.MemMgr.Tail = DVIndex;
 
   NXT_ASSERT(cCmdVerifyMemMgr());
@@ -2391,8 +2815,9 @@ NXT_STATUS cCmdMemMgrInsertAtTail(DV_INDEX DVIndex)
   NXT_ASSERT(DVIndex < DV_ARRAY[0].Count);
 
   DV_ARRAY[VarsCmd.MemMgr.Tail].Link = DVIndex;
-  VarsCmd.MemMgr.Tail = DVIndex;
+  DV_ARRAY[DVIndex].BackLink= VarsCmd.MemMgr.Tail;
   DV_ARRAY[DVIndex].Link = NOT_A_DS_ID;
+  VarsCmd.MemMgr.Tail = DVIndex;
 
   NXT_ASSERT(cCmdVerifyMemMgr());
 
@@ -2402,7 +2827,7 @@ NXT_STATUS cCmdMemMgrInsertAtTail(DV_INDEX DVIndex)
 
 UBYTE cCmdVerifyMemMgr()
 {
-  DV_INDEX i;
+  DV_INDEX i, prev, post;
   UWORD CurrOffset = 0;
   UWORD PrevOffset = 0;
   UWORD DVCount = 0;
@@ -2420,12 +2845,21 @@ UBYTE cCmdVerifyMemMgr()
       PrevOffset = CurrOffset;
     }
 
-    if (DV_ARRAY[i].Link == NOT_A_DS_ID && i != VarsCmd.MemMgr.Tail)
+    prev= DV_ARRAY[i].BackLink;
+    post= DV_ARRAY[i].Link;
+    if (post == NOT_A_DS_ID && i != VarsCmd.MemMgr.Tail)
+      return FALSE;
+    else if(prev == NOT_A_DS_ID && i != VarsCmd.MemMgr.Head)
+      return FALSE;
+    else if(prev != NOT_A_DS_ID && DV_ARRAY[prev].Link != i)
+      return FALSE;
+    else if(post != NOT_A_DS_ID && DV_ARRAY[post].BackLink != i)
       return FALSE;
 
     DVCount++;
   }
 
+  // could check link and backlinks too
   for (i = VarsCmd.MemMgr.FreeHead; i != NOT_A_DS_ID; i = DV_ARRAY[i].Link)
   {
     DVCount++;
@@ -2556,7 +2990,7 @@ NXT_STATUS cCmdMessageWrite(UWORD QueueID, UBYTE * pData, UWORD Length)
   else
   {
     //Allocate dope vector for message
-    Status = cCmdAllocDopeVector(&GET_WRITE_MSG(QueueID), 1, NOT_AN_OFFSET);
+    Status = cCmdAllocDopeVector(&GET_WRITE_MSG(QueueID), 1);
     if (IS_ERR(Status))
       return Status;
   }
@@ -2665,6 +3099,164 @@ NXT_STATUS cCmdMessageRead(UWORD QueueID, UBYTE * pBuffer, UWORD Length, UBYTE R
   return Status;
 }
 
+//
+// Datalog Queue function(s)
+//
+
+NXT_STATUS cCmdDatalogWrite(UBYTE * pData, UWORD Length)
+{
+  NXT_STATUS Status = NO_ERR;
+
+  if (pData == NULL)
+    return ERR_ARG;
+
+  if (VarsCmd.ActiveProgHandle == NOT_A_HANDLE)
+    return (ERR_NO_PROG);
+
+  //Can't accept oversize messages because we treat them as strings (truncation would remove null termination)
+  if (Length > MAX_DATALOG_SIZE)
+    return ERR_INVALID_SIZE;
+
+  if (IS_DV_INDEX_SANE(GET_WRITE_DTLG()))
+  {
+    //A message is already there, the queue is full
+    NXT_ASSERT(VarsCmd.DatalogBuffer.WriteIndex == VarsCmd.DatalogBuffer.ReadIndex);
+    Status = STAT_MSG_BUFFERWRAP;
+    //Bump read index, drop existing message to make room for our newly acquired datalog
+    VarsCmd.DatalogBuffer.ReadIndex = (VarsCmd.DatalogBuffer.ReadIndex + 1) % DATALOG_QUEUE_DEPTH;
+  }
+  else
+  {
+    //Allocate dope vector for message
+    Status = cCmdAllocDopeVector(&GET_WRITE_DTLG(), 1);
+    if (IS_ERR(Status))
+      return Status;
+  }
+
+  //Allocate storage for message
+  Status |= cCmdDVArrayAlloc(GET_WRITE_DTLG(), Length);
+  if (IS_ERR(Status))
+  {
+    //Clear the dope vector for the message, since we're unable to put a message there.
+    cCmdFreeDopeVector(GET_WRITE_DTLG());
+    SET_WRITE_DTLG(NOT_A_DS_ID);
+    return Status;
+  }
+
+  //Copy message
+  memmove(cCmdDVPtr(GET_WRITE_DTLG()), pData, Length);
+
+  //Advance write index
+  VarsCmd.DatalogBuffer.WriteIndex = (VarsCmd.DatalogBuffer.WriteIndex + 1) % DATALOG_QUEUE_DEPTH;
+
+  return Status;
+}
+
+NXT_STATUS cCmdDatalogGetSize(UWORD * Size)
+{
+  DV_INDEX ReadDVIndex;
+
+  if (Size == NULL)
+    return (ERR_ARG);
+
+  if (VarsCmd.ActiveProgHandle == NOT_A_HANDLE)
+  {
+    *Size = 0;
+    return (ERR_NO_PROG);
+  }
+
+  ReadDVIndex = GET_READ_DTLG();
+
+  if (IS_DV_INDEX_SANE(ReadDVIndex))
+  {
+    *Size = (DV_ARRAY[ReadDVIndex].Count);
+    return (NO_ERR);
+  }
+  else
+  {
+    *Size = 0;
+    return (STAT_MSG_EMPTY_MAILBOX);
+  }
+}
+
+NXT_STATUS cCmdDatalogRead(UBYTE * pBuffer, UWORD Length, UBYTE Remove)
+{
+  NXT_STATUS Status = NO_ERR;
+  DV_INDEX ReadDVIndex;
+
+  if (pBuffer == NULL)
+    return (ERR_ARG);
+
+  if (VarsCmd.ActiveProgHandle == NOT_A_HANDLE)
+    return (ERR_NO_PROG);
+
+  ReadDVIndex = GET_READ_DTLG();
+
+  if (IS_DV_INDEX_SANE(ReadDVIndex))
+  {
+    //If Buffer doesn't have room for the entire message,
+    //don't risk incomplete string floating around
+    if (Length < DV_ARRAY[ReadDVIndex].Count)
+      return (ERR_INVALID_SIZE);
+
+    //Copy message
+    memmove(pBuffer, cCmdDVPtr(ReadDVIndex), DV_ARRAY[ReadDVIndex].Count);
+
+    if (Remove)
+    {
+      //Free memory used by message
+      Status = cCmdFreeDopeVector(ReadDVIndex);
+      if (IS_ERR(Status))
+        return Status;
+
+      SET_READ_DTLG(NOT_A_DS_ID);
+
+      //Advance read index
+      VarsCmd.DatalogBuffer.ReadIndex = (VarsCmd.DatalogBuffer.ReadIndex + 1) % DATALOG_QUEUE_DEPTH;
+    }
+  }
+  else
+  {
+    //No message to read, datalog Queue is empty
+    NXT_ASSERT(VarsCmd.DatalogBuffer.ReadIndex == VarsCmd.DatalogBuffer.WriteIndex);
+
+    return (STAT_MSG_EMPTY_MAILBOX);
+  }
+
+  return Status;
+}
+
+
+//
+// Color Sensor Functions
+//
+NXT_STATUS cCmdColorSensorRead (UBYTE Port, SWORD * SensorValue, UWORD * RawArray, UWORD * NormalizedArray,
+								SWORD * ScaledArray, UBYTE * InvalidData)
+{
+  ULONG i;
+	//Make sure Port is valid for Color Sensor
+	if (!(pMapInput->Inputs[Port].SensorType == COLORFULL || pMapInput->Inputs[Port].SensorType == COLORRED
+		|| pMapInput->Inputs[Port].SensorType == COLORGREEN || pMapInput->Inputs[Port].SensorType == COLORBLUE
+                  || pMapInput->Inputs[Port].SensorType == COLORNONE))
+	{
+		return (ERR_COMM_CHAN_NOT_READY); //TODO - is this the right error?
+	}
+	//Copy Detected Color
+	*SensorValue = pMapInput->Inputs[Port].SensorValue;
+
+	//Copy all raw, normalized and scaled data from I/O Map
+	for (i=0; i<NO_OF_COLORS; i++){
+		RawArray[i] = pMapInput->Colors[Port].ADRaw[i];
+		NormalizedArray[i] = pMapInput->Colors[Port].SensorRaw[i];
+		ScaledArray[i] = pMapInput->Colors[Port].SensorValue[i];
+	}
+	//Copy the Invalid Data Flag
+	*InvalidData = pMapInput->Inputs[Port].InvalidData;
+
+	return NO_ERR;
+
+}
+
 
 //
 // Dataspace Support functions
@@ -2678,37 +3270,33 @@ UBYTE cCmdIsDSElementIDSane(DS_ELEMENT_ID Index)
     return FALSE;
 }
 
-TYPE_CODE cCmdDSType(DS_ELEMENT_ID DSElementID)
-{
-  NXT_ASSERT(cCmdIsDSElementIDSane(DSElementID));
-
-  return (VarsCmd.pDataspaceTOC[DSElementID].TypeCode);
-}
-
-
 void * cCmdResolveDataArg(DATA_ARG DataArg, UWORD Offset, TYPE_CODE * TypeCode)
 {
-  UBYTE ModuleID;
-  UWORD FieldID;
   void * ret_val = NULL;
 
-  //
   //!!! DATA_ARG masking system only for internal c_cmd use!
   //    All normal bytecode arguments should go through top if() block.
-  //
 
-  if (DataArg <= (DATA_ARG)(DATA_ARG_ADDR_MASK) )
-  {
     NXT_ASSERT(cCmdIsDSElementIDSane(DataArg));
     ret_val = cCmdDSPtr(DataArg, Offset);
     if (TypeCode)
       *TypeCode = VarsCmd.pDataspaceTOC[DataArg].TypeCode;
-  }
-  else if (DataArg & ~((DATA_ARG)(DATA_ARG_ADDR_MASK)))
+
+  //!!! Caller beware! If DataArg isn't sane, ret_val may be out of range or NULL!
+  return ret_val;
+}
+
+// normal Resolve handles both, but this is specific to I/O args
+void * cCmdResolveIODataArg(DATA_ARG DataArg, ULONG Offset, TYPE_CODE * TypeCode)
   {
+  void * ret_val = NULL;
+
+  ULONG ModuleID;
+  ULONG FieldID;
     //DataArg refers to a field in the IO map
-    ModuleID = (UBYTE)((DataArg >> 9) & 0x001F);
-    FieldID = (UWORD)(DataArg & 0x01FF);
+  // ModuleID = ((DataArg >> 9) & 0x1F);
+  ModuleID = ((DataArg & 0x3FFF) >> 9);
+  FieldID = (DataArg & 0x01FF);
 
     //!!! Preliminary bounds check -- still could allow invalid combos through
     if (ModuleID > MOD_OUTPUT || FieldID >= IO_OUT_FIELD_COUNT)
@@ -2720,13 +3308,10 @@ void * cCmdResolveDataArg(DATA_ARG DataArg, UWORD Offset, TYPE_CODE * TypeCode)
     ret_val = IO_PTRS[ModuleID][FieldID];
     if (TypeCode)
       *TypeCode = IO_TYPES[ModuleID][FieldID];
-  }
-
-  //!!! Caller beware! If DataArg isn't sane, ret_val may be out of range or NULL!
   return ret_val;
 }
 
-void cCmdSetVal(void * pVal, TYPE_CODE TypeCode, ULONG NewVal)
+void cCmdSetValFlt(void * pVal, TYPE_CODE TypeCode, float NewVal)
 {
 
   if (pVal)
@@ -2753,14 +3338,114 @@ void cCmdSetVal(void * pVal, TYPE_CODE TypeCode, ULONG NewVal)
         *(UBYTE*)pVal = (UBYTE)NewVal;
       }
       break;
+
+      case TC_FLOAT:
+      {
+        *(float*)pVal = (float)NewVal;
+      }
+      break;
     }
   }
 
   return;
 }
 
+ULONG cCmdGetUByte(void * pVal);
+ULONG cCmdGetSByte(void * pVal);
+ULONG cCmdGetUWord(void * pVal);
+ULONG cCmdGetSWord(void * pVal);
+ULONG cCmdGetULong(void * pVal);
+ULONG cCmdGetSLong(void * pVal);
+ULONG cCmdGetError(void * pVal);
+ULONG cCmdGetFloat(void * pVal);
+
+void cCmdSetByte(void * pVal, ULONG NewVal);
+void cCmdSetWord(void * pVal, ULONG NewVal);
+void cCmdSetLong(void * pVal, ULONG NewVal);
+void cCmdSetError(void * pVal, ULONG NewVal);
+
+
+typedef ULONG (*pGetOperand)(void *);
+static pGetOperand GetProcArray[11]= {cCmdGetUByte, cCmdGetUByte, cCmdGetSByte, cCmdGetUWord, cCmdGetSWord, cCmdGetULong, cCmdGetSLong, cCmdGetError, cCmdGetError, cCmdGetError, cCmdGetFloat}; // dup UByte to line up
+
+typedef void (*pSetOperand)(void *, ULONG);
+static pSetOperand SetProcArray[9]= {cCmdSetByte, cCmdSetByte, cCmdSetByte, cCmdSetWord, cCmdSetWord, cCmdSetLong, cCmdSetLong, cCmdSetError, cCmdSetError}; // dup UByte to line up
+
+void cCmdSetError(void * pVal, ULONG NewVal) {
+  NXT_BREAK;
+}
+
+void cCmdSetLong(void * pVal, ULONG NewVal) {
+  *(ULONG*)pVal = NewVal;
+}
+
+void cCmdSetWord(void * pVal, ULONG NewVal) {
+  *(UWORD*)pVal = (UWORD)NewVal;
+}
+
+void cCmdSetByte(void * pVal, ULONG NewVal) {
+  *(UBYTE*)pVal = (UBYTE)NewVal;
+}
+
+// only works on simple types, equivalent to resolve and get, but faster
+ULONG cCmdGetScalarValFromDataArg(DATA_ARG DataArg, UWORD Offset)
+{
+  DS_TOC_ENTRY *dsTOCPtr= &VarsCmd.pDataspaceTOC[DataArg];
+  return GetProcArray[dsTOCPtr->TypeCode](VarsCmd.pDataspace + dsTOCPtr->DSOffset + Offset);
+}
+
+
+ULONG cCmdGetError(void * pVal) {
+  NXT_BREAK;
+  return 0;
+}
+
+ULONG cCmdGetULong(void * pVal) {
+  return (ULONG)(*(ULONG*)pVal);
+}
+
+ULONG cCmdGetSLong(void * pVal) {
+  return (SLONG)(*(SLONG*)pVal);
+}
+
+ULONG cCmdGetUWord(void * pVal) {
+  return (UWORD)(*(UWORD*)pVal);
+}
+
+ULONG cCmdGetSWord(void * pVal) {
+  return (SWORD)(*(SWORD*)pVal);
+}
+
+ULONG cCmdGetUByte(void * pVal) {
+  return (UBYTE)(*(UBYTE*)pVal);
+}
+
+ULONG cCmdGetSByte(void * pVal) {
+  return (SBYTE)(*(SBYTE*)pVal);
+}
+
+ULONG cCmdGetFloat(void * pVal) {
+  float tempVal = *(float*)pVal;
+  if (tempVal >= 0) {
+    tempVal += 0.5;
+  }
+  else {
+    tempVal -= 0.5;
+  }
+  return (ULONG)tempVal;
+}
 
 ULONG cCmdGetVal(void * pVal, TYPE_CODE TypeCode)
+{
+  if (pVal)
+  return GetProcArray[TypeCode](pVal);
+  else
+  //!!! Default return value places responsibility on caller to use this function wisely
+  return 0;
+}
+
+
+float cCmdGetValFlt(void * pVal, TYPE_CODE TypeCode)
 {
   if (pVal)
   {
@@ -2796,6 +3481,11 @@ ULONG cCmdGetVal(void * pVal, TYPE_CODE TypeCode)
         return (SBYTE)(*(SBYTE*)pVal);
       }
 
+      case TC_FLOAT:
+      {
+        return (float)(*(float*)pVal);
+      }
+
       default:
       break;
     }
@@ -2806,34 +3496,19 @@ ULONG cCmdGetVal(void * pVal, TYPE_CODE TypeCode)
 }
 
 
-UWORD cCmdSizeOf(TYPE_CODE TypeCode)
+
+// Only for scalar types and no offset
+void cCmdSetScalarValFromDataArg(DATA_ARG DataArg, ULONG NewVal)
 {
-  //!!! Why not use a lookup table? No particular reason...
-  switch(TypeCode)
-  {
-  case TC_ULONG:
-    return SIZE_ULONG;
-  case TC_SLONG:
-    return SIZE_SLONG;
-  case TC_UWORD:
-    return SIZE_UWORD;
-  case TC_SWORD:
-    return SIZE_SWORD;
-  case TC_UBYTE:
-    return SIZE_UBYTE;
-  case TC_SBYTE:
-    return SIZE_SBYTE;
-  case TC_MUTEX:
-    return SIZE_MUTEX;
-  case TC_ARRAY:
-    //Arrays have a 2-byte structure in the dataspace for the DVIndex
-    return SIZE_UWORD;
-  case TC_CLUSTER:
-      default:
-  return 0;
-  }
+  DS_TOC_ENTRY *dsTOCPtr= &VarsCmd.pDataspaceTOC[DataArg];
+  SetProcArray[dsTOCPtr->TypeCode](VarsCmd.pDataspace + dsTOCPtr->DSOffset, NewVal);
 }
 
+void cCmdSetVal(void * pVal, TYPE_CODE TypeCode, ULONG NewVal)
+{
+  if (pVal)
+    SetProcArray[TypeCode](pVal, NewVal);
+}
 
 void* cCmdDSPtr(DS_ELEMENT_ID DSElementID, UWORD Offset)
 {
@@ -3179,23 +3854,19 @@ DS_ELEMENT_ID cCmdGetDataspaceCount(void)
 }
 
 
-CODE_INDEX cCmdGetCodespaceCount(CLUMP_ID Clump)
-{
-  if (Clump == NOT_A_CLUMP)
-    return (VarsCmd.CodespaceCount);
-  else
-  {
-    NXT_ASSERT(cCmdIsClumpIDSane(Clump));
-    return (VarsCmd.pAllClumps[Clump].CodeEnd - VarsCmd.pAllClumps[Clump].CodeStart + 1);
-  }
-}
-
-
 UBYTE cCmdCompare(UBYTE CompCode, ULONG Val1, ULONG Val2, TYPE_CODE TypeCode1, TYPE_CODE TypeCode2)
 {
   SLONG SVal1, SVal2;
-
-  if (IS_SIGNED_TYPE(TypeCode1) && IS_SIGNED_TYPE(TypeCode2))
+  if (QUICK_UNSIGNED_TEST(TypeCode1) || QUICK_UNSIGNED_TEST(TypeCode2))
+  {
+    return ((CompCode == OPCC1_LT   && Val1 <  Val2)
+         || (CompCode == OPCC1_GT   && Val1 >  Val2)
+         || (CompCode == OPCC1_LTEQ && Val1 <= Val2)
+         || (CompCode == OPCC1_GTEQ && Val1 >= Val2)
+         || (CompCode == OPCC1_EQ   && Val1 == Val2)
+         || (CompCode == OPCC1_NEQ  && Val1 != Val2));
+  }
+  else
   {
     SVal1 = (SLONG)Val1;
     SVal2 = (SLONG)Val2;
@@ -3206,16 +3877,17 @@ UBYTE cCmdCompare(UBYTE CompCode, ULONG Val1, ULONG Val2, TYPE_CODE TypeCode1, T
          || (CompCode == OPCC1_EQ   && SVal1 == SVal2)
          || (CompCode == OPCC1_NEQ  && SVal1 != SVal2));
   }
-  else
-  {
-    return ((CompCode == OPCC1_LT   && Val1 <  Val2)
-         || (CompCode == OPCC1_GT   && Val1 >  Val2)
-         || (CompCode == OPCC1_LTEQ && Val1 <= Val2)
-         || (CompCode == OPCC1_GTEQ && Val1 >= Val2)
-         || (CompCode == OPCC1_EQ   && Val1 == Val2)
-         || (CompCode == OPCC1_NEQ  && Val1 != Val2));
-  }
+}
 
+UBYTE cCmdCompareFlt(UBYTE CompCode, float Val1, float Val2, TYPE_CODE TypeCode1, TYPE_CODE TypeCode2)
+{
+  //!!! add threshold to equality comparisons
+  return ((CompCode == OPCC1_LT   && Val1 <  Val2)
+       || (CompCode == OPCC1_GT   && Val1 >  Val2)
+       || (CompCode == OPCC1_LTEQ && Val1 <= Val2)
+       || (CompCode == OPCC1_GTEQ && Val1 >= Val2)
+       || (CompCode == OPCC1_EQ   && Val1 == Val2)
+       || (CompCode == OPCC1_NEQ  && Val1 != Val2));
 }
 
 
@@ -3253,9 +3925,6 @@ NXT_STATUS cCmdRecursiveCompareAggregates(UBYTE CompCode, UBYTE *ReturnBool, UBY
   UWORD Count2, Count3, MinCount;
   UWORD i;
 
-  void *pArg2 = NULL,
-       *pArg3 = NULL;
-
   TypeCode2 = cCmdDSType(Arg2);
   TypeCode3 = cCmdDSType(Arg3);
 
@@ -3269,11 +3938,8 @@ NXT_STATUS cCmdRecursiveCompareAggregates(UBYTE CompCode, UBYTE *ReturnBool, UBY
   //Simple case, both args are scalars. Solve and return.
   if (!IS_AGGREGATE_TYPE(TypeCode2))
   {
-    pArg2 = cCmdResolveDataArg(Arg2, Offset2, &TypeCode2);
-    pArg3 = cCmdResolveDataArg(Arg3, Offset3, &TypeCode3);
-
-    ArgVal2 = cCmdGetVal(pArg2, TypeCode2);
-    ArgVal3 = cCmdGetVal(pArg3, TypeCode3);
+    ArgVal2 = cCmdGetScalarValFromDataArg(Arg2, Offset2);
+    ArgVal3 = cCmdGetScalarValFromDataArg(Arg3, Offset3);
 
     //Once we find an inequality, we can determine the result of the comparison
     *Finished = cCmdCompare(OPCC1_NEQ, ArgVal2, ArgVal3, TypeCode2, TypeCode3);
@@ -3355,102 +4021,188 @@ NXT_STATUS cCmdRecursiveCompareAggregates(UBYTE CompCode, UBYTE *ReturnBool, UBY
   return Status;
 }
 
+ULONG gClearProfileInfo= 0, bigExecTime= 0;
+#if VMProfilingCode
+void UpdateProfileInfo(ULONG shortOp, CODE_WORD *pInstr, ULONG execTime, ULONG InstrSize)
+{
+  ULONG j;
+  ULONG opCode;
+
+  if(execTime > 500 && shortOp == 8)
+    bigExecTime= shortOp;
+  if(gClearProfileInfo) {
+    ExecutedInstrs= 0;
+    CmdCtrlTime= 0;
+    OverheadTime= 0;
+    CmdCtrlCalls= 0;
+    LastAvgCount= 0;
+    for(j= 0; j < 255; j++)
+      CmdCtrlClumpTime[j]= 0;
+    for(j= 0; j < OPCODE_COUNT; j++) {
+      InstrProfile[j].Avg= 0;
+      InstrProfile[j].Time= 0;
+      InstrProfile[j].Count= 0;
+      InstrProfile[j].Max= 0;
+    }
+    for(j= 0; j < SYSCALL_COUNT; j++) {
+      SysCallProfile[j].Avg= 0;
+      SysCallProfile[j].Time= 0;
+      SysCallProfile[j].Count= 0;
+      SysCallProfile[j].Max= 0;
+    }
+    for(j= 0; j < NUM_SHORT_OPCODE_COUNT; j++) {
+      ShortInstrProfile[j].Avg= 0;
+      ShortInstrProfile[j].Time= 0;
+      ShortInstrProfile[j].Count= 0;
+      ShortInstrProfile[j].Max= 0;
+    }
+    for(j= 0; j < NUM_INTERP_FUNCS; j++) {
+      InterpFuncProfile[j].Avg= 0;
+      InterpFuncProfile[j].Time= 0;
+      InterpFuncProfile[j].Count= 0;
+      InterpFuncProfile[j].Max= 0;
+    }
+    gClearProfileInfo= FALSE;
+  }
+  ExecutedInstrs ++;
+  if(shortOp > 7) // shortop bit set
+  {
+    ShortInstrProfile[shortOp-8].Time += execTime;
+    ShortInstrProfile[shortOp-8].Count++;
+    if(execTime > ShortInstrProfile[shortOp-8].Max)
+      ShortInstrProfile[shortOp-8].Max= execTime;
+  }
+  else
+  {
+    opCode = OP_CODE(pInstr);
+    InstrProfile[opCode].Time += execTime;
+    InstrProfile[opCode].Count++;
+    if(execTime > InstrProfile[opCode].Max)
+      InstrProfile[opCode].Max= execTime;
+    if(opCode == OP_SYSCALL)
+    {
+      SysCallProfile[GetDataArg(pInstr[1])].Time += execTime;
+      SysCallProfile[GetDataArg(pInstr[1])].Count++;
+      if(execTime > SysCallProfile[GetDataArg(pInstr[1])].Max)
+        SysCallProfile[GetDataArg(pInstr[1])].Max= execTime;
+    }
+
+    InterpFuncProfile[InstrSize].Time += execTime;
+    InterpFuncProfile[InstrSize].Count++;
+    if(execTime > InterpFuncProfile[InstrSize].Max)
+      InterpFuncProfile[InstrSize].Max= execTime;
+  }
+  if(ExecutedInstrs - LastAvgCount > 999) // every N instrs, update avgs
+  {
+    for(j= 0; j < OPCODE_COUNT; j++)
+      if(InstrProfile[j].Count)
+        InstrProfile[j].Avg= InstrProfile[j].Time/InstrProfile[j].Count;
+    for(j= 0; j < SYSCALL_COUNT; j++)
+      if(SysCallProfile[j].Count)
+        SysCallProfile[j].Avg= SysCallProfile[j].Time/SysCallProfile[j].Count;
+    for(j= 0; j < NUM_SHORT_OPCODE_COUNT; j++)
+      if(ShortInstrProfile[j].Count)
+        ShortInstrProfile[j].Avg= ShortInstrProfile[j].Time/ShortInstrProfile[j].Count;
+    for(j= 0; j < NUM_INTERP_FUNCS; j++)
+      if(InterpFuncProfile[j].Count)
+        InterpFuncProfile[j].Avg= InterpFuncProfile[j].Time/InterpFuncProfile[j].Count;
+    LastAvgCount= ExecutedInstrs;
+  }
+}
+#endif
+
 
 //
 // Interpreter Functions
 //
-#define VAR_INSTR_SIZE 0xE
 
-NXT_STATUS cCmdInterpFromClump(CLUMP_ID Clump)
+NXT_STATUS cCmdInterpFromClump()
 {
+  CLUMP_ID Clump= VarsCmd.RunQ.Head;
   NXT_STATUS Status = NO_ERR;
   CLUMP_REC * pClumpRec;
-  CODE_WORD * pInstr;
-  UBYTE InterpFuncIndex, InstrSize;
+  CODE_WORD * pInstr, *lastClumpInstr;
+  UBYTE InstrSize;
+  ULONG shortOp, nextMSTick;
+  SLONG i;
 #if VM_BENCHMARK
   ULONG InstrTime = dTimerRead();
 #endif
 
-  if (!cCmdIsClumpIDSane(Clump))
-  {
-    //Caller gave us a bad clump ID -- something is very wrong!  Force interpretter to halt.
-    NXT_BREAK;
-    return (ERR_ARG);
-  }
+  if (!cCmdIsClumpIDSane(Clump)) // this means all clumps are asleep
+    return TIMES_UP;
 
   //Resolve clump record structure and current instruction pointer
   pClumpRec = &(VarsCmd.pAllClumps[Clump]);
-  pInstr = (VarsCmd.pCodespace + pClumpRec->CodeStart + pClumpRec->PC);
+  pInstr = pClumpRec->PC; // abs
+  lastClumpInstr= pClumpRec->CodeEnd; // abs
 
-  //Get instruction size in bytes.
-  InstrSize = INSTR_SIZE(pInstr);
-
-  //If instruction is odd-sized or if "real" op code is out of range, give up and return ERR_INSTR
-  if ((InstrSize & 0x01) || OP_CODE(pInstr) >= OPCODE_COUNT)
-    return (ERR_INSTR);
-
-  InterpFuncIndex = (InstrSize / 2) - 1;
-
-#ifdef USE_SHORT_OPS
-  //If instruction has shortened encoding, add 1 for true interpretter
-  if (IS_SHORT_OP(pInstr))
+  i= gInstrsToExecute;
+  nextMSTick= dTimerGetNextMSTickCnt();
+  do
   {
-    InterpFuncIndex++;
-  }
+#if VMProfilingCode
+    ULONG instrStartTime;
+    instrStartTime= dTimerReadHiRes();
 #endif
 
-  //Peg InterpFuncIndex to 'Other'.  Illegal instructions will be caught in cCmdInterpOther().
-  if (InterpFuncIndex > 4)
-    InterpFuncIndex = 4;
+    ULONG instrWord= *(UWORD*)pInstr;
+    shortOp= (instrWord>>8) & 0x0F;
+    if(shortOp > 7) // shortop bit set
+      Status= ShortInterpFuncs[shortOp - 8](pInstr);
+    else
+    { // we know this is a long instr, dispatch on num params, which correlates to size
+      InstrSize = INSTR_SIZE(instrWord); // keep in a local for profiling
+      Status = (*InterpFuncs[InstrSize])(pInstr);
+    }
 
-  //If instruction is variably-sized; true size is held in the first argument
-  //!!! This InstrSize wrangling MUST occur after computing InterpFuncIndex
-  //because variable sized instructions may confuse the code otherwise
-  if (InstrSize == VAR_INSTR_SIZE)
-    InstrSize = (UBYTE)(pInstr[1]);
+#if VMProfilingCode
+    UpdateProfileInfo(shortOp, pInstr, dTimerReadHiRes() - instrStartTime, InstrSize);
+#endif
 
-  //Set ScratchPC to clump's current PC so sub-interpreters can apply relative offsets
-  VarsCmd.ScratchPC = pClumpRec->PC;
-
-  //Set CallerClump to Clump, for use by instructions such as OP_ACQUIRE
-  VarsCmd.CallerClump = Clump;
-
-  Status = (*InterpFuncs[InterpFuncIndex])(pInstr);
-
-  if (Status == ERR_MEM)
-  {
+afterCompaction:
+    if (Status == NO_ERR)
+      pInstr += gPCDelta;
+    else if (Status == CLUMP_DONE) // already requeued
+    {
+      pClumpRec->PC = pClumpRec->CodeStart;
+      pClumpRec->CurrFireCount = pClumpRec->InitFireCount;
+      return Status;
+    }
+    else if (Status == CLUMP_SUSPEND || Status == BREAKOUT_REQ || Status == ROTATE_QUEUE)  // already requeued
+    {
+      pClumpRec->PC = pInstr + gPCDelta;
+    //Throw error if we ever advance beyond the clump's codespace
+    if (pInstr > lastClumpInstr)
+      {
+        NXT_BREAK;
+        Status = ERR_INSTR;
+      }
+      return Status;
+    }
+    else if (Status == ERR_MEM)
+    {
     //Memory is full. Compact dataspace and try the instruction again.
     //!!! Could compact DopeVectorArray here
     cCmdDSCompact();
-    Status = (*InterpFuncs[InterpFuncIndex])(pInstr);
-  }
-
-  if (!IS_ERR(Status))
-  {
-    //If clump is finished, reset PC and firecount
-    if (Status == CLUMP_DONE)
-    {
-      pClumpRec->PC = 0;
-      pClumpRec->CurrFireCount = pClumpRec->InitFireCount;
-    }
-    //Else, if instruction has provided override program counter, use it
-    else if (Status == PC_OVERRIDE)
-    {
-      pClumpRec->PC = VarsCmd.ScratchPC;
-    }
-    //Else, auto-advance from encoded instruction size (PC is word-based)
+      if(shortOp > 7) // shortop bit set
+        Status= ShortInterpFuncs[shortOp - 8](pInstr);
+      else
+        Status = (*InterpFuncs[InstrSize])(pInstr);
+	  if(Status == ERR_MEM)
+        return Status;
     else
-    {
-      pClumpRec->PC += InstrSize / 2;
+        goto afterCompaction;
     }
+    else // other errors, breakout, stop
+      return Status;
 
     //Throw error if we ever advance beyond the clump's codespace
-    if (pClumpRec->PC > cCmdGetCodespaceCount(Clump))
+    if (pInstr > lastClumpInstr)
     {
       NXT_BREAK;
       Status = ERR_INSTR;
     }
-  }
 
 #if VM_BENCHMARK
   //Increment opcode count
@@ -3463,8 +4215,16 @@ NXT_STATUS cCmdInterpFromClump(CLUMP_ID Clump)
     if (InstrTime > VarsCmd.OpcodeBenchmarks[OP_CODE(pInstr)][2])
       VarsCmd.OpcodeBenchmarks[OP_CODE(pInstr)][2] = InstrTime;
   }
+    VarsCmd.InstrCount++;
 #endif
 
+    //Count one more instruction for this pass
+    if ((SLONG)(nextMSTick - dTimerReadTicks()) <= 0) // HWTimer has passed ms tick limit
+      Status= TIMES_UP;
+    else if(--i <= 0)
+      Status= ROTATE_QUEUE;
+  } while (!Status);
+  pClumpRec->PC= pInstr;
   return (Status);
 }
 
@@ -3474,35 +4234,19 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
   NXT_STATUS Status = NO_ERR;
   UBYTE opCode;
   DATA_ARG Arg1;
-  void *pArg1 = NULL;
-  TYPE_CODE TypeCode1;
 
   NXT_ASSERT(pCode != NULL);
 
-#ifdef USE_SHORT_OPS
-  if (IS_SHORT_OP(pCode))
-  {
-    //add mapping from quick op to real op
-    opCode = ShortOpMap[SHORT_OP_CODE(pCode)];
-    Arg1 = SHORT_ARG(pCode);
-  }
-  else
-  {
+  gPCDelta= 2;
   opCode = OP_CODE(pCode);
   Arg1   = pCode[1];
-  }
-#else
-  opCode = OP_CODE(pCode);
-  Arg1   = pCode[1];
-#endif //USE_SHORT_OPS
-
 
   switch (opCode)
   {
     case OP_JMP:
     {
-      VarsCmd.ScratchPC = VarsCmd.ScratchPC + (SWORD)Arg1;
-      Status = PC_OVERRIDE;
+      gPCDelta= (SWORD)Arg1;
+      Status = NO_ERR;
     }
     break;
 
@@ -3511,7 +4255,7 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
       NXT_ASSERT(cCmdIsDSElementIDSane(Arg1));
       NXT_ASSERT(VarsCmd.pDataspaceTOC[Arg1].TypeCode == TC_MUTEX);
 
-      Status = cCmdAcquireMutex((MUTEX_Q *)cCmdDSPtr(Arg1, 0), VarsCmd.CallerClump);
+      Status = cCmdAcquireMutex((MUTEX_Q *)cCmdDSScalarPtr(Arg1, 0));
     }
     break;
 
@@ -3520,7 +4264,7 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
       NXT_ASSERT(cCmdIsDSElementIDSane(Arg1));
       NXT_ASSERT(VarsCmd.pDataspaceTOC[Arg1].TypeCode == TC_MUTEX);
 
-      Status = cCmdReleaseMutex((MUTEX_Q *)cCmdDSPtr(Arg1, 0), VarsCmd.CallerClump);
+      Status = cCmdReleaseMutex((MUTEX_Q *)cCmdDSScalarPtr(Arg1, 0));
     }
     break;
 
@@ -3530,8 +4274,8 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
 
       //Take Subroutine off RunQ
       //Add Subroutine's caller to RunQ
-      cCmdDeQClump(&(VarsCmd.RunQ), VarsCmd.CallerClump);
-      cCmdEnQClump(&(VarsCmd.RunQ), *((CLUMP_ID *)cCmdDSPtr(Arg1, 0)));
+      cCmdDeQClump(&(VarsCmd.RunQ), VarsCmd.RunQ.Head);
+      cCmdEnQClump(&(VarsCmd.RunQ), *((CLUMP_ID *)cCmdDSScalarPtr(Arg1, 0)));
 
       Status = CLUMP_DONE;
     }
@@ -3539,8 +4283,9 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
 
     case OP_FINCLUMPIMMED:
     {
-        cCmdDeQClump(&(VarsCmd.RunQ), VarsCmd.CallerClump); //Dequeue finalized clump
-        cCmdSchedDependent(VarsCmd.CallerClump, (CLUMP_ID)Arg1);  // Use immediate form
+        CLUMP_ID Clump= VarsCmd.RunQ.Head; // DeQ changes Head, use local val
+        cCmdDeQClump(&(VarsCmd.RunQ), Clump); //Dequeue finalized clump
+        cCmdSchedDependent(Clump, (CLUMP_ID)Arg1);  // Use immediate form
 
         Status = CLUMP_DONE;
     }
@@ -3548,10 +4293,7 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
 
     case OP_GETTICK:
     {
-      pArg1 = cCmdResolveDataArg(Arg1, 0, &TypeCode1);
-
-
-      cCmdSetVal(pArg1, TypeCode1, dTimerRead());
+      cCmdSetScalarValFromDataArg(Arg1, dTimerReadNoPoll());
     }
     break;
 
@@ -3559,16 +4301,9 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
     {
       //Unwired Arg1 means always stop
       if (Arg1 == NOT_A_DS_ID)
-      {
         Status = STOP_REQ;
-      }
-      else
-      {
-        pArg1 = cCmdResolveDataArg(Arg1, 0, &TypeCode1);
-
-        if (cCmdGetVal(pArg1, TypeCode1) > 0)
-          Status = STOP_REQ;
-      }
+      else if (cCmdGetScalarValFromDataArg(Arg1, 0) > 0)
+        Status = STOP_REQ;
     }
     break;
 
@@ -3584,6 +4319,78 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
   return (Status);
 }
 
+ULONG scalarNots= 0, scalarBrtst= 0, scalarUn2Other= 0, scalarUn2Dispatch= 0, polyUn2Dispatch= 0;
+NXT_STATUS cCmdInterpScalarUnop2(CODE_WORD * const pCode)
+{
+  NXT_STATUS Status;
+  UBYTE opCode;
+
+  NXT_ASSERT(pCode != NULL);
+  opCode = OP_CODE(pCode);
+  DATA_ARG Arg1, Arg2;
+
+  scalarUn2Dispatch ++;
+  if(opCode == OP_NOT) // t2 && t3 guaranteed scalar
+  {
+    gPCDelta= 3;
+    Arg1 = pCode[1];
+    Arg2 = pCode[2];
+    ULONG ArgVal1, ArgVal2;
+
+    ArgVal2= cCmdGetScalarValFromDataArg(Arg2, 0);
+    //!!! OP_NOT is logical, *not* bit-wise.
+    //This differs from the other logical ops because we don't distinguish booleans from UBYTEs.
+    ArgVal1=  (!ArgVal2);
+    cCmdSetScalarValFromDataArg(Arg1, ArgVal1);
+    Status = NO_ERR;
+    scalarNots ++;
+  }
+  else if(opCode == OP_BRTST)
+  {
+    ULONG Branch, compare= COMP_CODE(pCode);
+    ULONG TypeCode;
+
+    Arg1 = pCode[1];
+    Arg2 = pCode[2];
+    TypeCode = cCmdDSType(Arg2);
+
+    if(Arg2 == NOT_A_DS_ID)
+    {
+      Branch= ((compare == OPCC1_EQ)
+              || (compare == OPCC1_LTEQ)
+              || (compare == OPCC1_GTEQ));
+    }
+    else
+    {
+      if(compare == OPCC1_EQ && TypeCode == TC_UBYTE) // very common for loops
+      {
+        UBYTE *pBRVal = (VarsCmd.pDataspace + VarsCmd.pDataspaceTOC[Arg2].DSOffset);
+        Branch= *pBRVal == 0;
+      }
+      else
+      {
+        SLONG SVal1 = (SLONG)cCmdGetScalarValFromDataArg(Arg2, 0);
+        Branch= ((compare == OPCC1_EQ   && SVal1 == 0)
+              || (compare == OPCC1_NEQ  && SVal1 != 0)
+              || (compare == OPCC1_GT   && SVal1 >  0)
+              || (compare == OPCC1_LT   && SVal1 <  0)
+              || (compare == OPCC1_LTEQ && SVal1 <= 0)
+              || (compare == OPCC1_GTEQ && SVal1 >= 0));
+      }
+    }
+    if (Branch)
+      gPCDelta =  (SWORD)Arg1;
+    else
+      gPCDelta= 3;
+    Status = NO_ERR;
+    scalarBrtst ++;
+  }
+  else {
+    Status= cCmdInterpUnop2(pCode);
+    scalarUn2Other ++;
+  }
+  return Status;
+}
 
 NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
 {
@@ -3598,35 +4405,25 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
   UWORD ArgC;
   static UBYTE * ArgV[MAX_CALL_ARGS + 1];
 
+  polyUn2Dispatch ++;
   UWORD Count;
   UWORD Offset;
   SLONG TmpSLong;
   ULONG TmpULong;
   ULONG ArgVal2;
+  float FltArgVal2;
+  char Buffer[30];
+  char FormatString[5];
+  UBYTE CheckTrailingZeros = 0;
 
   NXT_ASSERT(pCode != NULL);
 
-#ifdef USE_SHORT_OPS
-  if (IS_SHORT_OP(pCode))
-  {
-    //add mapping from quick op to real op
-    opCode = ShortOpMap[SHORT_OP_CODE(pCode)];
-    Arg1 = SHORT_ARG(pCode) + pCode[1];
-    Arg2 = pCode[1];
-  }
-  else
-  {
+  gPCDelta= 3;
   opCode = OP_CODE(pCode);
   Arg1   = pCode[1];
   Arg2   = pCode[2];
-  }
-#else
-  opCode = OP_CODE(pCode);
-  Arg1   = pCode[1];
-  Arg2   = pCode[2];
-#endif //USE_SHORT_OPS
 
-  if (opCode == OP_NEG || opCode == OP_NOT || opCode == OP_TST)
+  if (opCode == OP_NEG || opCode == OP_NOT || opCode == OP_TST || opCode == OP_SQRT || opCode == OP_ABS)
   {
     return cCmdInterpPolyUnop2(*pCode, Arg1, 0, Arg2, 0);
   }
@@ -3635,24 +4432,7 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
   {
     case OP_MOV:
     {
-      //!!! Optimized move for byte arrays (makes File I/O involving CStrs tolerable). Optimize for other cases?
-      if ((cCmdDSType(Arg1) == TC_ARRAY) && (cCmdDSType(INC_ID(Arg1)) == TC_UBYTE) &&
-          (cCmdDSType(Arg2) == TC_ARRAY) && (cCmdDSType(INC_ID(Arg2)) == TC_UBYTE))
-      {
-        Count = cCmdArrayCount(Arg2, 0);
-        Status = cCmdDSArrayAlloc(Arg1, 0, Count);
-        if (IS_ERR(Status))
-          return Status;
-
-        pArg1 = cCmdResolveDataArg(Arg1, 0, NULL);
-        pArg2 = cCmdResolveDataArg(Arg2, 0, NULL);
-
-        memmove(pArg1, pArg2, Count);
-      }
-      else
-      {
-        Status = cCmdInterpPolyUnop2(OP_MOV, Arg1, 0, Arg2, 0);
-      }
+      Status= cCmdMove(Arg1, Arg2);
     }
     break;
 
@@ -3660,27 +4440,44 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
     {
       //!!! Should throw error if TypeCode1 is non-scalar
       //    Accepting non-scalar destinations could have unpredictable results!
-      pArg1 = cCmdResolveDataArg(Arg1, 0, &TypeCode1);
-      cCmdSetVal(pArg1, TypeCode1, Arg2);
+      cCmdSetScalarValFromDataArg(Arg1, Arg2);
     }
     break;
 
     case OP_BRTST:
     {
-      pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
-      if (cCmdCompare(COMP_CODE(pCode), (SLONG)cCmdGetVal(pArg2, TypeCode2), 0, TC_SLONG, TC_SLONG))
+        //!!!BDUGGAN BRTST w/ Float?
+      ULONG Branch, compare= COMP_CODE(pCode);
+      ULONG TypeCode = cCmdDSType(Arg2);
+      if(compare == OPCC1_EQ && TypeCode == TC_UBYTE) // very common for loops
       {
-        VarsCmd.ScratchPC = VarsCmd.ScratchPC + (SWORD)Arg1;
-        Status = PC_OVERRIDE;
+        UBYTE *pBRVal = (VarsCmd.pDataspace + VarsCmd.pDataspaceTOC[Arg2].DSOffset);
+        Branch= *pBRVal == 0;
+      }
+      else
+      {
+        SLONG SVal1 = (SLONG)cCmdGetScalarValFromDataArg(Arg2, 0);
+        Branch= ((compare == OPCC1_EQ   && SVal1 == 0)
+              || (compare == OPCC1_NEQ  && SVal1 != 0)
+              || (compare == OPCC1_GT   && SVal1 >  0)
+              || (compare == OPCC1_LT   && SVal1 <  0)
+              || (compare == OPCC1_LTEQ && SVal1 <= 0)
+              || (compare == OPCC1_GTEQ && SVal1 >= 0));
+      }
+      if (Branch)
+
+      {
+        gPCDelta =  (SWORD)Arg1;
+        Status = NO_ERR;
       }
     }
     break;
 
     case OP_FINCLUMP:
     {
-      cCmdDeQClump(&(VarsCmd.RunQ), VarsCmd.CallerClump); //Dequeue finalized clump
-      cCmdSchedDependents(VarsCmd.CallerClump, (SWORD)Arg1, (SWORD)Arg2);
-
+      CLUMP_ID Clump= VarsCmd.RunQ.Head; // DeQ changes Head, use local val
+      cCmdDeQClump(&(VarsCmd.RunQ), Clump); //Dequeue finalized clump
+      cCmdSchedDependents(Clump, (SWORD)Arg1, (SWORD)Arg2);
       Status = CLUMP_DONE;
     }
     break;
@@ -3692,9 +4489,9 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
 
       NXT_ASSERT(cCmdIsDSElementIDSane(Arg2));
 
-      *((CLUMP_ID *)(cCmdDSPtr(Arg2, 0))) = VarsCmd.CallerClump;
+      *((CLUMP_ID *)(cCmdDSScalarPtr(Arg2, 0))) = VarsCmd.RunQ.Head;
 
-      cCmdDeQClump(&(VarsCmd.RunQ), VarsCmd.CallerClump); //Take caller off RunQ
+      cCmdDeQClump(&(VarsCmd.RunQ), VarsCmd.RunQ.Head); //Take caller off RunQ
       cCmdEnQClump(&(VarsCmd.RunQ), (CLUMP_ID)Arg1);  //Add callee to RunQ
 
       Status = CLUMP_SUSPEND;
@@ -3703,8 +4500,7 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
 
     case OP_ARRSIZE:
     {
-      pArg1 = cCmdResolveDataArg(Arg1, 0, &TypeCode1);
-      cCmdSetVal(pArg1, TypeCode1, cCmdArrayCount(Arg2, 0));
+      cCmdSetScalarValFromDataArg(Arg1, cCmdArrayCount(Arg2, 0));
     }
     break;
 
@@ -3798,43 +4594,72 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
       NXT_ASSERT(cCmdDSType(Arg1) == TC_ARRAY);
       NXT_ASSERT(cCmdDSType(INC_ID(Arg1)) == TC_UBYTE);
 
-      pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
       //Make sure we're trying to convert a scalar to a string
+      TypeCode2= cCmdDSType(Arg2);
       NXT_ASSERT(!IS_AGGREGATE_TYPE(TypeCode2));
 
-      ArgVal2 = cCmdGetVal(pArg2, TypeCode2);
+      if (TypeCode2 == TC_FLOAT)
+      {
+        pArg2 = cCmdResolveDataArg(Arg2, 0, NULL);
+        FltArgVal2 = cCmdGetValFlt(pArg2, TypeCode2);
+       // is number too big for display? then format differently and don't bother with trailing zeros
+        if ((FltArgVal2 > 9999999999999.99)||(FltArgVal2 < -999999999999.99)){ // these are the widest %.2f numbers that will fit on display
+          strcpy (FormatString, "%.6g");
+        }
+        else{
+          strcpy (FormatString, "%.2f");
+          CheckTrailingZeros = 1;
+        }
+        Count = sprintf(Buffer, FormatString, FltArgVal2);
+        Count++; //add room for null terminator
 
+        if (CheckTrailingZeros){
+          // Determine if the trailing digits are zeros. If so, drop them
+          if (Buffer[Count-2] == 0x30) { // NOTE: 0x30 is ASCII 0
+            if (Buffer[Count-3] == 0x30){
+              strcpy (FormatString, "%.0f"); // the last two digits = 0, copy as integer
+              Count = Count - 3; // don't need memory for decimal and 2 ascii characters
+            }
+            else {
+              strcpy (FormatString, "%.1f"); // only the 2nd digit = 0 so drop it, but keep the tenths place
+              Count = Count - 1; // don't need memory for 2nd ascii character
+            }
+          }
+        }
+      }
+      else
+      {
+      ArgVal2 = cCmdGetScalarValFromDataArg(Arg2, 0);
       //Calculate size of array
       if (ArgVal2 == 0)
         Count = 1;
-      else
+      else {
         Count = 0;
-
-      if (TypeCode2 == TC_SLONG || TypeCode2 == TC_SWORD || TypeCode2 == TC_SBYTE)
-      {
-        TmpSLong = (SLONG)ArgVal2;
-        //Add room for negative sign
-        if (TmpSLong < 0)
-          Count++;
-
-        while (TmpSLong)
+        SLONG digits= 0;
+        ULONG Tmp= 1;
+        if (TypeCode2 == TC_SLONG || TypeCode2 == TC_SWORD || TypeCode2 == TC_SBYTE)
         {
-          TmpSLong /= 10;
-          Count++;
+          TmpSLong = (SLONG)ArgVal2;
+          //Add room for negative sign
+          if (TmpSLong < 0) {
+            Count++;
+            TmpULong= -TmpSLong;
+            }
+          else
+            TmpULong= ArgVal2;
         }
-      }
-      else
-      {
-        TmpULong = ArgVal2;
-        while (TmpULong)
-        {
-          TmpULong /= 10;
-          Count++;
-        }
-      }
+        else
+          TmpULong= ArgVal2;
 
+        while (Tmp <= TmpULong && digits < 10) { // maxint is ten digits, max
+          Tmp *= 10;
+          digits++;
+        }
+        Count += digits;
+      }
       //add room for NULL terminator
       Count++;
+      }
 
       //Allocate array
       Status = cCmdDSArrayAlloc(Arg1, 0, Count);
@@ -3844,7 +4669,11 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
       pArg1 = cCmdResolveDataArg(Arg1, 0, &TypeCode1);
 
       //Populate array
-      if (TypeCode2 == TC_SLONG || TypeCode2 == TC_SWORD || TypeCode2 == TC_SBYTE)
+      if (TypeCode2 == TC_FLOAT)
+      {
+        sprintf(pArg1, FormatString, FltArgVal2);
+      }
+      else if (TypeCode2 == TC_SLONG || TypeCode2 == TC_SWORD || TypeCode2 == TC_SBYTE)
       {
         sprintf(pArg1, "%d", (SLONG)ArgVal2);
       }
@@ -3895,7 +4724,22 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
     }
     break;
 
-    default:
+    case OP_WAIT:
+    {
+      ULONG wait= 0;
+      //Unwired Arg2 defaults to wait 0, which rotates queue
+      if (Arg2 != NOT_A_DS_ID)
+        wait= cCmdGetScalarValFromDataArg(Arg2, 0);
+      if(wait == 0)
+        Status= ROTATE_QUEUE;
+      else
+        Status = cCmdSleepClump(wait + IOMapCmd.Tick); // put to sleep, to wake up wait ms in future
+      if(Arg1 != NOT_A_DS_ID)
+        cCmdSetScalarValFromDataArg(Arg1, dTimerReadNoPoll());
+    }
+    break;
+
+  default:
     {
       //Fatal error: Unrecognized instruction
       NXT_BREAK;
@@ -3908,13 +4752,14 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
 }
 
 
-NXT_STATUS cCmdInterpPolyUnop2(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset1, DATA_ARG Arg2, UWORD Offset2)
+NXT_STATUS cCmdInterpPolyUnop2(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset1Param, DATA_ARG Arg2, UWORD Offset2Param)
 {
   NXT_STATUS Status = NO_ERR;
   TYPE_CODE TypeCode1, TypeCode2;
   DV_INDEX DVIndex1, DVIndex2;
   ULONG ArgVal1, ArgVal2;
-  UWORD Count1, Count2;
+  float FltArgVal1, FltArgVal2;
+  UWORD Count1, Count2, Offset1= Offset1Param, Offset2= Offset2Param;
   UWORD MinArrayCount;
   UWORD i;
   //!!! AdvCluster is intended to catch the case where sources are Cluster and an Array of Clusters.
@@ -3933,15 +4778,45 @@ NXT_STATUS cCmdInterpPolyUnop2(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset
     NXT_ASSERT(!IS_AGGREGATE_TYPE(TypeCode1));
 
     pArg1 = cCmdResolveDataArg(Arg1, Offset1, &TypeCode1);
-    pArg2 = cCmdResolveDataArg(Arg2, Offset2, &TypeCode2);
 
-    ArgVal2 = cCmdGetVal(pArg2, TypeCode2);
-    ArgVal1 = cCmdUnop2(Code, ArgVal2, TypeCode2);
-    cCmdSetVal(pArg1, TypeCode1, ArgVal1);
+    if (TypeCode1 == TC_FLOAT || TypeCode2 == TC_FLOAT)
+    {
+      pArg2 = cCmdResolveDataArg(Arg2, Offset2, &TypeCode2);
+      FltArgVal2 = cCmdGetValFlt(pArg2, TypeCode2);
+      FltArgVal1 = cCmdUnop2Flt(Code, FltArgVal2, TypeCode2);
+      cCmdSetValFlt(pArg1, TypeCode1, FltArgVal1);
+    }
+    else
+    {
+      ArgVal2= cCmdGetScalarValFromDataArg(Arg2, Offset2);
+      if(OP_CODE(&Code) == OP_MOV)
+        ArgVal1= ArgVal2;
+      else
+        ArgVal1 = cCmdUnop2(Code, ArgVal2, TypeCode2);
+      cCmdSetVal(pArg1, TypeCode1, ArgVal1);
+    }
     return Status;
   }
 
   //At least one of the args is an aggregate type
+
+  if(TypeCode1 == TC_ARRAY && TypeCode2 == TC_ARRAY) {
+    TYPE_CODE tc1, tc2;
+    tc1=  cCmdDSType(INC_ID(Arg1));
+    tc2=  cCmdDSType(INC_ID(Arg2));
+    if(tc1 <= TC_LAST_INT_SCALAR && tc1 == tc2) {
+      void *pArg1, *pArg2;
+      ULONG Count = cCmdArrayCount(Arg2, Offset2);
+      Status = cCmdDSArrayAlloc(Arg1, Offset1, Count);
+      if (IS_ERR(Status))
+        return Status;
+      pArg1 = cCmdResolveDataArg(Arg1, Offset1, NULL);
+      pArg2 = cCmdResolveDataArg(Arg2, Offset2, NULL);
+      memmove(pArg1, pArg2, Count * cCmdSizeOf(tc1));
+      return Status;
+    }
+  }
+
 
   //
   // Initialize Count and ArrayType local variables for each argument
@@ -3966,6 +4841,11 @@ NXT_STATUS cCmdInterpPolyUnop2(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset
       NXT_BREAK;
       return (ERR_ARG);
     }
+    if(Count2 == 0) { // both arrays, input is empty, is output already empty?
+      Count1= cCmdArrayCount(Arg1, Offset1);
+      if(Count1 == 0)
+        return NO_ERR;
+    }
 
     MinArrayCount = Count2;
 
@@ -3974,6 +4854,8 @@ NXT_STATUS cCmdInterpPolyUnop2(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset
     if (IS_ERR(Status))
       return Status;
 
+    if(MinArrayCount == 0) // if we emptied array, nothing else to do.
+      return NO_ERR;
     Count1 = MinArrayCount;
     DVIndex1 = cCmdGetDVIndex(Arg1, Offset1);
     Offset1 = DV_ARRAY[DVIndex1].Offset;
@@ -3995,7 +4877,6 @@ NXT_STATUS cCmdInterpPolyUnop2(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset
   // Loop through the sub-elements of aggregate arguments.
   // Call cCmdInterpPolyUnop2 recursively with simpler type.
   //
-
   for (i = 0; i < Count1; i++)
   {
     Status = cCmdInterpPolyUnop2(Code, Arg1, Offset1, Arg2, Offset2);
@@ -4013,7 +4894,6 @@ NXT_STATUS cCmdInterpPolyUnop2(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset
     else if ((TypeCode2 == TC_CLUSTER) && AdvCluster)
       Arg2 = cCmdNextDSElement(Arg2);
   }
-
   return Status;
 }
 
@@ -4023,38 +4903,189 @@ ULONG cCmdUnop2(CODE_WORD const Code, ULONG Operand, TYPE_CODE TypeCode)
   UBYTE opCode;
 
   opCode = OP_CODE((&Code));
-
-  switch (opCode)
+  if(opCode == OP_MOV)
+    return Operand;
+  else if(opCode == OP_NEG)
+    return (-((SLONG)Operand));
+  else if(opCode == OP_NOT)
+    //!!! OP_NOT is logical, *not* bit-wise.
+    //This differs from the other logical ops because we don't distinguish booleans from UBYTEs.
+    return (!Operand);
+  else if(opCode == OP_TST)
+    return cCmdCompare(COMP_CODE((&Code)), Operand, 0, TypeCode, TypeCode);
+  else if(opCode == OP_ABS)
+    return abs(Operand);
+  else
   {
-    case OP_MOV:
-    {
-      return Operand;
-    }
+    //Unrecognized instruction, NXT_BREAK for easy debugging (ERR_INSTR handled in caller)
+    NXT_BREAK;
+    return 0;
+  }
+}
 
-    case OP_NEG:
-    {
-      return (-((SLONG)Operand));
-    }
+float cCmdUnop2Flt(CODE_WORD const Code, float Operand, TYPE_CODE TypeCode)
+{
+  UBYTE opCode;
 
-    case OP_NOT:
-    {
-      //!!! OP_NOT is logical, *not* bit-wise.
-      //This differs from the other logical ops because we don't distinguish booleans from UBYTEs.
-      return (!Operand);
-    }
+  opCode = OP_CODE((&Code));
+  if(opCode == OP_MOV)
+    return Operand;
+  else if(opCode ==  OP_NEG)
+    return (-(Operand));
+  else if(opCode == OP_NOT)
+    //!!! OP_NOT is logical, *not* bit-wise.
+    //This differs from the other logical ops because we don't distinguish booleans from UBYTEs.
+    return (!Operand);
+  else if(opCode == OP_TST)
+    return cCmdCompareFlt(COMP_CODE((&Code)), Operand, 0, TypeCode, TypeCode);
+  else if(opCode == OP_ABS)
+    return fabsf(Operand);
+  else if(opCode == OP_SQRT)
+    return sqrt(Operand);
+#if 0
+  else if(opCode == OP_SIN)
+    return sin(Operand);
+  else if(opCode == OP_COS)
+    return cos(Operand);
+  else if(opCode == OP_TAN)
+    return tan(Operand);
+  else if(opCode == OP_ASIN)
+    return asin(Operand);
+  else if(opCode == OP_ACOS)
+    return acos(Operand);
+  else if(opCode == OP_ATAN)
+    return atan(Operand);
+#endif
+  else
+  {
+    //Unrecognized instruction, NXT_BREAK for easy debugging (ERR_INSTR handled in caller)
+    NXT_BREAK;
+    return 0;
+  }
+}
 
-    case OP_TST:
+NXT_STATUS cCmdIOGetSet(ULONG opCode, DATA_ARG Arg1, DATA_ARG Arg2, DATA_ARG Arg3)
+{
+  ULONG ArgVal1, ArgVal2;
+  TYPE_CODE TypeCode2;
+  void *pArg2 = NULL;
+  switch(opCode)
+  {
+    case OP_GETOUT:
     {
-      return cCmdCompare(COMP_CODE((&Code)), Operand, 0, TypeCode, TypeCode);
+      ArgVal2 = cCmdGetScalarValFromDataArg(Arg2, 0);
+      Arg2 = (UWORD)(0x200 | (Arg3 + ArgVal2 * IO_OUT_FPP));
+      pArg2 = cCmdResolveIODataArg(Arg2, 0, &TypeCode2);
+      cCmdSetScalarValFromDataArg(Arg1, cCmdGetVal(pArg2, TypeCode2));
     }
-
-    default:
+    break;
+    //!!! All IO map access commands should screen illegal port values!
+    //    Right now, cCmdResolveIODataArg's implementation allows SETIN/GETIN to access arbitrary RAM!
+    case OP_SETIN:
     {
-      //Unrecognized instruction, NXT_BREAK for easy debugging (ERR_INSTR handled in caller)
-      NXT_BREAK;
-      return 0;
+      ArgVal2 = cCmdGetScalarValFromDataArg(Arg2, 0);
+      Arg2 = (UWORD)(Arg3 + ArgVal2 * IO_IN_FPP);
+      pArg2 = cCmdResolveIODataArg(Arg2, 0, &TypeCode2);
+      ArgVal1 = cCmdGetScalarValFromDataArg(Arg1, 0);
+      cCmdSetVal(pArg2, TypeCode2, ArgVal1);
+    }
+    break;
+    case OP_GETIN:
+    {
+      TYPE_CODE TypeCode1;
+      void * pArg1;
+      ArgVal2 = cCmdGetScalarValFromDataArg(Arg2, 0);
+      Arg2 = (UWORD)(Arg3 + ArgVal2 * IO_IN_FPP);
+      pArg2 = cCmdResolveIODataArg(Arg2, 0, &TypeCode2);
+      TypeCode1= cCmdDSType(Arg1);
+      pArg1= cCmdDSScalarPtr(Arg1, 0);
+      if(TypeCode1 <= TC_SBYTE && TypeCode1 <= TC_SBYTE) // seems really common
+        *(UBYTE*)pArg1= *(UBYTE*)pArg2;
+      else
+        cCmdSetVal(pArg1, TypeCode1, cCmdGetVal(pArg2, TypeCode2));
+    }
+    break;
+  }
+  return NO_ERR;
+}
+
+ULONG scalarCmp= 0, scalarFloatCmp= 0, recursiveCmp= 0, PolyScalarCmp= 0, polyPolyCmp= 0, scalarOther= 0, scalarBinopDispatch= 0, polyBinopDispatch= 0;
+NXT_STATUS cCmdInterpScalarBinop(CODE_WORD * const pCode)
+{
+  NXT_STATUS Status;
+  UBYTE opCode;
+  UBYTE CmpBool;
+
+  NXT_ASSERT(pCode != NULL);
+  opCode = OP_CODE(pCode);
+    DATA_ARG Arg1, Arg2, Arg3;
+
+  scalarBinopDispatch ++;
+  if(opCode == OP_CMP) // t2 && t3 guaranteed scalar or string
+  {
+    gPCDelta= 4;
+    Arg1 = pCode[1];
+    Arg2 = pCode[2];
+    Arg3 = pCode[3];
+    ULONG ArgVal1, ArgVal2, ArgVal3;
+    TYPE_CODE TypeCode2, TypeCode3;
+    DS_TOC_ENTRY *dsTOC2Ptr= &VarsCmd.pDataspaceTOC[Arg2];
+    DS_TOC_ENTRY *dsTOC3Ptr= &VarsCmd.pDataspaceTOC[Arg3];
+
+    TypeCode2 = dsTOC2Ptr->TypeCode;
+    TypeCode3 = dsTOC3Ptr->TypeCode;
+    if(TypeCode2 <= TC_LAST_INT_SCALAR && TypeCode3 <= TC_LAST_INT_SCALAR) {
+      ArgVal2= GetProcArray[TypeCode2](VarsCmd.pDataspace + dsTOC2Ptr->DSOffset);
+      ArgVal3= GetProcArray[TypeCode3](VarsCmd.pDataspace + dsTOC3Ptr->DSOffset);
+    ArgVal1= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
+      DS_TOC_ENTRY *dsTOC1Ptr= &VarsCmd.pDataspaceTOC[Arg1];
+      SetProcArray[dsTOC1Ptr->TypeCode](VarsCmd.pDataspace + dsTOC1Ptr->DSOffset, ArgVal1);
+    scalarCmp++;
+  Status = NO_ERR;
+  }
+    else if (TypeCode2 == TC_ARRAY) // two strings
+    {
+      // memcmp(); here or in compareagg, could use memcmp to speed up string compares ???
+      Status = cCmdCompareAggregates(COMP_CODE(pCode), &CmpBool, Arg2, 0, Arg3, 0);
+      cCmdSetScalarValFromDataArg(Arg1, CmpBool);
+      recursiveCmp++;
+    }
+    else { // floats
+      Status = cCmdInterpPolyBinop(*pCode, Arg1, 0, Arg2, 0, Arg3, 0);
+      scalarFloatCmp++;
     }
   }
+  else if(opCode == OP_BRCMP) { // t2 and t3 guaranteed scalar
+      TYPE_CODE TypeCode2, TypeCode3;
+      ULONG ArgVal2, ArgVal3;
+
+      Arg1 = pCode[1];
+      Arg2 = pCode[2];
+      Arg3 = pCode[3];
+      TypeCode2= cCmdDSType(Arg2);
+      TypeCode3= cCmdDSType(Arg3);
+      ArgVal2= cCmdGetScalarValFromDataArg(Arg2, 0);
+      ArgVal3= cCmdGetScalarValFromDataArg(Arg3, 0);
+      CmpBool= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
+
+      if (CmpBool)
+        gPCDelta =  (SWORD)Arg1;
+  else
+        gPCDelta= 4;
+      Status= NO_ERR;
+    }
+  else if(opCode >= OP_SETIN && opCode <= OP_GETOUT) {
+      Arg1 = pCode[1];
+      Arg2 = pCode[2];
+      Arg3 = pCode[3];
+    Status= cCmdIOGetSet(opCode, Arg1, Arg2, Arg3);
+    gPCDelta= 4;
+    }
+  else {
+    scalarOther ++;
+    Status= cCmdInterpBinop(pCode);
+  }
+  return Status;
 }
 
 
@@ -4063,136 +5094,74 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
   NXT_STATUS Status = NO_ERR;
   UBYTE opCode;
   DATA_ARG Arg1, Arg2, Arg3;
-  TYPE_CODE TypeCode1, TypeCode2, TypeCode3;
-  ULONG ArgVal2, ArgVal3;
+  ULONG ArgVal3;
   UBYTE CmpBool;
   DV_INDEX DVIndex1, DVIndex2;
   UWORD i;
 
-  void * pArg1 = NULL,
-        *pArg2 = NULL,
-        *pArg3 = NULL;
+  polyBinopDispatch ++;
+  gPCDelta= 4;
 
   NXT_ASSERT(pCode != NULL);
-#ifdef USE_SHORT_OPS
-  if (IS_SHORT_OP(pCode))
-  {
-    //add mapping from quick op to real op
-    opCode = ShortOpMap[SHORT_OP_CODE(pCode)];
-    Arg1 = SHORT_ARG(pCode) + pCode[1];
-    Arg2 = pCode[1];
-    Arg3 = pCode[2];
-  }
-  else
-  {
     opCode = OP_CODE(pCode);
     Arg1 = pCode[1];
     Arg2 = pCode[2];
     Arg3 = pCode[3];
-  }
-#else
-  opCode = OP_CODE(pCode);
-  Arg1 = pCode[1];
-  Arg2 = pCode[2];
-  Arg3 = pCode[3];
-#endif //USE_SHORT_OPS
 
-  if (opCode == OP_ADD || opCode == OP_SUB || opCode == OP_MUL || opCode == OP_DIV || opCode == OP_MOD ||
-      opCode == OP_AND || opCode == OP_OR || opCode == OP_XOR)
-  {
-    return cCmdInterpPolyBinop(opCode, Arg1, 0, Arg2, 0, Arg3, 0);
-  }
-
-  //Resolve data arguments, except for opcodes which the arguments are not DataArgs
-  if (opCode != OP_BRCMP)
-  {
-    pArg1 = cCmdResolveDataArg(Arg1, 0, &TypeCode1);
-  }
-
-  if (opCode != OP_INDEX)
-  {
-    pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
-    ArgVal2 = cCmdGetVal(pArg2, TypeCode2);
-  }
-
-  if ((opCode != OP_GETOUT) && (opCode != OP_SETIN)  && (opCode != OP_GETIN) && (opCode != OP_INDEX) && (opCode != OP_ARRINIT))
-  {
-    pArg3 = cCmdResolveDataArg(Arg3, 0, &TypeCode3);
-    ArgVal3 = cCmdGetVal(pArg3, TypeCode3);
-  }
-
+  if (opCode <= OP_XOR) // && ! OP_NEG, can't happen since it is unop
+    Status= cCmdInterpPolyBinop(opCode, Arg1, 0, Arg2, 0, Arg3, 0);
+  else if(opCode >= OP_SETIN && opCode <= OP_GETOUT)
+    Status= cCmdIOGetSet(opCode, Arg1, Arg2, Arg3);
+  else {
   switch (opCode)
   {
-
     case OP_CMP:
     {
-      if (!IS_AGGREGATE_TYPE(cCmdDSType(Arg1)) && IS_AGGREGATE_TYPE(cCmdDSType(Arg2)) && IS_AGGREGATE_TYPE(cCmdDSType(Arg3)))
+        TYPE_CODE TypeCode2= cCmdDSType(Arg2), TypeCode3= cCmdDSType(Arg3);
+      if(TypeCode2 <= TC_LAST_INT_SCALAR && TypeCode3 <= TC_LAST_INT_SCALAR) {
+          ULONG ArgVal1, ArgVal2, ArgVal3;
+          ArgVal2= cCmdGetScalarValFromDataArg(Arg2, 0);
+          ArgVal3= cCmdGetScalarValFromDataArg(Arg3, 0);
+          ArgVal1= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
+          cCmdSetScalarValFromDataArg(Arg1, ArgVal1);
+          PolyScalarCmp++;
+        }
+      else if (IS_AGGREGATE_TYPE(TypeCode2) && IS_AGGREGATE_TYPE(TypeCode3) && !IS_AGGREGATE_TYPE(cCmdDSType(Arg1)))
       {
         //Compare Aggregates
         Status = cCmdCompareAggregates(COMP_CODE(pCode), &CmpBool, Arg2, 0, Arg3, 0);
-        cCmdSetVal(pArg1, TypeCode1, CmpBool);
+        cCmdSetScalarValFromDataArg(Arg1, CmpBool);
+        recursiveCmp++;
       }
       else
       {
         //Compare Elements
         Status = cCmdInterpPolyBinop(*pCode, Arg1, 0, Arg2, 0, Arg3, 0);
+        polyPolyCmp++;
       }
     }
     break;
 
     case OP_BRCMP:
     {
-      //Compare Aggregates
+      TYPE_CODE TypeCode2= cCmdDSType(Arg2), TypeCode3= cCmdDSType(Arg3);
+      if(TypeCode2 <= TC_LAST_INT_SCALAR && TypeCode3 <= TC_LAST_INT_SCALAR) {
+        ULONG ArgVal2, ArgVal3;
+        ArgVal2= cCmdGetScalarValFromDataArg(Arg2, 0);
+        ArgVal3= cCmdGetScalarValFromDataArg(Arg3, 0);
+        CmpBool= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
+      }
+      else //Compare Aggregates
       Status = cCmdCompareAggregates(COMP_CODE(pCode), &CmpBool, Arg2, 0, Arg3, 0);
 
       if (CmpBool)
-      {
-        VarsCmd.ScratchPC = VarsCmd.ScratchPC + (SWORD)Arg1;
-        Status = PC_OVERRIDE;
-      }
-    }
-    break;
-
-    case OP_GETOUT:
-    {
-      Arg2 = (UWORD)(0xC200 | (Arg3 + ArgVal2 * IO_OUT_FPP));
-      pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
-
-      cCmdSetVal(pArg1, TypeCode1, cCmdGetVal(pArg2, TypeCode2));
-    }
-    break;
-
-    //!!! All IO map access commands should screen illegal port values!
-    //    Right now, cCmdResolveDataArg's implementation allows SETIN/GETIN to access arbitrary RAM!
-    case OP_SETIN:
-    {
-      Arg2 = (UWORD)(0xC000 | (Arg3 + ArgVal2 * IO_IN_FPP));
-      pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
-
-      cCmdSetVal(pArg2, TypeCode2, cCmdGetVal(pArg1, TypeCode1));
-    }
-    break;
-
-    case OP_GETIN:
-    {
-      Arg2 = (UWORD)(0xC000 | (Arg3 + ArgVal2 * IO_IN_FPP));
-      pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
-
-      cCmdSetVal(pArg1, TypeCode1, cCmdGetVal(pArg2, TypeCode2));
+          gPCDelta =  (SWORD)Arg1;
     }
     break;
 
     case OP_INDEX:
     {
-      if (Arg3 != NOT_A_DS_ID)
-      {
-        pArg3 = cCmdResolveDataArg(Arg3, 0, &TypeCode3);
-        ArgVal3 = cCmdGetVal(pArg3, TypeCode3);
-      }
-      else //Index input unwired
-      {
-        ArgVal3 = 0;
-      }
+        ArgVal3 = (Arg3 != NOT_A_DS_ID) ? cCmdGetScalarValFromDataArg(Arg3, 0) : 0;
 
       DVIndex2 = cCmdGetDVIndex(Arg2, 0);
       if (ArgVal3 >= DV_ARRAY[DVIndex2].Count)
@@ -4206,26 +5175,26 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
     {
       //Arg1 - Dst, Arg2 - element type/default val, Arg3 - length
 
-      NXT_ASSERT(TypeCode1 == TC_ARRAY);
+        NXT_ASSERT(cCmdDSType(Arg1) == TC_ARRAY);
 
-      if (Arg3 != NOT_A_DS_ID)
-      {
-        pArg3 = cCmdResolveDataArg(Arg3, 0, &TypeCode3);
-        ArgVal3 = cCmdGetVal(pArg3, TypeCode3);
-      }
-      else //Length input unwired
-      {
-        ArgVal3 = 0;
-      }
+        ArgVal3 = (Arg3 != NOT_A_DS_ID) ? cCmdGetScalarValFromDataArg(Arg3, 0) : 0;
 
       Status = cCmdDSArrayAlloc(Arg1, 0, (UWORD)ArgVal3);
-      if (IS_ERR(Status))
-        return Status;
-
+        if (!IS_ERR(Status))
+        {
       DVIndex1 = cCmdGetDVIndex(Arg1, 0);
-      for (i = 0; i < ArgVal3; i++)
+          if(cCmdDSType(Arg2) <= TC_LAST_INT_SCALAR)
+          {
+            ULONG val= cCmdGetScalarValFromDataArg(Arg2, 0);
+            TYPE_CODE TypeCode= cCmdDSType(INC_ID(Arg1));
+            for (i = 0; i < ArgVal3; i++) // could init ptr and incr by offset GM???
       {
         //copy Arg2 into each element of Arg1
+              cCmdSetVal(VarsCmd.pDataspace + ARRAY_ELEM_OFFSET(DVIndex1, i), TypeCode, val);
+            }
+          }
+          else
+            for (i = 0; i < ArgVal3; i++)  //copy Arg2 into each element of Arg1
         Status = cCmdInterpPolyUnop2(OP_MOV, INC_ID(Arg1), ARRAY_ELEM_OFFSET(DVIndex1, i), Arg2, 0);
       }
     }
@@ -4239,7 +5208,7 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
     }
     break;
   }
-
+  }
   return (Status);
 }
 
@@ -4250,6 +5219,7 @@ NXT_STATUS cCmdInterpPolyBinop(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset
   TYPE_CODE TypeCode1, TypeCode2, TypeCode3;
   DV_INDEX DVIndex1, DVIndex2, DVIndex3;
   ULONG ArgVal1, ArgVal2, ArgVal3;
+  float FltArgVal1, FltArgVal2, FltArgVal3;
   UWORD Count1, Count2, Count3;
   UWORD MinArrayCount;
   UWORD i;
@@ -4270,14 +5240,23 @@ NXT_STATUS cCmdInterpPolyBinop(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset
   {
     NXT_ASSERT(!IS_AGGREGATE_TYPE(TypeCode1));
 
-    pArg1 = cCmdResolveDataArg(Arg1, Offset1, &TypeCode1);
-    pArg2 = cCmdResolveDataArg(Arg2, Offset2, &TypeCode2);
-    pArg3 = cCmdResolveDataArg(Arg3, Offset3, &TypeCode3);
+    pArg1 = cCmdResolveDataArg(Arg1, Offset1, NULL);
 
-    ArgVal2 = cCmdGetVal(pArg2, TypeCode2);
-    ArgVal3 = cCmdGetVal(pArg3, TypeCode3);
+    if (TypeCode1 == TC_FLOAT || TypeCode2 == TC_FLOAT || TypeCode3 == TC_FLOAT){
+      pArg2 = cCmdResolveDataArg(Arg2, Offset2, NULL);
+      pArg3 = cCmdResolveDataArg(Arg3, Offset3, NULL);
+      FltArgVal2 = cCmdGetValFlt(pArg2, TypeCode2);
+      FltArgVal3 = cCmdGetValFlt(pArg3, TypeCode3);
+      FltArgVal1 = cCmdBinopFlt(Code, FltArgVal2, FltArgVal3, TypeCode2, TypeCode3);
+      cCmdSetValFlt(pArg1, TypeCode1, FltArgVal1);
+    }
+    else
+    {
+    ArgVal2 = cCmdGetScalarValFromDataArg(Arg2, Offset2);
+    ArgVal3 = cCmdGetScalarValFromDataArg(Arg3, Offset3);
     ArgVal1 = cCmdBinop(Code, ArgVal2, ArgVal3, TypeCode2, TypeCode3);
     cCmdSetVal(pArg1, TypeCode1, ArgVal1);
+    }
     return Status;
   }
 
@@ -4472,11 +5451,221 @@ ULONG cCmdBinop(CODE_WORD const Code, ULONG LeftOp, ULONG RightOp, TYPE_CODE Lef
   }
 }
 
+
+float cCmdBinopFlt(CODE_WORD const Code, float LeftOp, float RightOp, TYPE_CODE LeftType, TYPE_CODE RightType)
+{
+  UBYTE opCode;
+
+  opCode = OP_CODE((&Code));
+
+  switch (opCode)
+  {
+    case OP_ADD:
+    {
+      return LeftOp + RightOp;
+    }
+
+    case OP_SUB:
+    {
+      return LeftOp - RightOp;
+    }
+
+    case OP_MUL:
+    {
+      return LeftOp * RightOp;
+    }
+
+    case OP_DIV:
+    {
+      //Catch divide-by-zero for a portable, well-defined result.
+      //(x / 0) = 0. Thus Spake LOTHAR!! (It's technical.)
+      if (RightOp == 0)
+        return 0;
+
+      return LeftOp / RightOp;
+    }
+
+    case OP_MOD:
+    {
+      //As with OP_DIV, make sure (x % 0) = x is well-defined
+      if (RightOp == 0)
+        return (LeftOp);
+
+      return (SLONG)LeftOp % (SLONG)RightOp;
+    }
+
+    case OP_AND:
+    {
+      return ((SLONG)LeftOp & (SLONG)RightOp);
+    }
+
+    case OP_OR:
+    {
+      return ((SLONG)LeftOp | (SLONG)RightOp);
+    }
+
+    case OP_XOR:
+    {
+      return (((SLONG)LeftOp | (SLONG)RightOp) & (~((SLONG)LeftOp & (SLONG)RightOp)));
+    }
+
+    case OP_CMP:
+    {
+      return cCmdCompareFlt(COMP_CODE((&Code)), LeftOp, RightOp, LeftType, RightType);
+    }
+
+    default:
+    {
+      //Unrecognized instruction, NXT_BREAK for easy debugging (ERR_INSTR handled in caller)
+      NXT_BREAK;
+      return 0;
+    }
+  }
+}
+
 NXT_STATUS cCmdInterpNoArg(CODE_WORD * const pCode)
 {
   //Fatal error: Unrecognized instruction (no current opcodes have zero instructions)
   NXT_BREAK;
   return (ERR_INSTR);
+}
+
+NXT_STATUS cCmdInterpShortError(CODE_WORD * const pCode)
+{
+  //Fatal error: Unrecognized instruction (no current opcodes have zero instructions)
+  NXT_BREAK;
+  return (ERR_INSTR);
+}
+
+NXT_STATUS cCmdInterpShortSubCall(CODE_WORD * const pCode)
+{
+  NXT_STATUS Status;
+  DATA_ARG Arg1, Arg2;
+
+  gPCDelta= 2;
+  Arg1 = GetDataArg(SHORT_ARG(pCode) + pCode[1]);
+  Arg2 = GetDataArg(pCode[1]);
+  NXT_ASSERT(cCmdIsClumpIDSane((CLUMP_ID)Arg1));
+  NXT_ASSERT(!cCmdIsClumpOnQ(&(VarsCmd.RunQ), (CLUMP_ID)Arg1));
+
+  NXT_ASSERT(cCmdIsDSElementIDSane(Arg2));
+
+  *((CLUMP_ID *)(cCmdDSScalarPtr(Arg2, 0))) = VarsCmd.RunQ.Head;
+
+  cCmdDeQClump(&(VarsCmd.RunQ), VarsCmd.RunQ.Head); //Take caller off RunQ
+  cCmdEnQClump(&(VarsCmd.RunQ), (CLUMP_ID)Arg1);  //Add callee to RunQ
+
+  Status = CLUMP_SUSPEND;
+
+  return Status;
+}
+
+ULONG moveSameInt= 0, moveDiffInt= 0, moveFloat= 0, moveArrInt= 0, moveOther= 0;
+NXT_STATUS cCmdMove(DATA_ARG Arg1, DATA_ARG Arg2)
+{
+  NXT_STATUS Status;
+  DS_TOC_ENTRY  *TOC1Ptr= &VarsCmd.pDataspaceTOC[Arg1],
+                *TOC2Ptr= &VarsCmd.pDataspaceTOC[Arg2];
+  TYPE_CODE tc1= TOC1Ptr->TypeCode, tc2= TOC2Ptr->TypeCode;
+  void *pArg1, *pArg2;
+
+  if(tc1 <= TC_LAST_INT_SCALAR && tc2 <= TC_LAST_INT_SCALAR)
+  {
+    // if tc1 == tc2, do long, byte, then word assignment
+    if(tc1 == tc2)
+    {
+      moveSameInt++;
+      pArg1= VarsCmd.pDataspace + TOC1Ptr->DSOffset;
+      pArg2= VarsCmd.pDataspace + TOC2Ptr->DSOffset;
+      if(tc1 >= TC_ULONG)
+        *(ULONG*)pArg1= *(ULONG*)pArg2;
+      else if(tc1 <= TC_SBYTE)
+        *(UBYTE*)pArg1= *(UBYTE*)pArg2;
+      else
+        *(UWORD*)pArg1= *(UWORD*)pArg2;
+      Status= NO_ERR;
+    }
+  else
+    {
+      moveDiffInt++;
+      ULONG val= cCmdGetScalarValFromDataArg(Arg2, 0);
+      cCmdSetScalarValFromDataArg(Arg1, val);
+      Status= NO_ERR;
+    }
+  }
+  else if(tc1 == TC_FLOAT && tc2 == TC_FLOAT) { // may also need to speed up float to int and int to float conversions
+    moveFloat++;
+    pArg1= VarsCmd.pDataspace + TOC1Ptr->DSOffset;
+    pArg2= VarsCmd.pDataspace + TOC2Ptr->DSOffset;
+    *(float*)pArg1= *(float*)pArg2;
+    Status= NO_ERR;
+  }
+  //!!! Optimized move for arrays of ints.
+  else if ((tc1 == TC_ARRAY) && (tc2 == TC_ARRAY)
+      && ((TOC1Ptr+1)->TypeCode <= TC_LAST_INT_SCALAR)
+      && ((TOC1Ptr+1)->TypeCode == (TOC2Ptr+1)->TypeCode))
+  {
+    ULONG Count;
+    moveArrInt++;
+    Count = cCmdArrayCount(Arg2, 0);
+    Status = cCmdDSArrayAlloc(Arg1, 0, Count);
+    if (IS_ERR(Status))
+      return Status;
+
+    pArg1 = cCmdResolveDataArg(Arg1, 0, NULL);
+    pArg2 = cCmdResolveDataArg(Arg2, 0, NULL);
+
+    memmove(pArg1, pArg2, Count * cCmdSizeOf((TOC1Ptr+1)->TypeCode));
+  }
+  else { // if ((tc1 == TC_CLUSTER) && (tc2 == TC_CLUSTER))
+    moveOther++;
+    Status = cCmdInterpPolyUnop2(OP_MOV, Arg1, 0, Arg2, 0);
+  }
+  return Status;
+}
+
+
+NXT_STATUS cCmdInterpShortMove(CODE_WORD * const pCode)
+{
+  NXT_STATUS Status;
+  DATA_ARG Arg1, Arg2;
+
+  Arg1 = GetDataArg(SHORT_ARG(pCode) + pCode[1]);
+  Arg2 = GetDataArg(pCode[1]);
+  Status= cCmdMove(Arg1, Arg2);
+
+  gPCDelta= 2;
+  return Status;
+}
+
+NXT_STATUS cCmdInterpShortAcquire(CODE_WORD * const pCode)
+{
+  NXT_STATUS Status;
+  DATA_ARG Arg1;
+
+  gPCDelta= 1;
+  Arg1 = GetDataArg(SHORT_ARG(pCode));
+  NXT_ASSERT(cCmdIsDSElementIDSane(Arg1));
+  NXT_ASSERT(cCmdDSType(Arg1) == TC_MUTEX);
+
+  Status = cCmdAcquireMutex((MUTEX_Q *)cCmdDSScalarPtr(Arg1, 0));
+
+  return Status;
+}
+
+NXT_STATUS cCmdInterpShortRelease(CODE_WORD * const pCode)
+{
+  NXT_STATUS Status;
+  DATA_ARG Arg1;
+
+  gPCDelta= 1;
+  Arg1 = GetDataArg(SHORT_ARG(pCode));
+  NXT_ASSERT(cCmdIsDSElementIDSane(Arg1));
+  NXT_ASSERT(cCmdDSType(Arg1) == TC_MUTEX);
+
+  Status = cCmdReleaseMutex((MUTEX_Q *)cCmdDSScalarPtr(Arg1, 0));
+
+  return Status;
 }
 
 
@@ -4525,8 +5714,7 @@ NXT_STATUS cCmdExecuteSetOut(CODE_WORD * const pCode)
     }
     else
     {
-      pPort = (UBYTE*)cCmdResolveDataArg(PortArg, 0, NULL);
-      Port = cCmdGetVal(pPort, TypeCodePortArg);
+      Port = cCmdGetScalarValFromDataArg(PortArg, 0);
     }
 
     //If user specified a valid port, process the tuples.  Else, this port is a no-op
@@ -4560,8 +5748,8 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
   NXT_STATUS Status = NO_ERR;
   UBYTE opCode;
   DATA_ARG Arg1, Arg2, Arg3, Arg4, Arg5;
-  TYPE_CODE TypeCode1, TypeCode2, TypeCode3, TypeCode4, TypeCode5;
-  ULONG ArgVal1, ArgVal2, ArgVal3, ArgVal4, ArgVal5;
+  TYPE_CODE TypeCode1, TypeCode2, TypeCode3, TypeCode5;
+  ULONG ArgVal2, ArgVal3, ArgVal4, ArgVal5;
   UWORD ArrayCount1, ArrayCount2, ArrayCount3, ArrayCount4;
   UWORD MinCount;
   UWORD i,j;
@@ -4575,10 +5763,14 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
   void  *pArg1 = NULL;
   void  *pArg2 = NULL;
   void  *pArg3 = NULL;
-  void  *pArg4 = NULL;
   void  *pArg5 = NULL;
 
   NXT_ASSERT(pCode != NULL);
+
+  ULONG sz= INSTR_SIZE(*(UWORD*)pCode);
+  if (sz == VAR_INSTR_SIZE)
+    sz = ((UWORD*)pCode)[1];
+  gPCDelta= sz/2; // advance words, sz is in bytes
 
   opCode = OP_CODE(pCode);
 
@@ -4604,7 +5796,7 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
       //!!! Could avoid full data copy if we knew which portion to overwrite
       if (Arg1 != Arg2)
       {
-        Status = cCmdInterpPolyUnop2(OP_MOV, Arg1, 0, Arg2, 0);
+        Status= cCmdMove(Arg1, Arg2);
         if (IS_ERR(Status))
           return Status;
       }
@@ -4672,24 +5864,14 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
       ArrayCount2 = cCmdArrayCount(Arg2, 0);
 
       if (Arg3 != NOT_A_DS_ID)
-      {
-        pArg3 = cCmdResolveDataArg(Arg3, 0, &TypeCode3);
-        ArgVal3 = cCmdGetVal(pArg3, TypeCode3);
-      }
+        ArgVal3 = cCmdGetScalarValFromDataArg(Arg3, 0);
       else //Index input unwired
-      {
         ArgVal3 = 0;
-      }
 
       if (Arg4 != NOT_A_DS_ID)
-      {
-        pArg4 = cCmdResolveDataArg(Arg4, 0, &TypeCode4);
-        ArgVal4 = cCmdGetVal(pArg4, TypeCode4);
-      }
+        ArgVal4 = cCmdGetScalarValFromDataArg(Arg4, 0);
       else //Length input unwired, set to "rest"
-      {
         ArgVal4 = (UWORD)(ArrayCount2 - ArgVal3);
-      }
 
       //Bounds check
       if (ArgVal3 > ArrayCount2)
@@ -4747,24 +5929,14 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
       ArrayCount2--;
 
       if (Arg3 != NOT_A_DS_ID)
-      {
-        pArg3 = cCmdResolveDataArg(Arg3, 0, &TypeCode3);
-        ArgVal3 = cCmdGetVal(pArg3, TypeCode3);
-      }
+        ArgVal3 = cCmdGetScalarValFromDataArg(Arg3, 0);
       else //Index input unwired
-      {
         ArgVal3 = 0;
-      }
 
       if (Arg4 != NOT_A_DS_ID)
-      {
-        pArg4 = cCmdResolveDataArg(Arg4, 0, &TypeCode4);
-        ArgVal4 = cCmdGetVal(pArg4, TypeCode4);
-      }
+        ArgVal4 = cCmdGetScalarValFromDataArg(Arg4, 0);
       else //Length input unwired, set to "rest"
-      {
         ArgVal4 = (UWORD)(ArrayCount2 - ArgVal3);
-      }
 
       //Bounds check
       if (ArgVal3 > ArrayCount2)
@@ -4863,6 +6035,13 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
         {
           NXT_ASSERT(cCmdDSType(TmpDSID) == TC_ARRAY);
           TmpDVIndex = cCmdGetDVIndex(TmpDSID, 0);
+          // if flat, use memmove, otherwise this stuff
+          if(cCmdDSType(INC_ID(TmpDSID)) <= TC_LAST_INT_SCALAR)
+          {
+            memmove(VarsCmd.pDataspace + ARRAY_ELEM_OFFSET(DVIndex2, DstIndex), VarsCmd.pDataspace + DV_ARRAY[TmpDVIndex].Offset, (UWORD)(DV_ARRAY[TmpDVIndex].ElemSize * DV_ARRAY[TmpDVIndex].Count));
+            DstIndex += DV_ARRAY[TmpDVIndex].Count;
+          }
+          else
           for (j = 0; j < DV_ARRAY[TmpDVIndex].Count; j++)
           {
             Status = cCmdInterpPolyUnop2(OP_MOV, INC_ID(Arg2), ARRAY_ELEM_OFFSET(DVIndex2, DstIndex), INC_ID(TmpDSID), ARRAY_ELEM_OFFSET(TmpDVIndex, j));
@@ -4983,8 +6162,8 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
       Arg4 = pCode[4];
 
       //Move Type template to Dst
-      //This provides a default value for Dst and makes sure Dst is properly sized		
-      Status = cCmdInterpPolyUnop2(OP_MOV, Arg1, 0, Arg4, 0);
+      //This provides a default value for Dst and makes sure Dst is properly sized
+      Status= cCmdMove(Arg1, Arg4);
       if (IS_ERR(Status))
         return Status;
 
@@ -5026,7 +6205,9 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
 
     case OP_STRINGTONUM:
     {
-
+      float ArgValF;
+      SLONG decimals= 0;
+      UBYTE cont= TRUE;
       // Arg1 - Dst number (output)
       // Arg2 - Offset past match (output)
       // Arg3 - Src string
@@ -5044,18 +6225,12 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
       Arg5 = pCode[5];
 
       pArg1 = cCmdResolveDataArg(Arg1, 0, &TypeCode1);
-      pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
       pArg3 = cCmdResolveDataArg(Arg3, 0, &TypeCode3);
 
       if (Arg4 != NOT_A_DS_ID)
-      {
-        pArg4 = cCmdResolveDataArg(Arg4, 0, &TypeCode4);
-        ArgVal4 = cCmdGetVal(pArg4, TypeCode4);
-      }
+        ArgVal4 = cCmdGetScalarValFromDataArg(Arg4, 0);
       else //Offset input unwired
-      {
         ArgVal4 = 0;
-      }
 
       if (Arg5 != NOT_A_DS_ID)
       {
@@ -5068,29 +6243,36 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
       }
 
       //Read number from string
-      if (sscanf(((PSZ)pArg3 + ArgVal4), "%d", &ArgVal1) == 1)
+      if (sscanf(((PSZ)pArg3 + ArgVal4), "%f", &ArgValF) == 1)
       {
         i = (UWORD)ArgVal4;
-        //Scan until we see the number
+        //Scan until we see the number, consumes negative sign too
         while ((((UBYTE *)pArg3)[i] < '0') || (((UBYTE *)pArg3)[i] > '9'))
           i++;
 
-        //Scan until we get past the number
-        while ((((UBYTE *)pArg3)[i] >= '0') && (((UBYTE *)pArg3)[i] <= '9'))
-          i++;
-
+        //Scan until we get past the number and no more than one decimal
+        while (cont) {
+          if ((((UBYTE *)pArg3)[i] >= '0') && (((UBYTE *)pArg3)[i] <= '9'))
+            i++;
+          else if(((UBYTE *)pArg3)[i] == '.' && !decimals) {
+            i++;
+            decimals++;
+            }
+          else
+            cont= FALSE;
+        }
         ArgVal2 = i;
       }
       else
       {
         //Number wasn't found in string, use defaults
-        ArgVal1 = ArgVal5;
+        ArgValF = ArgVal5;
         ArgVal2 = 0;
       }
 
       //Set outputs
-      cCmdSetVal(pArg1, TypeCode1, ArgVal1);
-      cCmdSetVal(pArg2, TypeCode2, ArgVal2);
+      cCmdSetValFlt(pArg1, TypeCode1, ArgValF);
+      cCmdSetScalarValFromDataArg(Arg2, ArgVal2);
     }
     break;
 
@@ -5528,6 +6710,7 @@ NXT_STATUS cCmdWrapSoundPlayFile(UBYTE * ArgV[])
 
   //Resolve array arguments
   DVIndex = *(DV_INDEX *)(ArgV[1]);
+  UBYTE sndVol= *(ArgV[3]);
   ArgV[1] = cCmdDVPtr(DVIndex);
 
   //!!! Should check filename and/or existence and return error before proceeding
@@ -5538,7 +6721,9 @@ NXT_STATUS cCmdWrapSoundPlayFile(UBYTE * ArgV[])
   else
     pMapSound->Mode = SOUND_ONCE;
 
-  pMapSound->Volume = *(ArgV[3]);
+  if(sndVol > 4)
+    sndVol= 4;
+  pMapSound->Volume = sndVol;
   //SampleRate of '0' means "let file specify SampleRate"
   pMapSound->SampleRate = 0;
   pMapSound->Flags |= SOUND_UPDATE;
@@ -5558,9 +6743,12 @@ NXT_STATUS cCmdWrapSoundPlayFile(UBYTE * ArgV[])
 //
 NXT_STATUS cCmdWrapSoundPlayTone(UBYTE * ArgV[])
 {
+  UBYTE sndVol= *(ArgV[4]);
   pMapSound->Freq = *(UWORD*)(ArgV[1]);
   pMapSound->Duration = *(UWORD*)(ArgV[2]);
-  pMapSound->Volume = *(ArgV[4]);
+  if(sndVol > 4)
+    sndVol= 4;
+  pMapSound->Volume = sndVol;
   pMapSound->Flags |= SOUND_UPDATE;
 
   if (*(ArgV[3]) == TRUE)
@@ -5799,6 +6987,65 @@ NXT_STATUS cCmdWrapMessageWrite(UBYTE * ArgV[])
     return (NO_ERR);
 }
 
+
+
+//
+//cCmdWrapColorSensorRead
+//ArgV[0]: (return) Error code, SBYTE
+//ArgV[1]: Port, UBYTE
+//ArgV[2]: SensorValue, SWORD
+//ArgV[3]: RawArray, UWORD[NO_OF_COLORS]
+//ArgV[4]: NormalizedArray, UWORD[NO_OF_COLORS]
+//ArgV[5]: ScaledArray, SWORD[NO_OF_COLORS]
+//ArgV[6]: InvalidData, UBYTE
+//
+NXT_STATUS cCmdWrapColorSensorRead (UBYTE * ArgV[])
+{
+	DV_INDEX DVIndex;
+        NXT_STATUS Status = NO_ERR;
+	//Resolve return val arguments
+	SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);
+	//Resolve Port argument
+	UBYTE Port = *(UBYTE*)(ArgV[1]);
+	//Resolve SensorValue
+	SWORD SensorValue = *(SWORD*)(ArgV[2]);
+	//Resolve RawArray as array
+	DVIndex = *(DV_INDEX*)(ArgV[3]);
+        NXT_ASSERT(IS_DV_INDEX_SANE(DestDVIndex));
+        Status= cCmdDVArrayAlloc(DVIndex, NO_OF_COLORS);
+        if (IS_ERR(Status))
+          return (Status);
+	ArgV[3] = cCmdDVPtr (DVIndex);
+	//Resolve NormalizedArray as array
+	DVIndex = *(DV_INDEX*)(ArgV[4]);
+        NXT_ASSERT(IS_DV_INDEX_SANE(DestDVIndex));
+        Status= cCmdDVArrayAlloc(DVIndex, NO_OF_COLORS);
+        if (IS_ERR(Status))
+          return (Status);
+	ArgV[4] = cCmdDVPtr (DVIndex);
+	//Resolve ScaledArray as array
+	DVIndex = *(DV_INDEX*)(ArgV[5]);
+        NXT_ASSERT(IS_DV_INDEX_SANE(DestDVIndex));
+        Status= cCmdDVArrayAlloc(DVIndex, NO_OF_COLORS);
+	if (IS_ERR(Status))
+          return (Status);
+        ArgV[5] = cCmdDVPtr (DVIndex);
+	//Resolve InvalidData
+	UBYTE InvalidData = *(UBYTE*)(ArgV[6]);
+
+	//call implementation with unwrapped parameters
+	*pReturnVal = cCmdColorSensorRead (Port, &SensorValue, (UWORD*)ArgV[3], (UWORD*)ArgV[4], (SWORD*)ArgV[5], &InvalidData);
+
+	*(ArgV[2]) = SensorValue;
+        *(ArgV[6]) = InvalidData;
+
+        if (IS_ERR(*pReturnVal)){
+		return (*pReturnVal);
+	}
+	return NO_ERR;
+}
+
+
 #define UNPACK_STATUS(StatusWord) ((SBYTE)(StatusWord))
 
 NXT_STATUS cCmdBTCheckStatus(UBYTE Connection)
@@ -6017,6 +7264,8 @@ NXT_STATUS cCmdWrapKeepAlive(UBYTE * ArgV[])
   return (NO_ERR);
 }
 
+
+
 #define MAX_IOM_BUFFER_SIZE 64
 //
 //cCmdWrapIOMapRead
@@ -6228,6 +7477,452 @@ void cCmdWriteBenchmarkFile()
 }
 #endif
 
+
+/////////////////////////////////////////////////////////////
+// Dymanic syscall implementations
+////////////////////////////////////////////////////////////
+
+//
+//cCmdWrapDatalogWrite
+//ArgV[0]: (return) Error Code, SBYTE (NXT_STATUS)
+//ArgV[1]: Message, CStr
+//
+NXT_STATUS cCmdWrapDatalogWrite(UBYTE * ArgV[])
+{
+  NXT_STATUS Status = NO_ERR;
+  DV_INDEX DVIndex;
+
+  //Resolve array arguments
+  DVIndex = *(DV_INDEX *)(ArgV[1]);
+  ArgV[1] = cCmdDVPtr(DVIndex);
+
+  Status = cCmdDatalogWrite(ArgV[1], DV_ARRAY[DVIndex].Count);
+
+  *(SBYTE *)(ArgV[0]) = Status;
+
+  if (IS_FATAL(Status))
+    return Status;
+  else
+    return (NO_ERR);
+}
+
+//
+//cCmdWrapDatalogGetTimes
+//ArgV[0]: SyncTime, U32
+//ArgV[1]: SyncTick, U32
+//
+NXT_STATUS cCmdWrapDatalogGetTimes(UBYTE * ArgV[])
+{
+  *((ULONG *)ArgV[1]) = IOMapCmd.SyncTime;
+  *((ULONG *)ArgV[2]) = IOMapCmd.SyncTick;
+  return (NO_ERR);
+}
+
+//
+//cCmdWrapSetSleepTimeout
+//ArgV[0]: (return) Status byte, SBYTE
+//ArgV[1]: desired timer limit in ms, ULONG
+//
+NXT_STATUS cCmdWrapSetSleepTimeout(UBYTE * ArgV[])
+{
+  ULONG value = *(ULONG*)(ArgV[1]);
+  if(value==0)
+  {
+    pMapUi->SleepTimeout=0;
+  }
+  else if(value < 60000)
+  {
+    pMapUi->SleepTimeout=1;  //integer math would've made this zero
+  }
+  else
+  {
+    pMapUi->SleepTimeout= value / 60000;
+  }
+  return (NO_ERR);
+}
+
+// currently copied from LS, not finished.
+//
+//cCmdWrapCommHSWrite
+//ArgV[0]: (return) Status code, SBYTE
+//ArgV[1]: Port specifier, UBYTE
+//ArgV[2]: Buffer to send, UBYTE array, only SIZE_OF_LSBUF bytes will be used
+//ArgV[3]: ResponseLength, UBYTE, specifies expected bytes back from slave device
+//
+NXT_STATUS cCmdWrapCommHSWrite(UBYTE * ArgV[])
+{
+  SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);
+  UBYTE Port = *(ArgV[1]);
+  UBYTE * pBuf;
+  UWORD BufLength;
+  UBYTE ResponseLength = *(ArgV[3]);
+  DV_INDEX DVIndex;
+
+  //Resolve array arguments
+  DVIndex = *(DV_INDEX *)(ArgV[2]);
+  pBuf = cCmdDVPtr(DVIndex);
+  BufLength = DV_ARRAY[DVIndex].Count;
+
+  *pReturnVal = cCmdLSWrite(Port, (UBYTE)BufLength, pBuf, ResponseLength);
+
+  return (NO_ERR);
+}
+
+//
+//cCmdWrapCommHSCheckStatus
+//ArgV[0]: (return) Status code, SBYTE
+//ArgV[1]: Port specifier, UBYTE
+//ArgV[2]: BytesReady, UBYTE
+//
+NXT_STATUS cCmdWrapCommHSCheckStatus(UBYTE * ArgV[])
+{
+  UBYTE Port = *(ArgV[1]);
+
+  *((SBYTE*)(ArgV[0])) = cCmdLSCheckStatus(Port);
+  *((UBYTE*)(ArgV[2])) = cCmdLSCalcBytesReady(Port);
+
+  return (NO_ERR);
+}
+
+//
+//cCmdWrapCommHSRead
+//ArgV[0]: (return) Status code, SBYTE
+//ArgV[1]: Port specifier, UBYTE
+//ArgV[2]: Buffer for data, UBYTE array, max SIZE_OF_LSBUF bytes will be written
+//ArgV[3]: BufferLength, UBYTE, specifies size of buffer requested
+//
+NXT_STATUS cCmdWrapCommHSRead(UBYTE * ArgV[])
+{
+  SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);
+  UBYTE Port = *(ArgV[1]);
+  UBYTE * pBuf;
+  UBYTE BufLength = *(ArgV[3]);
+  UBYTE BytesToRead;
+  DV_INDEX DVIndex = *(DV_INDEX *)(ArgV[2]);
+  NXT_STATUS AllocStatus;
+
+  *pReturnVal = cCmdLSCheckStatus(Port);
+  BytesToRead = cCmdLSCalcBytesReady(Port);
+
+  //If channel is OK and has data ready for us, put the data into outgoing buffer
+  if (!IS_ERR(*pReturnVal) && BytesToRead > 0)
+  {
+    //Limit buffer to available data
+    if (BufLength > BytesToRead)
+      BufLength = BytesToRead;
+
+    AllocStatus = cCmdDVArrayAlloc(DVIndex, BufLength);
+    if (IS_ERR(AllocStatus))
+      return (AllocStatus);
+
+    pBuf = cCmdDVPtr(DVIndex);
+    *pReturnVal = cCmdLSRead(Port, BufLength, pBuf);
+  }
+  //Else, the channel has an error and/or there's no data to read; clear the output array
+  else
+  {
+    AllocStatus = cCmdDVArrayAlloc(DVIndex, 0);
+    if (IS_ERR(AllocStatus))
+      return (AllocStatus);
+  }
+
+  return (NO_ERR);
+}
+
+//
+//cCmdWrapCommBTOnOff
+//ArgV[0]: (return) Status byte, SBYTE
+//ArgV[1]: Power State, 0-1
+//
+NXT_STATUS cCmdWrapCommBTOnOff(UBYTE * ArgV[])
+{
+  UWORD retVal;
+  NXT_STATUS status;
+  SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);
+
+  UBYTE powerState = *(ArgV[1]);
+  if(powerState)
+    status= pMapComm->pFunc(BTON, 0, 0, 0, NULL, &retVal);
+  else
+    status= pMapComm->pFunc(BTOFF, 0, 0, 0, NULL, &retVal);
+
+  *pReturnVal= (status == SUCCESS) ? retVal : status;
+  return (NO_ERR);
+}
+
+//
+//cCmdWrapCommBTConnection
+//ArgV[0]: (return) Status byte, SBYTE
+//ArgV[1]: Action, UBYTE
+//ArgV[2]: name, UBYTE array CStr
+//ArgV[3]: connection slot, UBYTE
+//
+NXT_STATUS cCmdWrapCommBTConnection(UBYTE * ArgV[])
+{
+  UWORD retVal;
+  NXT_STATUS status;
+  SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);
+  UBYTE *nmPtr;
+
+  UBYTE action = *(ArgV[1]);
+  UBYTE connection = *(ArgV[3]);
+  nmPtr = cCmdDVPtr(*(DV_INDEX *)(ArgV[2]));
+
+  if(action) // Init
+    status= pMapComm->pFunc(CONNECTBYNAME, 0, connection, 0, nmPtr, &retVal);
+  else // Close
+    status= pMapComm->pFunc(DISCONNECT, connection, 0, 0, NULL, &retVal);
+
+  *pReturnVal= (status == SUCCESS) ? retVal : status;
+  return (NO_ERR);
+}
+
+
+//
+//cCmdWrapReadSemData
+//ArgV[0]: return data, U8
+//ArgV[1]: which (0=used, 1=request), U8
+//
+NXT_STATUS cCmdWrapReadSemData(UBYTE * ArgV[])
+{
+  if(!(*((UBYTE *)ArgV[1])))
+    *((UBYTE *)ArgV[0])= gUsageSemData;
+  else
+    *((UBYTE *)ArgV[0])= gRequestSemData;
+  return (NO_ERR);
+}
+
+//
+//cCmdWrapWriteSemData
+//ArgV[0]: return data, U8
+//ArgV[1]: which (0=used, 1=request), U8
+//ArgV[2]: newValue, U8
+//ArgV[3]: action (0= OR, 1= AND), U8
+//
+NXT_STATUS cCmdWrapWriteSemData(UBYTE * ArgV[])
+{
+  UBYTE curVal, newVal, which= (*((UBYTE *)ArgV[1]));
+  if(!which)
+    curVal= gUsageSemData;
+  else
+    curVal= gRequestSemData;
+
+  newVal= *((UBYTE *)ArgV[2]);
+
+  if(*((UBYTE *)ArgV[3]))
+    curVal &= ~newVal;
+  else
+    curVal |= newVal;
+
+  if(!which)
+    gUsageSemData= curVal;
+  else
+    gRequestSemData= curVal;
+  *((UBYTE *)ArgV[0])= curVal;
+  return (NO_ERR);
+}
+
+
+//
+//cCmdWrapUpdateCalibCacheInfo
+//ArgV[0]: return data, U8
+//ArgV[1]: nm, UBYTE array CStr
+//ArgV[2]: min, U16
+//ArgV[3]: max , U16
+//
+NXT_STATUS cCmdWrapUpdateCalibCacheInfo(UBYTE * ArgV[])
+{
+  UBYTE *nm= cCmdDVPtr(*(DV_INDEX *)(ArgV[1]));
+  SWORD min= (*((SWORD *)ArgV[2]));
+  SWORD max= (*((SWORD *)ArgV[3]));
+
+  cCmdUpdateCalibrationCache(nm, min, max);
+  *((UBYTE *)ArgV[0])= SUCCESS;
+  return (NO_ERR);
+}
+
+//
+//cCmdWrapComputeCalibValue
+//ArgV[0]: return data, U8
+//ArgV[1]: nm, UBYTE array CStr
+//ArgV[2]: raw, U16 ref in out
+NXT_STATUS cCmdWrapComputeCalibValue (UBYTE * ArgV[])
+{
+  UBYTE *nm= cCmdDVPtr(*(DV_INDEX *)(ArgV[1]));
+  SWORD raw= (*((SWORD *)ArgV[2]));
+
+  *((UBYTE *)ArgV[0])=  cCmdComputeCalibratedValue(nm, &raw);
+  (*((SWORD *)ArgV[2]))= raw;
+  return (NO_ERR);
+}
+
+typedef struct {
+  SWORD min, max;
+  UBYTE nm[FILENAME_LENGTH + 1];
+} CalibCacheType;
+
+SBYTE gCalibCacheCnt= 0;
+DV_INDEX gCalibCacheArrayDVIdx= NOT_A_DS_ID;
+CalibCacheType *gCalibCacheArray= NULL;
+
+SWORD cCmdGetCalibrationIndex(UBYTE *nm) {
+  SBYTE i;
+  for(i= 0; i < gCalibCacheCnt; i++)
+    if(!strcmp((PSZ)nm, (PSZ)gCalibCacheArray[i].nm))
+      break;
+  return i;
+}
+
+NXT_STATUS cCmdComputeCalibratedValue(UBYTE *nm, SWORD *pRaw) {
+  SBYTE i= cCmdGetCalibrationIndex(nm);
+  NXT_STATUS status= ERR_RC_ILLEGAL_VAL;
+  SLONG raw= *pRaw, range;
+  if(i < gCalibCacheCnt) {
+    status= SUCCESS;
+    raw -= gCalibCacheArray[i].min;
+    range= (gCalibCacheArray[i].max - gCalibCacheArray[i].min);
+  }
+  else
+    range= 1023;
+  raw *= 100;
+  raw /= range;
+  if(raw < 0) raw= 0;
+  else if(raw > 100) raw= 100;
+  *pRaw= raw;
+  return status;
+}
+
+
+NXT_STATUS ResizeCalibCache(ULONG elements) { // alloc dv if needed, grow if needed. dv never freed. on boot, set to NOT_A_DS_ID. use cnt for valid elements.
+  NXT_STATUS Status = NO_ERR;
+
+  if(gCalibCacheArrayDVIdx == NOT_A_DS_ID)
+    Status = cCmdAllocDopeVector(&gCalibCacheArrayDVIdx, sizeof(CalibCacheType));
+  if(!IS_ERR(Status) && DV_ARRAY[gCalibCacheArrayDVIdx].Count < elements) //Allocate storage for cache element
+    Status = cCmdDVArrayAlloc(gCalibCacheArrayDVIdx, elements);
+  if(!IS_ERR(Status))
+    gCalibCacheArray= cCmdDVPtr(gCalibCacheArrayDVIdx);
+  // on error, does old DVIdx still point to array, or should we null out array???
+  return Status;
+}
+
+// called to update min/max on existing cache element, and to add new named element
+void cCmdUpdateCalibrationCache(UBYTE *nm, SWORD min, SWORD max) {
+  SWORD i= cCmdGetCalibrationIndex(nm);
+  NXT_STATUS Status = NO_ERR;
+
+  if(i == gCalibCacheCnt) { // sensor wasn't found, insert into cache
+    Status= ResizeCalibCache(gCalibCacheCnt+1);
+    if(!IS_ERR(Status)) {
+      gCalibCacheCnt++;
+      strcpy((PSZ)gCalibCacheArray[i].nm, (PSZ)nm);
+    }
+  }
+  if(!IS_ERR(Status)) {
+    gCalibCacheArray[i].min= min;
+    gCalibCacheArray[i].max= max;
+  }
+}
+
+void cCmdLoadCalibrationFiles(void) {
+  ULONG cnt, DataSize;
+  UBYTE nm[FILENAME_LENGTH + 1], nmLen;
+  SWORD Handle, HandleSearch;
+  gCalibCacheCnt= 0;
+  gCalibCacheArrayDVIdx= NOT_A_DS_ID;
+  // file I/O to load all .cal files into cached globals used by scaling syscall
+  HandleSearch = pMapLoader->pFunc(FINDFIRST, "*.cal", nm, &cnt); // returns total files and nm of first one
+  while (LOADER_ERR(HandleSearch) == SUCCESS) { // if we have a file, process it by closing and opening
+    SWORD min= 0, max= 0, tmp;
+    ULONG length;
+    pMapLoader->pFunc(CLOSE, LOADER_HANDLE_P(HandleSearch), NULL, NULL);
+    Handle = pMapLoader->pFunc(OPENREAD, nm, NULL, &DataSize);
+    if (LOADER_ERR(Handle) == SUCCESS && DataSize == 4) {
+      // access data, two bytes for min and two for max
+      length= 2;
+      pMapLoader->pFunc(READ,LOADER_HANDLE_P(Handle),(UBYTE*)&tmp,&length);
+      if (length == 2)
+        min= tmp;
+      length= 2;
+      pMapLoader->pFunc(READ,LOADER_HANDLE_P(Handle),(UBYTE*)&tmp,&length);
+      if (length == 2)
+        max= tmp;
+    }
+    pMapLoader->pFunc(CLOSE, LOADER_HANDLE_P(Handle), NULL, NULL);
+    // update calibration cache with nm, min, and max
+    nmLen= strlen((PSZ)nm) - 4; // chop off .cal extension
+    nm[nmLen]= 0;
+    cCmdUpdateCalibrationCache(nm, min, max);
+
+    HandleSearch = pMapLoader->pFunc(FINDNEXT, LOADER_HANDLE_P(HandleSearch), nm, &cnt);
+  }
+  pMapLoader->pFunc(CLOSE, LOADER_HANDLE_P(HandleSearch), NULL, NULL);
+}
+
+//
+//cCmdWrapListFiles
+//ArgV[0]: return data, SBYTE
+//ArgV[1]: pattern, UBYTE array CStr
+//ArgV[2]: list, UBYTE array CStr array ref in out
+NXT_STATUS cCmdWrapListFiles (UBYTE * ArgV[])
+{
+  ULONG fileSize, matchCount=0, i=0, oldCount;
+  SWORD HandleSearch;
+  NXT_STATUS Status = NO_ERR;
+  DV_INDEX listIdx, *list;
+  UBYTE *strTemp, *pattern;
+  UBYTE name[FILENAME_LENGTH + 1];
+
+  //Resolve array arguments
+  pattern = cCmdDVPtr(*(DV_INDEX *)(ArgV[1]));
+  listIdx = *(DV_INDEX *)(ArgV[2]);
+
+  HandleSearch = pMapLoader->pFunc(FINDFIRST, pattern, name, &fileSize); // returns first file matching pattern
+
+  //Count how many files we're going to have
+  while (LOADER_ERR(HandleSearch) == SUCCESS)
+  {
+    matchCount++;
+    pMapLoader->pFunc(CLOSE, LOADER_HANDLE_P(HandleSearch), NULL, NULL);
+    HandleSearch = pMapLoader->pFunc(FINDNEXT, LOADER_HANDLE_P(HandleSearch), name, &fileSize);
+  }
+
+  HandleSearch = pMapLoader->pFunc(FINDFIRST, pattern, name, &fileSize); // returns first file matching pattern
+
+  oldCount = DV_ARRAY[listIdx].Count;  // Check to see how many dope vectors are already in the array (if they passed us a non-blank array of strings)
+
+  Status = cCmdDVArrayAlloc(listIdx, matchCount);  // Size the top-level array
+  if(IS_ERR(Status))
+     return Status;
+
+  list = (DV_INDEX*)(VarsCmd.pDataspace + DV_ARRAY[listIdx].Offset); // Get a pointer into the dataspace for the array of DV_INDEXes
+
+  while (LOADER_ERR(HandleSearch) == SUCCESS && !IS_ERR(Status))
+  {
+      pMapLoader->pFunc(CLOSE, LOADER_HANDLE_P(HandleSearch), NULL, NULL);   // Close the handle that we automatically opened above
+      // Allocate a new dope vector if one doesn't already exist
+      if(i >= oldCount)
+        Status = cCmdAllocDopeVector(&(list[i]), sizeof(char));
+
+      // Allocate the string buffer for output array[i]
+      if(!IS_ERR(Status))
+        Status = cCmdDVArrayAlloc(list[i], strlen((PSZ)name) + 1);
+
+      if(!IS_ERR(Status))
+      {
+        strTemp = VarsCmd.pDataspace + DV_ARRAY[list[i]].Offset; // Get a pointer into the dataspace for this string
+        strcpy((PSZ)strTemp, (PSZ)name);
+      }
+      i++;
+
+      HandleSearch = pMapLoader->pFunc(FINDNEXT, LOADER_HANDLE_P(HandleSearch), name, &fileSize);
+  }
+
+  *(SBYTE *)(ArgV[0]) = Status;
+
+  return Status;
+}
+
 #ifdef SIM_NXT
 // Accessors for simulator library code
 SWORD cCmdGetCodeWord(CLUMP_ID Clump, CODE_INDEX Index)
@@ -6240,6 +7935,7 @@ SWORD cCmdGetCodeWord(CLUMP_ID Clump, CODE_INDEX Index)
   else
   {
     NXT_ASSERT(cCmdIsClumpIDSane(Clump));
+#error   // CodeStart is now absolute, but not sure how to fix
     return (((SWORD)VarsCmd.pCodespace[VarsCmd.pAllClumps[Clump].CodeStart + Index]));
   }
 }
@@ -6281,12 +7977,6 @@ ULONG cCmdGetPoolSize()
 
 //!!! !ENABLE_VM implementations really should provide a placeholder function for this pointer
 //IOMapCmd.pRCHandler = &cCmdHandleRemoteCommands;
-//#include "c_cmd_alternate.c"
-//#include "c_cmd_FB_LowSpeed_Test.c"
-//#include "c_cmd_FB_LowSpeed_JB_Compass.c"
-//#include "c_cmd_FB_LowSpeed_Continius.c"
-//#include "c_cmd_FB_LowSpeed_JB_Color.c"
-#include "c_cmd_FB_LowSpeed_NorthStar_Demo2.c"
-//#include "c_cmd_FB_LowSpeed_LEGO_TEST.c"
+#include "c_cmd_alternate.c"
 
 #endif //ENABLE_VM

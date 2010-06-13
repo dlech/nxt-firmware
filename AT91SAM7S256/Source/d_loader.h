@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 28-03-07 14:54                                    $
+// Revision date   $Date:: 24-06-09 12:15                                    $
 //
 // Filename        $Workfile:: d_loader.h                                    $
 //
-// Version         $Revision:: 40                                            $
+// Version         $Revision:: 18                                            $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_loader.h $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_load $
 //
 // Platform        C
 //
@@ -15,9 +15,11 @@
 #ifndef   D_LOADER
 #define   D_LOADER
 
-#define   STARTOFFILETABLE              (0x13FF00L)
-#define   STARTOFUSERFLASH              (0x121400L)//(0x11F000L)
-#define   SIZEOFUSERFLASH               (STARTOFFILETABLE - STARTOFUSERFLASH)
+#define   FILETABLE_SIZE                ((2 * SECTORSIZE)/4)
+#define   STARTOFFILETABLE              (0x140000L - (FILETABLE_SIZE*4))
+#define   FILEPTRTABLE                  ((const ULONG*)(0x140000L - (FILETABLE_SIZE*4)))
+#define   STARTOFUSERFLASH              (0x122100L)
+#define   SIZEOFUSERFLASH               ((ULONG)STARTOFFILETABLE - STARTOFUSERFLASH)
 
 #define   SIZEOFFLASH                   262144L
 #define   SECTORSIZE                    256L
@@ -65,7 +67,7 @@ typedef   struct
   ULONG   DataSize;
   UWORD   CheckSum;
   UWORD   FileType;
-  UWORD   FileSectorTable[SIZEOFUSERFLASH/SECTORSIZE];
+  UWORD   FileSectorTable[(SIZEOFUSERFLASH/SECTORSIZE)];
 }FILEHEADER;
 
 void      dLoaderInit(void);
@@ -91,6 +93,7 @@ ULONG     dLoaderReturnFreeUserFlash(void);
 UWORD     dLoaderRenameFile(UBYTE Handle, UBYTE *pNewName);
 UWORD     dLoaderCheckFiles(UBYTE Handle);
 
+UWORD     dLoaderCropDatafile(UBYTE Handle);
 
 
 

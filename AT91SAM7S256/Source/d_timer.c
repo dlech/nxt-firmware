@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 10:18                                    $
+// Revision date   $Date: 23-04-08 11:15 $
 //
 // Filename        $Workfile:: d_timer.c                                     $
 //
-// Version         $Revision:: 3                                             $
+// Version         $Revision: 2 $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_timer.c  $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_time $
 //
 // Platform        C
 //
@@ -27,13 +27,33 @@ void      dTimerInit(void)
 
 ULONG     dTimerRead(void)
 {
-  ULONG   Tmp;
+  ULONG   V;
 
-  TIMERRead(Tmp);
-
-  return (Tmp);
+  TIMERReadAlt(V)
+  return (V);
 }
 
+ULONG     dTimerReadNoPoll(void)
+{
+  return (Timer1mS);
+}
+
+ULONG     dTimerReadHiRes(void)
+{
+
+//  return ((*AT91C_PITC_PIIR)/3); following code is equivalent and about five times faster, see Hacker's Delight or exact division
+  ULONG tmp= ((*AT91C_PITC_PIIR)*2863311531);
+  if(tmp > 2863311531)
+    return tmp - 2863311531;
+  else if(tmp > 1431655766)
+    return tmp - 1431655766;
+  else
+    return tmp;
+}
+
+ULONG dTimerGetNextMSTickCnt(void) {
+  return NextTimerValue;
+}
 
 void      dTimerExit(void)
 {

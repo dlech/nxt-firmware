@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 5-02-07 13:48                                     $
+// Revision date   $Date:: 3-02-09 14:46                                     $
 //
 // Filename        $Workfile:: d_output.c                                    $
 //
-// Version         $Revision:: 118                                           $
+// Version         $Revision:: 2                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_output.c $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_outp $
 //
 // Platform        C
 //
@@ -906,6 +906,16 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
 
   SyncData.SyncTachoDif += SyncData.SyncTurnParameter;
 
+  if (SyncData.SyncTachoDif > 500)
+  {
+    SyncData.SyncTachoDif = 500;
+  }
+  if (SyncData.SyncTachoDif < -500)
+  {
+    SyncData.SyncTachoDif = -500;
+  }
+
+  /*
   if ((SWORD)SyncData.SyncTachoDif > 500)
   {
     SyncData.SyncTachoDif = 500;
@@ -914,6 +924,7 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
   {
     SyncData.SyncTachoDif = -500;
   }
+  */
 
   PValue = (SWORD)SyncData.SyncTachoDif * (SWORD)(MotorData[MotorOne].RegPParameter/REG_CONST_DIV);
 

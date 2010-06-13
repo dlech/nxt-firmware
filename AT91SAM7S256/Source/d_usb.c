@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Dkpechri                                        $
+// Reviser         $Author:: Dkandlun                                        $
 //
-// Revision date   $Date:: 19-07-06 10:02                                    $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: d_usb.c                                       $
 //
-// Version         $Revision:: 32                                            $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_usb.c    $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_usb. $
 //
 // Platform        C
 //

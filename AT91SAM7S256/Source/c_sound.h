@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Dktochpe                                        $
+// Reviser         $Author:: Dkandlun                                        $
 //
-// Revision date   $Date:: 26-08-05 8:37                                     $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: c_sound.h                                     $
 //
-// Version         $Revision:: 10                                            $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_sound.h  $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_soun $
 //
 // Platform        C
 //

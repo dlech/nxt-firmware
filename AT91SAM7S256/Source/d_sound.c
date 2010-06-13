@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Dkflebun                                        $
+// Reviser         $Author:: Dkandlun                                        $
 //
-// Revision date   $Date:: 5-02-07 13:36                                     $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: d_sound.c                                     $
 //
-// Version         $Revision:: 11                                            $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_sound.c  $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_soun $
 //
 // Platform        C
 //

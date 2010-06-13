@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 10:18                                    $
+// Revision date   $Date: 23-04-08 11:15 $
 //
 // Filename        $Workfile:: d_timer.h                                     $
 //
-// Version         $Revision:: 2                                             $
+// Version         $Revision: 2 $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_timer.h  $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_time $
 //
 // Platform        C
 //
@@ -18,6 +18,12 @@
 
 void      dTimerInit(void);
 ULONG     dTimerRead(void);
+ULONG     dTimerReadNoPoll(void);
+ULONG     dTimerReadHiRes(void);
+
+ULONG     dTimerGetNextMSTickCnt(void);
+#define  dTimerReadTicks() (*AT91C_PITC_PIIR)
+
 void      dTimerExit(void);
 
 #endif

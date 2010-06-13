@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 8:27                                     $
+// Revision date   $Date:: 12-03-08 15:28                                    $
 //
 // Filename        $Workfile:: c_loader.c                                    $
 //
-// Version         $Revision:: 79                                            $
+// Version         $Revision:: 5                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_loader.c $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_load $
 //
 // Platform        C
 //
@@ -116,7 +116,7 @@ UWORD     cLoaderFileRq(UBYTE Cmd, UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLen
     case OPENWRITEDATA:
     {
 
-      ReturnState = dLoaderCreateFileHeader(*pLength, pFileName, (UBYTE) LINEAR, DATAFILE);
+      ReturnState = dLoaderCreateFileHeader(*pLength, pFileName, (UBYTE) NONLINEAR, DATAFILE);
       if (0x8000 <= ReturnState)
       {
         dLoaderCloseHandle(ReturnState);
@@ -139,6 +139,12 @@ UWORD     cLoaderFileRq(UBYTE Cmd, UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLen
     case CLOSE:
     {
       ReturnState = dLoaderCloseHandle(*pFileName);
+    }
+    break;
+    case CROPDATAFILE:
+    {
+      ReturnState = dLoaderCropDatafile(*pFileName);
+      IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
     }
     break;
     case READ:

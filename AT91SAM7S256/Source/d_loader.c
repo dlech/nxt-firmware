@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 17-05-06 8:36                                     $
+// Revision date   $Date:: 24-06-09 8:53                                     $
 //
 // Filename        $Workfile:: d_loader.c                                    $
 //
-// Version         $Revision:: 75                                            $
+// Version         $Revision:: 18                                            $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_loader.c $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_load $
 //
 // Platform        C
 //
@@ -20,9 +20,10 @@
 #include  <string.h>
 #include  <ctype.h>
 
-#define   FILEVERSION                   (0x00000106L)
+#define   FILEVERSION                   (0x0000010DL)
 
-#define   MAX_FILES                     ((SECTORSIZE/4) - 1)  /* Last file entry is used for file version*/
+#define   MAX_FILES                     ((FILETABLE_SIZE) - 1)  /* Last file entry is used for file version*/
+#define   FILEVERSIONINDEX              ((FILETABLE_SIZE) - 1)  /* Last file entry is used for file version*/
 #define   MAX_WRITE_BUFFERS             4
 #define   FLASHOFFSET                   (0x100000L)
 
@@ -56,7 +57,6 @@ typedef   struct
 static    HANDLE      HandleTable[MAX_HANDLES];
 static    WRITEBUF    WriteBuffer[MAX_WRITE_BUFFERS];
 static    ULONG       SectorTable[NOOFSECTORS>>5];
-static    const       ULONG *Files;
 static    FILEHEADER  Header;
 static    ULONG       FreeUserFlash;
 static    UWORD       FreeSectors;
@@ -84,8 +84,6 @@ void      dLoaderInit(void)
 
   LOADERInit;
 
-  Files = (const ULONG*)STARTOFFILETABLE;
-
   /* Clear handle table */
   for (Tmp = 0; Tmp < MAX_HANDLES; Tmp++)
   {
@@ -101,18 +99,16 @@ void      dLoaderInit(void)
 
   dLoaderCheckVersion();
   dLoaderUpdateSectorTable();
-  FreeUserFlash = dLoaderReturnFreeFlash();
 }
+
 
 UWORD     dLoaderAvailFileNo(void)
 {
   UBYTE   Tmp, Tmp2;
   UWORD   ReturnVal;
-  const   ULONG* FlashPtr;
 
   ReturnVal = NOMOREFILES;
   Tmp2      = 0;
-  FlashPtr  = Files;
   for(Tmp = 0; Tmp < MAX_HANDLES; Tmp++)
   {
 
@@ -123,7 +119,7 @@ UWORD     dLoaderAvailFileNo(void)
       Tmp2++;
     }
   }
-  if ((0xFFFFFFFF == FlashPtr[(MAX_FILES - 1) - Tmp2]) || (0 == FlashPtr[(MAX_FILES - 1) - Tmp2]))
+  if ((0xFFFFFFFF == FILEPTRTABLE[(MAX_FILES - 1) - Tmp2]) || (0 == FILEPTRTABLE[(MAX_FILES - 1) - Tmp2]))
   {
     ReturnVal = SUCCESS;
   }
@@ -131,33 +127,46 @@ UWORD     dLoaderAvailFileNo(void)
 }
 
 
+void      dLoaderWriteFilePtrTable(ULONG *RamFilePtrTable)
+{
+  UWORD   TmpTableSize;
+
+  /* FILETABLE_SIZE is in LONG */
+  TmpTableSize = (FILETABLE_SIZE * 4);
+  while(TmpTableSize)
+  {
+    TmpTableSize -= SECTORSIZE;
+    dLoaderWritePage((ULONG)FILEPTRTABLE + TmpTableSize, SECTORSIZE, RamFilePtrTable + (TmpTableSize/4));
+  }
+}
+
+
 UWORD     dLoaderInsertPtrTable(const UBYTE *pAdr, UWORD Handle)
 {
   UWORD   TmpCnt;
   UWORD   Status;
-  ULONG   SectorCopy[(SECTORSIZE/4)];
-  const   ULONG* FlashPtr;
+  ULONG   PtrTable[FILETABLE_SIZE];
 
   /* It is possible to add the file as checking for number of files */
   /* is done when initiating the file download                      */
-  FlashPtr = Files;
-  memset(SectorCopy, 0, sizeof(SectorCopy));
-
+  memset(PtrTable, 0, sizeof(PtrTable));
   TmpCnt = MAX_FILES - 1;
   while(TmpCnt)
   {
 
     /* TmpCnt-- first because you want to copy from index 0 */
     TmpCnt--;
-    SectorCopy[TmpCnt + 1] = FlashPtr[TmpCnt];
+    PtrTable[TmpCnt + 1] = FILEPTRTABLE[TmpCnt];
   }
 
   /* Copy the new file in position 0 */
-  SectorCopy[0]         = (ULONG)pAdr;
+  PtrTable[0]         = (ULONG)pAdr;
 
   /* Add the File version to the top of the file list */
-  SectorCopy[MAX_FILES] = FlashPtr[MAX_FILES];
-  dLoaderWritePage((ULONG)Files, SECTORSIZE, SectorCopy);
+  PtrTable[FILEVERSIONINDEX] = FILEPTRTABLE[FILEVERSIONINDEX];
+
+  /* Write the file pointer table to flash */
+  dLoaderWriteFilePtrTable(PtrTable);
 
   /* FileIndex in HandleTable should be incremented by one - new file index is 0 */
   for (TmpCnt = 0; TmpCnt < MAX_HANDLES; TmpCnt++)
@@ -168,7 +177,6 @@ UWORD     dLoaderInsertPtrTable(const UBYTE *pAdr, UWORD Handle)
     }
   }
   HandleTable[Handle].FileIndex = 0;
-
   Status = SUCCESS | Handle;
 
   return(Status);
@@ -177,47 +185,43 @@ UWORD     dLoaderInsertPtrTable(const UBYTE *pAdr, UWORD Handle)
 
 UWORD     dLoaderDeleteFilePtr(UWORD Handle)
 {
-
   UWORD   ErrorCode;
   UWORD   LongCnt;
-  ULONG   SectorCopy[(SECTORSIZE>>2)];
-  const   ULONG *pFlash;
+  ULONG   PtrTable[FILETABLE_SIZE];
 
   ErrorCode = SUCCESS;
-  if (0xFFFFFFFF != Files[HandleTable[Handle].FileIndex])
+  if (0xFFFFFFFF != FILEPTRTABLE[HandleTable[Handle].FileIndex])
   {
     ErrorCode = dLoaderCheckFiles(Handle);
     if (0x8000 > ErrorCode)
     {
-      pFlash = Files;
-      for (LongCnt = 0; LongCnt < (HandleTable[Handle].FileIndex); LongCnt++, pFlash++)
+      for (LongCnt = 0; LongCnt < (HandleTable[Handle].FileIndex); LongCnt++)
       {
-        SectorCopy[LongCnt] = *pFlash;
+        PtrTable[LongCnt] = FILEPTRTABLE[LongCnt];
       }
 
-      /* Skip the file that has to be deleted  */
-      pFlash++;
-      for ( ; LongCnt < (MAX_FILES - 1); LongCnt++, pFlash++)
+      /* Skip the file that has to be deleted "LongCnt + 1" */
+      for ( ; LongCnt < (MAX_FILES - 1); LongCnt++)
       {
-        SectorCopy[LongCnt] = *pFlash;
+        PtrTable[LongCnt] = FILEPTRTABLE[LongCnt+1];
       }
 
       /* The top file entry is now free */
-      SectorCopy[MAX_FILES - 1] = 0xFFFFFFFF;
+      PtrTable[MAX_FILES - 1] = 0xFFFFFFFF;
 
       /* Insert the file version         */
-      SectorCopy[MAX_FILES]     = *pFlash;
+      PtrTable[MAX_FILES]     = FILEPTRTABLE[MAX_FILES];
 
-
-      /* Write the sectortable back into flash */
-      dLoaderWritePage((ULONG)Files, SECTORSIZE,(ULONG*) &SectorCopy);
+      /* Write the file pointer table back into flash */
+      dLoaderWriteFilePtrTable(PtrTable);
       dLoaderUpdateSectorTable();
-      FreeUserFlash = dLoaderReturnFreeFlash();
 
       /* Update the HandleTable[].FileIndex */
       for (LongCnt = 0; LongCnt < MAX_HANDLES; LongCnt++)
       {
-        if ((HandleTable[Handle].FileIndex <= HandleTable[LongCnt].FileIndex) && (FREE != HandleTable[LongCnt].Status))
+        
+        /* FileIndex must not be decremented for to the file to be deleted (when Handle = LongCnt)*/
+        if ((HandleTable[Handle].FileIndex < HandleTable[LongCnt].FileIndex) && (FREE != HandleTable[LongCnt].Status))
         {
           (HandleTable[LongCnt].FileIndex)--;
         }
@@ -235,7 +239,7 @@ UWORD     dLoaderDeleteFilePtr(UWORD Handle)
 void      dLoaderDeleteAllFiles(void)
 {
   ULONG   Tmp;
-  ULONG   SectorBuf[SECTORSIZE/4];
+  ULONG   PtrTable[FILETABLE_SIZE];
 
   /* Close all handles - all files is to be wiped out */
   for (Tmp = 0; Tmp < MAX_HANDLES; Tmp++)
@@ -249,9 +253,11 @@ void      dLoaderDeleteAllFiles(void)
   }
 
   /* Insert the file version */
-  memset(SectorBuf, 0xFF, SECTORSIZE);
-  SectorBuf[(SECTORSIZE/4) - 1] = FILEVERSION;
-  dLoaderWritePage(STARTOFFILETABLE, SECTORSIZE, SectorBuf);
+  memset(PtrTable, 0xFF, sizeof(PtrTable));
+  PtrTable[FILEVERSIONINDEX] = FILEVERSION;
+
+  /* Write an empty file pointer table to flash */
+  dLoaderWriteFilePtrTable(PtrTable);
 
   /* Update all other parameters */
   dLoaderUpdateSectorTable();
@@ -264,7 +270,8 @@ void      dLoaderUpdateSectorTable(void)
   UWORD   Tmp;
   UWORD   SectorNo;
   const   FILEHEADER *pFile;
-  ULONG   FileStart;
+  ULONG   FileSize;
+  const UWORD   *pSectorTable;
 
   Tmp = 0;
 
@@ -273,42 +280,46 @@ void      dLoaderUpdateSectorTable(void)
   /* All file pointer are occupied as default */
   while (Tmp < MAX_FILES)
   {
-    SectorNo = dLoaderGetSectorNumber((ULONG)&Files[Tmp]);
-    SectorTable[SectorNo>>5] |= (0x1 << (SectorNo - ((SectorNo>>5)<<5)));
+    SectorNo = dLoaderGetSectorNumber((ULONG)&FILEPTRTABLE[Tmp]);
+    SectorTable[SectorNo>>5] |= (0x1 << (SectorNo & 0x001F));
     Tmp += (SECTORSIZE >> 2);
   }
 
   for (Tmp = 0; Tmp < MAX_FILES; Tmp++)
   {
-    if ((0xFFFFFFFF != Files[Tmp]) && (0x00000000 != Files[Tmp]))
+    if ((0xFFFFFFFF != FILEPTRTABLE[Tmp]) && (0x00000000 != FILEPTRTABLE[Tmp]))
     {
-      pFile       = (const FILEHEADER *) Files[Tmp];
-      FileStart   = pFile->FileStartAdr;
+      pFile = (const FILEHEADER *) FILEPTRTABLE[Tmp];
 
       /* This is necessary if the start address is at the first address in an sector */
       SectorNo    = dLoaderGetSectorNumber((ULONG)pFile->FileStartAdr);
-      SectorTable[SectorNo>>5] |= (0x1 << (SectorNo - ((SectorNo>>5)<<5)));
+      SectorTable[SectorNo>>5] |= (0x1 << (SectorNo & 0x001F));
 
       /* This is necessary as the first sector (where the fileheader is) is not */
       /* included in the sector table                                           */
-      SectorNo    = dLoaderGetSectorNumber((ULONG)Files[Tmp]);
-      SectorTable[SectorNo>>5] |= (0x1 << (SectorNo - ((SectorNo>>5)<<5)));
+      SectorNo                  = dLoaderGetSectorNumber((ULONG)FILEPTRTABLE[Tmp]);
+      SectorTable[SectorNo>>5] |= (0x1 << (SectorNo & 0x001F));
 
-      SectorNo = 0;
-      while(FileStart > ((ULONG)(&(pFile->FileSectorTable[SectorNo]))) && (NOOFSECTORS > pFile->FileSectorTable[SectorNo]))
+      /* First Sector with data has been allocated add this as the initial */
+      /* file size                                                         */
+      FileSize     = SECTORSIZE - ((pFile->FileStartAdr) & (SECTORSIZE-1)) ;
+      pSectorTable = pFile->FileSectorTable;
+      while((FileSize < (pFile->FileSize)) && (NOOFSECTORS > (*pSectorTable)))
       {
-        SectorTable[(pFile->FileSectorTable[SectorNo])>>5] |= (0x1 << ((pFile->FileSectorTable[SectorNo]) - (((pFile->FileSectorTable[SectorNo])>>5)<<5)));
-        if (0 == ((ULONG)(&(pFile->FileSectorTable[SectorNo+1])) & (SECTORSIZE-1)))
+        SectorTable[(*pSectorTable)>>5] |= (0x1 << ((*pSectorTable) & 0x1F));
+        if (0 == ((ULONG)(pSectorTable + 1) & (SECTORSIZE-1)))
         {
-          SectorNo += (((pFile->FileSectorTable[SectorNo]) << SECTORSIZESHIFT) - ((ULONG)&(pFile->FileSectorTable[SectorNo]) & ~FLASHOFFSET)>>1);
+          pSectorTable = (UWORD*)(((ULONG)(*pSectorTable) << SECTORSIZESHIFT) | FLASHOFFSET);
         }
         else
         {
-          SectorNo++;
+          *pSectorTable++;
+          FileSize += SECTORSIZE;
         }
       }
     }
   }
+  FreeUserFlash = dLoaderReturnFreeFlash();
 }
 
 
@@ -336,6 +347,7 @@ UWORD     dLoaderCreateFileHeader(ULONG FileSize, UBYTE *pName, UBYTE LinearStat
   }
   if (FILENOTFOUND == (ErrorCode & 0xFF00))
   {
+
     /* Here check for the download buffers for a matching download */
     /* in progress                                                 */
     ErrorCode &= 0x00FF;
@@ -403,7 +415,6 @@ UWORD     dLoaderCreateFileHeader(ULONG FileSize, UBYTE *pName, UBYTE LinearStat
 
           if (FileSize <= FreeUserFlash)
           {
-
 
             /* Allocate file header   */
             Tmp = (((CompleteFileByteSize - 1) >> SECTORSIZESHIFT) + 1);
@@ -548,7 +559,6 @@ UWORD     dLoaderCloseHandle(UWORD Handle)
   UWORD       RtnStatus;
   FILEHEADER  *TmpFileHeader;
 
-
   RtnStatus = Handle;
 
   /* if it is a normal handle or handle closed due to an error then error must be different */
@@ -602,7 +612,6 @@ UWORD     dLoaderCloseHandle(UWORD Handle)
 
             /* an error has occured during download - now clean up the mess... */
             dLoaderUpdateSectorTable();
-            FreeUserFlash = dLoaderReturnFreeFlash();
           }
         }
       }
@@ -631,7 +640,7 @@ UWORD     dLoaderOpenRead(UBYTE *pFileName, ULONG *pLength)
   {
     if (FileLength)
     {
-      TmpHeader = (FILEHEADER const *)(Files[HandleTable[Handle].FileIndex]);
+      TmpHeader = (FILEHEADER const *)(FILEPTRTABLE[HandleTable[Handle].FileIndex]);
       HandleTable[Handle].pFlash = (const UBYTE *)TmpHeader->FileStartAdr;
       HandleTable[Handle].pSectorNo  = TmpHeader->FileSectorTable;
       HandleTable[Handle].DataLength = TmpHeader->DataSize;
@@ -733,9 +742,9 @@ UWORD     dLoaderFindNext(UWORD Handle, UBYTE *pFound, ULONG *pFileLength, ULONG
 
   for (Tmp = ((HandleTable[Handle].FileIndex) + 1); Tmp < MAX_FILES; Tmp++)
   {
-    if (0xFFFFFFFF != Files[Tmp])
+    if (0xFFFFFFFF != FILEPTRTABLE[Tmp])
     {
-      if (SUCCESS == dLoaderCheckName((UBYTE*)Files[Tmp], HandleTable[Handle].SearchStr, HandleTable[Handle].SearchType))
+      if (SUCCESS == dLoaderCheckName((UBYTE*)FILEPTRTABLE[Tmp], HandleTable[Handle].SearchStr, HandleTable[Handle].SearchType))
       {
         HandleTable[Handle].FileIndex = Tmp;
         Tmp = MAX_FILES;
@@ -745,7 +754,7 @@ UWORD     dLoaderFindNext(UWORD Handle, UBYTE *pFound, ULONG *pFileLength, ULONG
   }
   if (0x8000 > ReturnVal)
   {
-    pHeader = (FILEHEADER *)Files[HandleTable[Handle].FileIndex];
+    pHeader = (FILEHEADER *)FILEPTRTABLE[HandleTable[Handle].FileIndex];
     if (NULL != pFileLength)
     {
       *pFileLength = pHeader->FileSize;
@@ -836,7 +845,7 @@ UWORD     dLoaderGetFilePtr(UBYTE *pFileName, UBYTE *pPtrToFile, ULONG *pFileLen
   if (0x8000 > RtnVal)
   {
 
-    File = (FILEHEADER*) Files[HandleTable[RtnVal].FileIndex];
+    File = (FILEHEADER*) FILEPTRTABLE[HandleTable[RtnVal].FileIndex];
     if (LINEAR & File->FileType)
     {
       *((ULONG*)pPtrToFile) = File->FileStartAdr;
@@ -1083,6 +1092,7 @@ UWORD     dLoaderFlashFileHeader(UWORD Handle, ULONG FileStartAdr, FILEHEADER *p
   return(Handle);
 }
 
+
 UWORD     dLoaderGetSectorNumber(ULONG Adr)
 {
   UWORD SectorNo;
@@ -1125,13 +1135,14 @@ UWORD     dLoaderCheckFiles(UBYTE Handle)
   Index = HandleTable[Handle].FileIndex;
   for (Tmp = 0; Tmp < MAX_HANDLES; Tmp++)
   {
-    if ((BUSY == HandleTable[Tmp].Status) && (Index == HandleTable[Tmp].FileIndex) && (Tmp != Handle))
+    if (((BUSY == HandleTable[Tmp].Status) || (DOWNLOADING == HandleTable[Tmp].Status)) && (Index == HandleTable[Tmp].FileIndex) && (Tmp != Handle))
     {
       ErrorCode = FILEISBUSY;
     }
   }
   return(Handle | ErrorCode);
 }
+
 
 void     dLoaderCopyFileName(UBYTE *pDst, UBYTE *pSrc)
 {
@@ -1151,16 +1162,15 @@ void     dLoaderCopyFileName(UBYTE *pDst, UBYTE *pSrc)
   }
 }
 
+
 void      dLoaderCheckVersion(void)
 {
-  ULONG   Version;
-
-  Version  = *(const ULONG*)(STARTOFFILETABLE + (MAX_FILES * 4));
-  if (Version != FILEVERSION)
+  if (FILEPTRTABLE[FILEVERSIONINDEX] != FILEVERSION)
   {
     dLoaderDeleteAllFiles();
   }
 }
+
 
 UWORD     dLoaderOpenAppend(UBYTE *pFileName, ULONG *pAvailSize)
 {
@@ -1180,7 +1190,7 @@ UWORD     dLoaderOpenAppend(UBYTE *pFileName, ULONG *pAvailSize)
     {
 
       /* File has bee found - check for then correct filetype (Datafile) */
-      pHeader = (FILEHEADER *)Files[HandleTable[Handle].FileIndex];
+      pHeader = (FILEHEADER *)FILEPTRTABLE[HandleTable[Handle].FileIndex];
       if (DATAFILE & pHeader->FileType)
       {
         if (FileSize > DataSize)
@@ -1192,7 +1202,7 @@ UWORD     dLoaderOpenAppend(UBYTE *pFileName, ULONG *pAvailSize)
             dLoaderSetFilePointer(Handle, DataSize, &(HandleTable[Handle].pFlash));
             WriteBuffer[HandleTable[Handle].WriteBufNo].BufIndex = (ULONG)(HandleTable[Handle].pFlash) & (SECTORSIZE - 1);
             memcpy(WriteBuffer[HandleTable[Handle].WriteBufNo].Buf, (const UBYTE *)((ULONG)(HandleTable[Handle].pFlash) & ~(SECTORSIZE - 1)), WriteBuffer[HandleTable[Handle].WriteBufNo].BufIndex );
-            HandleTable[Handle].FileDlPtr  = Files[HandleTable[Handle].FileIndex];
+            HandleTable[Handle].FileDlPtr  = FILEPTRTABLE[HandleTable[Handle].FileIndex];
             HandleTable[Handle].Status     = (UBYTE)DOWNLOADING;
             *pAvailSize                    = FileSize - DataSize;
             HandleTable[Handle].DataLength = *pAvailSize;
@@ -1229,7 +1239,7 @@ UWORD     dLoaderSetFilePointer(UWORD Handle, ULONG BytePtr, const UBYTE **pData
 
 
   pData = pData;
-  pHeader = (FILEHEADER*)Files[HandleTable[Handle].FileIndex];
+  pHeader = (FILEHEADER*)FILEPTRTABLE[HandleTable[Handle].FileIndex];
   HandleTable[Handle].pSectorNo = pHeader->FileSectorTable;
 
   /* Get the sector offset */
@@ -1397,7 +1407,7 @@ UWORD     dLoaderRenameFile(UBYTE Handle, UBYTE *pNewName)
   UBYTE       Tmp;
   FILEHEADER  *pHeader;
 
-  pFile = (ULONG *)Files[HandleTable[Handle].FileIndex];
+  pFile = (ULONG *)FILEPTRTABLE[HandleTable[Handle].FileIndex];
   for (Tmp = 0; Tmp < (SECTORSIZE/4); Tmp++)
   {
     SectorBuf[Tmp] = pFile[Tmp];
@@ -1431,6 +1441,39 @@ UWORD     dLoaderCheckDownload(UBYTE *pName)
   return(ErrorCode);
 }
 
+
+
+
+UWORD     dLoaderCropDatafile(UBYTE Handle)
+{
+  UWORD             ReturnVal;
+  ULONG             SectorBuffer[SECTORSIZE];
+  UBYTE             FileIndex;
+
+  /* Save the fileindex for use after the handle has been closed */
+  FileIndex = HandleTable[Handle].FileIndex;
+
+  ReturnVal = dLoaderCloseHandle(Handle);
+  if (0x8000 > ReturnVal)
+  {
+
+    /* Successful close handle now try to crop the file if filesize and datasize differs */
+    /* and File exists                                                                   */
+    if (((FILEPTRTABLE[FileIndex]) != 0x00000000) && ((FILEPTRTABLE[FileIndex]) != 0xFFFFFFFF))
+    {
+      if (((FILEHEADER const *)(FILEPTRTABLE[FileIndex]))->FileSize != ((FILEHEADER const *)(FILEPTRTABLE[FileIndex]))->DataSize)
+      {
+        memcpy(SectorBuffer, (void const*)(FILEPTRTABLE[FileIndex]), SECTORSIZE);
+        ((FILEHEADER*)SectorBuffer)->FileSize = ((FILEHEADER const *)(FILEPTRTABLE[FileIndex]))->DataSize;
+        dLoaderWritePage((ULONG)(FILEPTRTABLE[HandleTable[Handle].FileIndex]), SECTORSIZE, SectorBuffer);
+
+        /* Update sectortable and available flash size */
+        dLoaderUpdateSectorTable();
+      }
+    }
+  }
+  return(ReturnVal);
+}
 
 void      dLoaderExit(void)
 {

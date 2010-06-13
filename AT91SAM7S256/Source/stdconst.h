@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Us8jamlo                                        $
+// Reviser         $Author:: Dkandlun                                        $
 //
-// Revision date   $Date:: 3/04/05 2:59p                                     $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: stdconst.h                                    $
 //
-// Version         $Revision:: 3                                             $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/stdconst.h $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/stdcon $
 //
 // Platform        C
 //

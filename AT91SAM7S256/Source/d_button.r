@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 9:58                                     $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: d_button.r                                    $
 //
-// Version         $Revision:: 14                                            $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_button.r $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_butt $
 //
 // Platform        C
 //

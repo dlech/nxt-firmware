@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Dkflebun                                        $
+// Reviser         $Author:: Dktochpe                                        $
 //
-// Revision date   $Date:: 5-02-07 13:36                                     $
+// Revision date   $Date:: 19-02-08 8:15                                     $
 //
 // Filename        $Workfile:: modules.h                                     $
 //
-// Version         $Revision:: 49                                            $
+// Version         $Revision:: 4                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/modules.h  $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/module $
 //
 // Platform        C
 //
@@ -29,8 +29,7 @@
 #define   TXT_LMS_EXT             "rxe" // Mindstorms program filename extension
 #define   TXT_NXT_EXT             "rpg" // Program filename extension
 #define   TXT_TRYME_EXT           "rtm" // Try me program filename extension
-#define   TXT_DATA_EXT            "rdt" // Datalog filename extension
-#define   TXT_MENU_EXT            "rms" // Menu system filename extension (hidden)
+#define   TXT_DATA_EXT            "log" // Datalog filename extension
 #define   TXT_SYS_EXT             "sys" // System filename extension      (hidden)
 #define   TXT_TMP_EXT             "tmp" // Temporary filename extension   (hidden)
 
@@ -294,10 +293,6 @@ typedef   struct
   UBYTE   Data[];
 }
 DATALOG;
-
-#define   DATALOG_FILE_LENGTH     64000L// Max datalog file size
-#define   DATALOG_HEADER_LENGTH     9   // Datalog sensor header length       [Bytes]
-#define   DATALOG_DATA_LENGTH       5   // Datalog sensor data length         [Bytes]
 
 #define   ICON_TEXTLNG             15   // 15 characters
 #define   ICON_IMAGESIZE           72   // 24 x 24 pixels

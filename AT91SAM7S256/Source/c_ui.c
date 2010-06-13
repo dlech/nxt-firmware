@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Dktochpe                                        $
+// Reviser         $Author:: Dkandlun                                        $
 //
-// Revision date   $Date:: 2-03-06 13:03                                     $
+// Revision date   $Date:: 10-06-08 9:26                                     $
 //
 // Filename        $Workfile:: c_ui.c                                        $
 //
-// Version         $Revision:: 135                                           $
+// Version         $Revision:: 7                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_ui.c     $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_ui.c $
 //
 // Platform        C
 //
@@ -157,14 +157,6 @@ enum STATUS_NO                          // Index in status icon collection file
 
 #include  "Devices.txt"       // Icon collection used for Blue tooth devices
 
-enum
-{
-  DEVICETYPE_UNKNOWN,
-  DEVICETYPE_NXT,
-  DEVICETYPE_PHONE,
-  DEVICETYPE_PC
-};
-
 // ****** BT CONNECTIONS GRAPHIC RESOURCES ***********************************
 
 #include  "Connections.txt"   // Icon collection used for Blue tooth connections
@@ -209,6 +201,11 @@ enum                          // String index in text string file
   TXT_FB_OBP_FILE_EXIST_FAIL,               // "File exist"
   TXT_FB_OBP_OVERWRITE_FAIL,                // "overwrite!"
 
+                                            // Datalogging
+  TXT_FB_DL_FILE_SAVED_INFO,                // "File saved"
+  TXT_FB_DL_FILE_EXIST_FAIL,                // "File exist"
+  TXT_FB_DL_OVERWRITE_FAIL,                 // "overwrite!"
+
                                             // File delete
   TXT_FB_FD_FILE_DELETED_INFO,              // "File deleted"
 
@@ -225,6 +222,13 @@ enum                          // String index in text string file
                                             // Files delete
   TXT_FILESDELETE_DELETING_ALL,             // "Deleting all"
   TXT_FILESDELETE_S_FILES,                  // "%s files!"
+
+                                            // Datalogging
+  TXT_DATALOGGING_PRESS_EXIT_TO,            // "Press exit to"
+  TXT_DATALOGGING_STOP_DATALOGGING,         // "stop datalogging"
+  TXT_DATALOGGING_PORT_OCCUPIED,            // "Port occupied!"
+  TXT_DATALOGGING_RATE,                     // "H:MM:SS:00
+  TXT_DATALOGGING_TIME,                     // "HH:MM:SS"
 
                                             // File types
   TXT_FILETYPE_SOUND,                       // "Sound"
@@ -256,12 +260,16 @@ enum                          // String index in text string file
 
                                             // Bluetooth list errors
   TXT_FB_BT_ERROR_LR_COULD_NOT_SAVE_1,      // BT save data error!
-  TXT_FB_BT_ERROR_LR_COULD_NOT_SAVE_2,      // 
+  TXT_FB_BT_ERROR_LR_COULD_NOT_SAVE_2,      //
   TXT_FB_BT_ERROR_LR_STORE_IS_FULL_1,       // BT store is full error!
   TXT_FB_BT_ERROR_LR_STORE_IS_FULL_2,       //
   TXT_FB_BT_ERROR_LR_UNKOWN_ADDR_1,         // BT unknown addr. error!
   TXT_FB_BT_ERROR_LR_UNKOWN_ADDR_2,         //
-  
+
+                                            // Datalog errors
+  TXT_FB_DL_ERROR_MEMORY_FULL_1,            // Memory is full! 
+  TXT_FB_DL_ERROR_MEMORY_FULL_2,            //
+
                                             // Power of time
   TXT_POWEROFFTIME_NEVER                    // "Never"
 
@@ -272,7 +280,7 @@ enum                          // String index in text string file
 #define   ALLFILES    0x1A    // Icon collection offset
 
 enum                  // File type id's
-{ 
+{
   FILETYPE_ALL,       // 0 = All
   FILETYPE_SOUND,     // 1 = Sound
   FILETYPE_LMS,       // 2 = LMS
@@ -296,7 +304,7 @@ const     UBYTE TXT_FILETYPE[FILETYPES] =
 {
   0,                  // NA
   TXT_FILETYPE_SOUND, // 1 = Sound
-  TXT_FILETYPE_LMS,   // 2 = LM
+  TXT_FILETYPE_LMS,   // 2 = LMS
   TXT_FILETYPE_NXT,   // 3 = NXT
   TXT_FILETYPE_TRY_ME,// 4 = Try me
   TXT_FILETYPE_DATA   // 5 = Datalog
@@ -315,7 +323,7 @@ const     UBYTE PowerOffTimeSteps[POWER_OFF_TIME_STEPS] = { 0,2,5,10,30,60 }; //
 #define   BATTERYLIMITHYST        100 // [mV]
 #define   RECHARGEABLELIMITHYST   50  // [mV]
 
-const     UWORD BatteryLimits[BATTERYLIMITS] = 
+const     UWORD BatteryLimits[BATTERYLIMITS] =
 {
   6100,6500,7000,7500 // [mV]
 };
@@ -330,69 +338,30 @@ const     UWORD RechargeableLimits[BATTERYLIMITS] =
 #include  "Mainmenu.rms"
 #include  "Submenu01.rms"
 #include  "Submenu02.rms"
+#include  "Submenu03.rms"
 #include  "Submenu04.rms"
 #include  "Submenu05.rms"
 #include  "Submenu06.rms"
 #include  "Submenu07.rms"
 
-
-SWORD     cUiMenuFile(UBYTE Cmd,UBYTE *pFile,UBYTE *pData,ULONG *pLng)
+const     UBYTE *MenuPointers[] =
 {
-  SWORD   Result;
-  UBYTE   *pFilePointer;
+  (UBYTE*)MAINMENU,
+  (UBYTE*)SUBMENU01,
+  (UBYTE*)SUBMENU02,
+  (UBYTE*)SUBMENU03,
+  (UBYTE*)SUBMENU04,
+  (UBYTE*)SUBMENU05,
+  (UBYTE*)SUBMENU06,
+  (UBYTE*)SUBMENU07
+};
 
-  Result = -1;
-  switch (Cmd)
-  {
-    case OPENREADLINEAR :
-    {
-      if (strcmp((char*)pFile,"Mainmenu.rms") == 0)
-      {
-        pFilePointer = (UBYTE*)MAINMENU;
-        Result       = 0;
-      }
-      if (strcmp((char*)pFile,"Submenu01.rms") == 0)
-      {
-        pFilePointer = (UBYTE*)SUBMENU01;
-        Result       = 0;
-      }
-      if (strcmp((char*)pFile,"Submenu02.rms") == 0)
-      {
-        pFilePointer = (UBYTE*)SUBMENU02;
-        Result       = 0;
-      }
-      if (strcmp((char*)pFile,"Submenu04.rms") == 0)
-      {
-        pFilePointer = (UBYTE*)SUBMENU04;
-        Result       = 0;
-      }
-      if (strcmp((char*)pFile,"Submenu05.rms") == 0)
-      {
-        pFilePointer = (UBYTE*)SUBMENU05;
-        Result       = 0;
-      }
-      if (strcmp((char*)pFile,"Submenu06.rms") == 0)
-      {
-        pFilePointer = (UBYTE*)SUBMENU06;
-        Result       = 0;
-      }
-      if (strcmp((char*)pFile,"Submenu07.rms") == 0)
-      {
-        pFilePointer = (UBYTE*)SUBMENU07;
-        Result       = 0;
-      }
-      if (Result == 0)
-      {
-        *pLng            = ((UWORD)pFilePointer[2] << 8) + (UWORD)pFilePointer[3] + FILEHEADER_LENGTH;
-        *((ULONG*)pData) = (ULONG)pFilePointer;
-      }
-    }
-    break;
 
-  }
-
-  return (Result);
+UBYTE*    cUiGetMenuPointer(UBYTE FileNo)
+{
+  return ((UBYTE*)MenuPointers[FileNo]);
 }
+
 
 //******************************************************************************************************
 
@@ -484,7 +453,7 @@ UBYTE     cUiReadButtons(void)             // Read buttons
   if (Result != BUTTON_NONE)
   {
     // If key - play key sound file
-    sprintf((char*)pMapSound->SoundFilename,"%s.%s",(char*)UI_KEYCLICK_SOUND,(char*)TXT_SOUND_EXT);
+    sprintf((char*)pMapSound->SoundFilename,"%s.%s",(char*)UI_KEYCLICK_SOUND,(char*)TXT_FILE_EXT[FILETYPE_SOUND]);
     pMapSound->Volume =  IOMapUi.Volume;
     pMapSound->Mode   =  SOUND_ONCE;
     pMapSound->Flags |=  SOUND_UPDATE;
@@ -577,37 +546,27 @@ void      cUiListCalc(UBYTE Limit,UBYTE *Center,UBYTE *Left,UBYTE *Right)
       }
     }
     break;
-    
+
   }
 }
 
 
-UBYTE*    cUiGetMenuPointer(UBYTE FileNo) 
+UBYTE     cUiMenuSearchSensorIcon(UBYTE Sensor)
 {
-  ULONG   Lng;
-  UWORD   Handle;
-  UBYTE   TmpBuffer[FILENAME_LENGTH + 1];
-  UBYTE   *pPointer;
+  UBYTE    Result = 0;
+  MENUITEM *MenuItem;
+  UBYTE    Index;
 
-  if (FileNo)
+  for (Index = 0;(Index < IOMapUi.pMenu->Items) && (Result == NULL);Index++)
   {
-    sprintf((char*)TmpBuffer,"Submenu%02X.rms",(UWORD)FileNo);
-  }
-  else
-  {
-    sprintf((char*)TmpBuffer,"Mainmenu.rms");
-  }
-  Handle = cUiMenuFile(OPENREADLINEAR,TmpBuffer,(UBYTE*)&pPointer,&Lng);
-  if ((Handle & 0x8000))
-  {
-    pPointer = NULL;
-  }
-  else
-  {
-    cUiMenuFile(CLOSE,(UBYTE*)&Handle,NULL,NULL);
+    MenuItem = &IOMapUi.pMenu->Data[Index];
+    if (MenuItem->FunctionParameter == Sensor)
+    {
+      Result = MenuItem->IconImageNo;
+    }
   }
 
-  return (pPointer);
+  return (Result);
 }
 
 
@@ -697,7 +656,6 @@ UBYTE     cUiMenuIdValid(MENUFILE *pMenuFile,ULONG Id)
   }
   else
   {
-    Id >>= (Level * 4);
     if ((Id & 0x0000000F) && (!(Id & 0xFFFFFFF0)))
     {
       Result = TRUE;
@@ -735,7 +693,7 @@ UBYTE     cUiMenuGetNoOfMenus(MENU *pMenu,MENUFILE *pMenuFile)
         if ((cUiMenuGetSpecialMask(&pMenu->Data[Index]) & MENU_ONLY_DATALOG_ENABLED))
         {
           // Datalog menu must be enabled
-          if (!(VarsUi.NVData & 0x80))
+          if (VarsUi.NVData.DatalogEnabled)
           {
             // Yes
             NoOfMenus++;
@@ -783,7 +741,7 @@ UBYTE     cUiGetMenuItemIndex(MENU *pMenu,MENUFILE *pMenuFile,UBYTE No)
         if ((cUiMenuGetSpecialMask(&pMenu->Data[Index]) & MENU_ONLY_DATALOG_ENABLED))
         {
           // Datalog menu must be enabled
-          if (!(VarsUi.NVData & 0x80))
+          if (VarsUi.NVData.DatalogEnabled)
           {
             // Yes
             TmpIndex = Index;
@@ -1235,7 +1193,7 @@ void      cUiLoadLevel(UBYTE FileLevel,UBYTE MenuLevel,UBYTE MenuIndex)
   {
     // if items > 0  -> prepare allways center icon
     Tmp = cUiGetMenuItemIndex(IOMapUi.pMenu,VarsUi.pMenuFile,VarsUi.pMenuLevel->ItemIndex);
-    
+
     if (VarsUi.pMenuItem != &IOMapUi.pMenu->Data[Tmp - 1])
     {
       VarsUi.pMenuItem    = &IOMapUi.pMenu->Data[Tmp - 1];
@@ -1251,7 +1209,7 @@ void      cUiLoadLevel(UBYTE FileLevel,UBYTE MenuLevel,UBYTE MenuIndex)
     VarsUi.pMenuLevel->Parameter    = VarsUi.pMenuItem->FunctionParameter;
     VarsUi.pMenuLevel->NextFileNo   = VarsUi.pMenuItem->FileLoadNo;
     VarsUi.pMenuLevel->NextMenuNo   = VarsUi.pMenuItem->NextMenu;
-  }  
+  }
 }
 
 #include  "Functions.inl"
@@ -1336,6 +1294,8 @@ void      cUiCtrl(void)
   {
     case INIT_DISPLAY : // Load font and icons
     {
+//      pMapLoader->pFunc(DELETEUSERFLASH,NULL,NULL,NULL);
+
       VarsUi.Initialized                              =  FALSE;
 
       IOMapUi.Flags                                   =  UI_BUSY;
@@ -1363,18 +1323,18 @@ void      cUiCtrl(void)
       VarsUi.BatteryToggle                            =  0;
 
       VarsUi.GUSState                                 =  0;
-      
+
       IOMapUi.pMenu                                   =  (MENU*)cUiGetMenuPointer(0);
       IOMapUi.State                                   =  INIT_INTRO;
 
       pMapDisplay->EraseMask                          =  SCREEN_BIT(SCREEN_BACKGROUND);
       pMapDisplay->pBitmaps[BITMAP_1]                 =  (BMPMAP*)Intro[VarsUi.Pointer];
       pMapDisplay->UpdateMask                         =  BITMAP_BIT(BITMAP_1);
-      pMapDisplay->Flags                             |=  DISPLAY_ON;    
+      pMapDisplay->Flags                             |=  DISPLAY_ON;
 
-      cUiNVReadByte();
-      IOMapUi.Volume                                  = cUiNVReadVolumeCount();
-      IOMapUi.SleepTimeout                            = PowerOffTimeSteps[cUiNVReadPowerOnTimeCount()];
+      cUiNVRead();
+      IOMapUi.Volume                                  = VarsUi.NVData.VolumeStep;
+      IOMapUi.SleepTimeout                            = PowerOffTimeSteps[VarsUi.NVData.PowerdownCode];
     }
     break;
 
@@ -1438,7 +1398,7 @@ void      cUiCtrl(void)
                   pMapDisplay->UpdateMask          = BITMAP_BIT(BITMAP_1);
                   if (VarsUi.Pointer == 11)
                   {
-                    sprintf((char*)pMapSound->SoundFilename,"%s.%s",(char*)UI_STARTUP_SOUND,(char*)TXT_SOUND_EXT);
+                    sprintf((char*)pMapSound->SoundFilename,"%s.%s",(char*)UI_STARTUP_SOUND,(char*)TXT_FILE_EXT[FILETYPE_SOUND]);
                     pMapSound->Volume       =  IOMapUi.Volume;
                     pMapSound->Mode         =  SOUND_ONCE;
                     pMapSound->Flags       |=  SOUND_UPDATE;
@@ -1485,7 +1445,7 @@ void      cUiCtrl(void)
     case INIT_MENU :
     {
       // Restart menu system
-      VarsUi.Function       = 0;  
+      VarsUi.Function       = 0;
       VarsUi.MenuFileLevel  = 0;
 
       cUiLoadLevel(0,0,1);
@@ -1516,7 +1476,7 @@ void      cUiCtrl(void)
         // Prepare center icon
         pMapDisplay->pMenuIcons[MENUICON_CENTER]  =  cUiMenuGetIconImage(VarsUi.pMenuLevel->IconImageNo);
         pMapDisplay->pMenuText                    =  VarsUi.pMenuLevel->IconText;
-        
+
         if (VarsUi.pMenuLevel->Items == 2)
         {
           // if 2 menues  -> prepare left or right icon

@@ -1,13 +1,13 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-05-06 12:13                                    $
+// Revision date   $Date:: 14-11-07 12:40                                    $
 //
 // Filename        $Workfile:: c_output.c                                    $
 //
-// Version         $Revision:: 45                                            $
+// Version         $Revision:: 1                                             $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/c_output.c $
+// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_outp $
 //
 // Platform        C
 //

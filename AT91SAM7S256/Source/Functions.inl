@@ -1128,7 +1128,7 @@ UBYTE     cUiVolume(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_EXIT
       VarsUi.Counter    = VarsUi.NVData.VolumeStep + 1;
 
       VarsUi.pTmp       = (UBYTE*)Cursor;
-      for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)sizeof(Cursor));VarsUi.Tmp++)
+      for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)SIZEOF_DATA(Cursor));VarsUi.Tmp++)
       {
         VarsUi.CursorTmp[VarsUi.Tmp] = *VarsUi.pTmp;
         VarsUi.pTmp++;
@@ -2090,7 +2090,7 @@ UBYTE     cUiOnBrickProgramming(UBYTE Action) // On brick programming
       pMapDisplay->EraseMask             |=  SCREEN_BIT(SCREEN_LARGE);
 
       VarsUi.pTmp = (UBYTE*)Cursor;
-      for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)sizeof(Cursor));VarsUi.Tmp++)
+      for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)SIZEOF_DATA(Cursor));VarsUi.Tmp++)
       {
         VarsUi.CursorTmp[VarsUi.Tmp] = *VarsUi.pTmp;
         VarsUi.pTmp++;
@@ -2130,7 +2130,7 @@ UBYTE     cUiOnBrickProgramming(UBYTE Action) // On brick programming
         case 0 :
         {
           VarsUi.pTmp = (UBYTE*)Cursor;
-          for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)sizeof(Cursor));VarsUi.Tmp++)
+          for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)SIZEOF_DATA(Cursor));VarsUi.Tmp++)
           {
             VarsUi.CursorTmp[VarsUi.Tmp] = *VarsUi.pTmp;
             VarsUi.pTmp++;
@@ -3966,7 +3966,7 @@ UBYTE     cUiPowerOffTime(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_E
       VarsUi.Counter        = VarsUi.NVData.PowerdownCode + 1;
 
       VarsUi.pTmp           = (UBYTE*)Cursor;
-      for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)sizeof(Cursor));VarsUi.Tmp++)
+      for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)SIZEOF_DATA(Cursor));VarsUi.Tmp++)
       {
         VarsUi.CursorTmp[VarsUi.Tmp] = *VarsUi.pTmp;
         VarsUi.pTmp++;

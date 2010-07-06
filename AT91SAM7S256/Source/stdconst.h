@@ -44,5 +44,22 @@ typedef   char*                         PSZ;
 
 #define   BASETYPES
 
+#ifdef __GNUC__
+#define DEFINE_DATA(type, name) \
+    extern const type name ## _; \
+    const type * const name = &name ## _; \
+    const type name ## _
+#define BEGIN_DATA {
+#define END_DATA }
+#define POINTER_TO_DATA(name) (&name ## _)
+#define SIZEOF_DATA(name) (sizeof_ ## name)
+#else
+#define DEFINE_DATA(type, name) \
+    const type name[]
+#define BEGIN_DATA
+#define END_DATA
+#define POINTER_TO_DATA(name) (name)
+#define SIZEOF_DATA(name) (sizeof (name))
+#endif
 
 #endif

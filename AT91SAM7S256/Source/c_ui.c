@@ -90,22 +90,22 @@ const     HEADER  cUi =
 
 const     BMPMAP *Intro[NO_OF_INTROBITMAPS] = // Picture sequence for the intro animation
 {
-  (BMPMAP*)RCXintro_1,
-  (BMPMAP*)RCXintro_2,
-  (BMPMAP*)RCXintro_3,
-  (BMPMAP*)RCXintro_4,
-  (BMPMAP*)RCXintro_5,
-  (BMPMAP*)RCXintro_6,
-  (BMPMAP*)RCXintro_7,
-  (BMPMAP*)RCXintro_8,
-  (BMPMAP*)RCXintro_9,
-  (BMPMAP*)RCXintro_10,
-  (BMPMAP*)RCXintro_11,
-  (BMPMAP*)RCXintro_12,
-  (BMPMAP*)RCXintro_13,
-  (BMPMAP*)RCXintro_14,
-  (BMPMAP*)RCXintro_15,
-  (BMPMAP*)RCXintro_16
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_1),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_2),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_3),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_4),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_5),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_6),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_7),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_8),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_9),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_10),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_11),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_12),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_13),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_14),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_15),
+  (BMPMAP*) POINTER_TO_DATA (RCXintro_16)
 };
 
 // ****** STATUS LINE GRAPHIC RESOURCES **************************************

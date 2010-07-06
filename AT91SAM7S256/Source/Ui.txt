@@ -1,4 +1,4 @@
-const     TXT Ui[] = 
+DEFINE_DATA(TXT, Ui) = 
 {
   0x05,0x00, // Text Format
   0x04,0x0D, // Text DataSize
@@ -6,6 +6,7 @@ const     TXT Ui[] =
   0x3D,      // ItemsY
   0x11,      // ItemCharsX
   0x01,      // ItemCharsY
+BEGIN_DATA
   'C','o','n','n','e','c','t','i','n','g', 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
   'L','i','n','e',' ','i','s',' ','b','u','s','y', 0 , 0 , 0 , 0 , 0 ,
   'F','a','i','l','e','d','!', 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
@@ -67,4 +68,5 @@ const     TXT Ui[] =
   'M','e','m','o','r','y',' ','i','s', 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
   'f','u','l','l','!', 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
   'N','e','v','e','r', 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0
+END_DATA
 };

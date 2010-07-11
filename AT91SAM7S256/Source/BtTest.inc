@@ -9,7 +9,7 @@ extern    void BtIo(void);
 const     char  BUILD_DATE[] = __DATE__;
 const     char  BUILD_TIME[] = __TIME__;
 
-const     char  MONTH[]  = "JanFebMarAprMajJunJulAugSepOktNovDec";
+const     char  MONTH[]  = "JanFebMarAprMayJunJulAugSepOctNovDec";
 
 void      GetProtocolVersion(UBYTE *String)
 {

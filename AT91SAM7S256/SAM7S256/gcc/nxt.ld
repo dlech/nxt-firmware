@@ -77,6 +77,9 @@ SECTIONS
 	_edata = . ;
 	PROVIDE (edata = .);
 
+	__STARTOFUSERFLASH_FROM_LINKER =
+		ALIGN (LOADADDR (.data) + SIZEOF (.data), 0x100);
+
 	/* .bss section which is used for uninitialized data */
 	.bss (NOLOAD) :
 	{

@@ -18,7 +18,14 @@
 #define   FILETABLE_SIZE                ((2 * SECTORSIZE)/4)
 #define   STARTOFFILETABLE              (0x140000L - (FILETABLE_SIZE*4))
 #define   FILEPTRTABLE                  ((const ULONG*)(0x140000L - (FILETABLE_SIZE*4)))
+#ifndef STARTOFUSERFLASH_FROM_LINKER
 #define   STARTOFUSERFLASH              (0x122100L)
+#define   SIZEOFUSERFLASH_MAX           SIZEOFUSERFLASH
+#else
+extern char __STARTOFUSERFLASH_FROM_LINKER;
+#define   STARTOFUSERFLASH              ((ULONG) &__STARTOFUSERFLASH_FROM_LINKER)
+#define   SIZEOFUSERFLASH_MAX           ((ULONG) (128 * 1024))
+#endif
 #define   SIZEOFUSERFLASH               ((ULONG)STARTOFFILETABLE - STARTOFUSERFLASH)
 
 #define   SIZEOFFLASH                   262144L
@@ -67,7 +74,7 @@ typedef   struct
   ULONG   DataSize;
   UWORD   CheckSum;
   UWORD   FileType;
-  UWORD   FileSectorTable[(SIZEOFUSERFLASH/SECTORSIZE)];
+  UWORD   FileSectorTable[(SIZEOFUSERFLASH_MAX/SECTORSIZE)];
 }FILEHEADER;
 
 void      dLoaderInit(void);

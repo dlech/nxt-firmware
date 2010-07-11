@@ -1,8 +1,11 @@
 //******* TestPrg ************************************************************
 
+//#define TESTPRG                     // If defined the test program will be included
+
+#ifdef TESTPRG
 #include  "Test1.txt"
 #include  "Test2.txt"
-//#define TESTPRG                     // If defined the test program will be included
+#endif
 
 extern    void BtIo(void);
 

@@ -47,12 +47,14 @@
 
 #ifdef    SAM7S256
 
+__ramdata
 static SWORD IndexTable[16] =
 {
     -1, -1, -1, -1, 2, 4, 6, 8,
     -1, -1, -1, -1, 2, 4, 6, 8,
 };
 
+__ramdata
 static SWORD StepsizeTable[89] =
 {
     7, 8, 9, 10, 11, 12, 13, 14, 16, 17,

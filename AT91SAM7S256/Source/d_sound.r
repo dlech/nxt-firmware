@@ -94,6 +94,7 @@ const     SAMPLEWORD TonePattern[SOUNDVOLUMESTEPS + 1][SAMPLETONENO] =
   }
 };
 
+__ramdata
 UBYTE     FractionPattern[SAMPLEWORDS] =
 {
   0x00,   // 0 -> 00000000

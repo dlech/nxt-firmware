@@ -64,6 +64,9 @@ typedef   char*                         PSZ;
 
 #ifdef __GNUC__
 #define __ramfunc __attribute__ ((section (".fastrun"), optimize ("no-jump-tables")))
+#define __ramdata __attribute__ ((section (".data")))
+#else
+#define __ramdata
 #endif
 
 #endif

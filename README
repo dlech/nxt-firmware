@@ -1,0 +1,29 @@
+This is NXT Improved Firmware, an open source community driven work based on
+the original LEGO Mindstorms NXT firmware.
+
+Online resources are accessible on the NXT Improved Firmware web page,
+including documentation, building guides, and more:
+
+  http://nxt-firmware.ni.fr.eu.org/
+
+
+NXT Improved Firmware combines code covered by the LEGO Open Source License
+with code covered by various other open source licenses.  Any file not covered
+by the LEGO Open Source License includes a notice in its header.  All other
+source files are covered by the LEGO Open Source License.  Please see the
+enclosed "LEGO Open Source License" file for more precision on this license
+conditions.
+
+LEGO(R) is a trademark of the LEGO Group of companies which does not sponsor,
+authorize or endorse NXT Improved Firmware.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.

@@ -5153,18 +5153,6 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
     }
     break;
 
-    case OP_ADDROF:
-    {
-      pArg1 = cCmdResolveDataArg(Arg1, 0, &TypeCode1);
-      if (TypeCode1 == TC_ULONG) {
-        pArg2 = cCmdResolveDataArg(Arg2, 0, NULL);
-        *(ULONG*)pArg1 = (ULONG)pArg2;
-      }
-      else
-        Status = ERR_INSTR; // output argument MUST be an unsigned long type
-    }
-    break;
-
     default:
     {
       //Fatal error: Unrecognized instruction
@@ -5579,6 +5567,7 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
   UWORD i;
   void *pArg1 = NULL, *pArg2 = NULL;
   UWORD Count;
+  TYPE_CODE TypeCode1;
 
   polyBinopDispatch ++;
   gPCDelta= 4;
@@ -5744,6 +5733,21 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
       }
       break;
       
+      case OP_ADDROF:
+      {
+        pArg1 = cCmdResolveDataArg(Arg1, 0, &TypeCode1);
+        if (TypeCode1 == TC_ULONG) {
+          pArg2 = cCmdResolveDataArg(Arg2, 0, NULL);
+          if ((UBYTE)Arg3) // relative address requested
+            *(ULONG*)pArg1 = (ULONG)pArg2 - (ULONG)(IOMapCmd.MemoryPool);
+          else
+            *(ULONG*)pArg1 = (ULONG)pArg2;
+        }
+        else
+          Status = ERR_INSTR; // output argument MUST be an unsigned long type
+      }
+      break;
+
       default:
       {
         //Fatal error: Unrecognized instruction
@@ -6130,7 +6134,7 @@ float cCmdBinopFlt(CODE_WORD const Code, float LeftOp, float RightOp, TYPE_CODE 
     case OP_POW:
     {
       float intpart, fracpart;
-      fracpart = modff(LeftOp, &intpart);
+      fracpart = modff(RightOp, &intpart);
       if (LeftOp < 0 && fracpart != 0)
         return 0; // make the result zero if you try to raise a negative number to a fractional exponent
       else

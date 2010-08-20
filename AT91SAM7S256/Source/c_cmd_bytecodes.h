@@ -135,7 +135,7 @@
 #define OP_SINHD    0x87  // dest, src
 
 // misc other JCH additions
-#define OP_ADDROF   0x89  // dest, src
+#define OP_ADDROF   0x89  // dest, src, rel
 
 // additional string opcodes
 

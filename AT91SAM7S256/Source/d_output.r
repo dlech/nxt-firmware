@@ -91,11 +91,11 @@ static TACHOPARAMETERS MotorTachoValue[3];
                                           *AT91C_PIOA_PER    = MOTOR_A_DIR;					                    /* Enable PIO on PA1 */\
                                           *AT91C_PIOA_ODR    = MOTOR_A_DIR;					                    /* PA1 set to input  */\
                                           *AT91C_PIOA_IFER   = MOTOR_A_INT | MOTOR_A_DIR;	                    /* Enable filter on PA15 & PA1 */\
-					  *AT91C_PMC_PCER    = TIMER_1_ID13;				                    /* Enable clock for TC1*/\
-					  *AT91C_TCB_BMR     = AT91C_TCB_TC1XC1S_NONE;  	                    /* No external clock signal XC2 */\
-					  *AT91C_TCB_BCR     = 0x0;							                    /* Clear SYNC */\
-					  *AT91C_TC1_CMR	 = *AT91C_TC1_CMR & 0X00000000;                     /* Clear all bits in TC1_CMR */\
-					  *AT91C_TC1_CMR     = *AT91C_TC1_CMR & 0xFFFF7FFF;                     /* Enable capture mode */\
+										  *AT91C_PMC_PCER    = TIMER_1_ID13;				                    /* Enable clock for TC1*/\
+										  *AT91C_TCB_BMR     = AT91C_TCB_TC1XC1S_NONE;  	                    /* No external clock signal XC2 */\
+										  *AT91C_TCB_BCR     = 0x0;							                    /* Clear SYNC */\
+										  *AT91C_TC1_CMR	 = *AT91C_TC1_CMR & 0X00000000;                     /* Clear all bits in TC1_CMR */\
+										  *AT91C_TC1_CMR     = *AT91C_TC1_CMR & 0xFFFF7FFF;                     /* Enable capture mode */\
                                           *AT91C_TC1_CMR     = *AT91C_TC1_CMR | AT91C_TC_CLKS_TIMER_DIV5_CLOCK; /* Set clock for timer to Clock5 = div 1024*/\
                                           *AT91C_TC1_CMR     = *AT91C_TC1_CMR | AT91C_TC_ABETRG;                /* Use external trigger for TIO1*/\
                                           *AT91C_TC1_CMR     = *AT91C_TC1_CMR | AT91C_TC_EEVTEDG_BOTH;          /* Trigger on both edges */\
@@ -118,14 +118,14 @@ static TACHOPARAMETERS MotorTachoValue[3];
                                           *AT91C_PIOA_PPUDR  = MOTOR_B_INT | MOTOR_B_DIR;   					/* Disable Pull Up resistor on PA26 & PA09  */\
                                           *AT91C_PIOA_ODR    = MOTOR_B_DIR;					                    /* PA09 set to input  */\
                                           *AT91C_PIOA_IFER   = MOTOR_B_INT | MOTOR_B_DIR;					    /* Enable filter on PA26 & PA09 */\
-					  *AT91C_PMC_PCER    = TIMER_2_ID14;						            /* Enable clock for TC2*/\
-					  *AT91C_TCB_BMR     = AT91C_TCB_TC2XC2S_NONE;      					/* No external clock signal */\
-					  *AT91C_TCB_BCR     = 0x0;							                    /* Clear SYNC */\
-					  *AT91C_TC2_CMR	 = *AT91C_TC2_CMR & 0X00000000;                     /* Clear all bits in TC1_CMR */\
-					  *AT91C_TC2_CMR     = *AT91C_TC2_CMR & 0xFFFF7FFF;                     /* Enable capture mode */\
-					  *AT91C_TC2_CMR     = *AT91C_TC2_CMR | AT91C_TC_CLKS_TIMER_DIV5_CLOCK; /* Set clock for timer to Clock5 = div 1024*/\
+										  *AT91C_PMC_PCER    = TIMER_2_ID14;						            /* Enable clock for TC2*/\
+										  *AT91C_TCB_BMR     = AT91C_TCB_TC2XC2S_NONE;      					/* No external clock signal */\
+										  *AT91C_TCB_BCR     = 0x0;							                    /* Clear SYNC */\
+										  *AT91C_TC2_CMR	 = *AT91C_TC2_CMR & 0X00000000;                     /* Clear all bits in TC1_CMR */\
+										  *AT91C_TC2_CMR     = *AT91C_TC2_CMR & 0xFFFF7FFF;                     /* Enable capture mode */\
+										  *AT91C_TC2_CMR     = *AT91C_TC2_CMR | AT91C_TC_CLKS_TIMER_DIV5_CLOCK; /* Set clock for timer to Clock5 = div 1024*/\
                                           *AT91C_TC2_CMR     = *AT91C_TC2_CMR | AT91C_TC_ABETRG;                /* Use external trigger for TIO2*/\
-					  *AT91C_TC2_CMR     = *AT91C_TC2_CMR | AT91C_TC_EEVTEDG_BOTH;          /* Trigger on both edges */\
+										  *AT91C_TC2_CMR     = *AT91C_TC2_CMR | AT91C_TC_EEVTEDG_BOTH;          /* Trigger on both edges */\
                                           *AT91C_TC2_CMR     = *AT91C_TC2_CMR | AT91C_TC_LDRA_RISING;           /* RA loading register set */\
                                           *AT91C_AIC_IDCR    = TIMER_2_ID14;						                    /* Irq controller setup */\
                                            AT91C_AIC_SVR[14] = (unsigned int)CaptureBInt; \
@@ -145,13 +145,13 @@ static TACHOPARAMETERS MotorTachoValue[3];
                                           *AT91C_PIOA_PPUDR  = MOTOR_C_INT | MOTOR_C_DIR;					    /* Disable Pull Up resistor on PA0 & PA08  */\
                                           *AT91C_PIOA_ODR    = MOTOR_C_DIR;					                    /* PA08 set to input  */\
                                           *AT91C_PIOA_IFER   = MOTOR_C_INT | MOTOR_C_DIR;					    /* Enable filter on PA26 & PA09 */\
-					  *AT91C_PMC_PCER    = TIMER_0_ID12;				                    /* Enable clock for TC0*/\
-					  *AT91C_TCB_BMR     = AT91C_TCB_TC0XC0S_NONE;					        /* No external clock signal */\
-					  *AT91C_TC0_CMR	 = *AT91C_TC0_CMR & 0X00000000;                     /* Clear all bits in TC0_CMR */\
-					  *AT91C_TC0_CMR     = *AT91C_TC0_CMR & 0xFFFF7FFF;                     /* Enable capture mode */\
-					  *AT91C_TC0_CMR     = *AT91C_TC0_CMR | AT91C_TC_CLKS_TIMER_DIV5_CLOCK; /* Set clock for timer to Clock5 = div 1024*/\
-					  *AT91C_TC0_CMR     = *AT91C_TC0_CMR | AT91C_TC_ABETRG;                /* Use external trigger for TI0*/\
-					  *AT91C_TC0_CMR     = *AT91C_TC0_CMR | AT91C_TC_EEVTEDG_BOTH;          /* Trigger on both edges */\
+										  *AT91C_PMC_PCER    = TIMER_0_ID12;				                    /* Enable clock for TC0*/\
+										  *AT91C_TCB_BMR     = AT91C_TCB_TC0XC0S_NONE;					        /* No external clock signal */\
+										  *AT91C_TC0_CMR	 = *AT91C_TC0_CMR & 0X00000000;                     /* Clear all bits in TC0_CMR */\
+										  *AT91C_TC0_CMR     = *AT91C_TC0_CMR & 0xFFFF7FFF;                     /* Enable capture mode */\
+										  *AT91C_TC0_CMR     = *AT91C_TC0_CMR | AT91C_TC_CLKS_TIMER_DIV5_CLOCK; /* Set clock for timer to Clock5 = div 1024*/\
+										  *AT91C_TC0_CMR     = *AT91C_TC0_CMR | AT91C_TC_ABETRG;                /* Use external trigger for TI0*/\
+										  *AT91C_TC0_CMR     = *AT91C_TC0_CMR | AT91C_TC_EEVTEDG_BOTH;          /* Trigger on both edges */\
                                           *AT91C_TC0_CMR     = *AT91C_TC0_CMR | AT91C_TC_LDRA_RISING;           /* RA loading register set */\
                                           *AT91C_AIC_IDCR    = TIMER_0_ID12;				                    /* Disable interrupt */\
                                            AT91C_AIC_SVR[12] = (unsigned int)CaptureCInt; \
@@ -270,29 +270,29 @@ __ramfunc void CaptureCInt(void)
   }
 }
 
-#define   OUTPUTExit	{\
-				  *AT91C_AIC_IDCR   = TIMER_0_ID12 | TIMER_1_ID13 | TIMER_2_ID14; /* Disable interrupts for the timers */\
-				  *AT91C_AIC_ICCR   = TIMER_0_ID12 | TIMER_1_ID13 | TIMER_2_ID14; /* Clear penting interrupt register for timers*/\
-				  *AT91C_PMC_PCDR   = TIMER_0_ID12 | TIMER_1_ID13 | TIMER_2_ID14; /* Disable the clock for each of the timers*/\
-				  *AT91C_PIOA_PER   = MOTOR_A_DIR | MOTOR_A_INT | MOTOR_B_DIR | MOTOR_B_INT | MOTOR_C_DIR | MOTOR_C_INT; /* Enable PIO on PA15, PA11, PA26, PA09, PA27 & PA08 */\
-				  *AT91C_PIOA_ODR   = MOTOR_A_DIR | MOTOR_A_INT | MOTOR_B_DIR | MOTOR_B_INT | MOTOR_C_DIR | MOTOR_C_INT; /* Set to input PA15, PA11, PA26, PA09, PA27 & PA08 */\
-				  *AT91C_PIOA_PPUDR = MOTOR_A_DIR | MOTOR_A_INT | MOTOR_B_DIR | MOTOR_B_INT | MOTOR_C_DIR | MOTOR_C_INT; /* Enable Pullup on PA15, PA11, PA26, PA09, PA27 & PA08 */\
-			}
+#define   OUTPUTExit				    {\
+										  *AT91C_AIC_IDCR   = TIMER_0_ID12 | TIMER_1_ID13 | TIMER_2_ID14; /* Disable interrupts for the timers */\
+										  *AT91C_AIC_ICCR   = TIMER_0_ID12 | TIMER_1_ID13 | TIMER_2_ID14; /* Clear penting interrupt register for timers*/\
+										  *AT91C_PMC_PCDR   = TIMER_0_ID12 | TIMER_1_ID13 | TIMER_2_ID14; /* Disable the clock for each of the timers*/\
+										  *AT91C_PIOA_PER   = MOTOR_A_DIR | MOTOR_A_INT | MOTOR_B_DIR | MOTOR_B_INT | MOTOR_C_DIR | MOTOR_C_INT; /* Enable PIO on PA15, PA11, PA26, PA09, PA27 & PA08 */\
+										  *AT91C_PIOA_ODR   = MOTOR_A_DIR | MOTOR_A_INT | MOTOR_B_DIR | MOTOR_B_INT | MOTOR_C_DIR | MOTOR_C_INT; /* Set to input PA15, PA11, PA26, PA09, PA27 & PA08 */\
+										  *AT91C_PIOA_PPUDR = MOTOR_A_DIR | MOTOR_A_INT | MOTOR_B_DIR | MOTOR_B_INT | MOTOR_C_DIR | MOTOR_C_INT; /* Enable Pullup on PA15, PA11, PA26, PA09, PA27 & PA08 */\
+										}
 
 
-#define TACHOCountReset(MotorNr)	{\
-					MotorTachoValue[MotorNr].TachoCountTable = 0;\
-					MotorTachoValue[MotorNr].TachoCountTableOld = 0;\
-					}
+#define TACHOCountReset(MotorNr)		 {\
+										   MotorTachoValue[MotorNr].TachoCountTable = 0;\
+										   MotorTachoValue[MotorNr].TachoCountTableOld = 0;\
+										 }
 										
 #define TACHOCaptureReadResetAll(MotorDataA,MotorDataB,MotorDataC){\
-					   MotorDataA = (MotorTachoValue[MOTOR_A].TachoCountTable - MotorTachoValue[MOTOR_A].TachoCountTableOld);\
-					   MotorTachoValue[MOTOR_A].TachoCountTableOld = MotorTachoValue[MOTOR_A].TachoCountTable;\
-					   MotorDataB = (MotorTachoValue[MOTOR_B].TachoCountTable - MotorTachoValue[MOTOR_B].TachoCountTableOld);\
-					   MotorTachoValue[MOTOR_B].TachoCountTableOld = MotorTachoValue[MOTOR_B].TachoCountTable;\
-					   MotorDataC = (MotorTachoValue[MOTOR_C].TachoCountTable - MotorTachoValue[MOTOR_C].TachoCountTableOld);\
-					   MotorTachoValue[MOTOR_C].TachoCountTableOld = MotorTachoValue[MOTOR_C].TachoCountTable;\
-					 }
+										   MotorDataA = (MotorTachoValue[MOTOR_A].TachoCountTable - MotorTachoValue[MOTOR_A].TachoCountTableOld);\
+										   MotorTachoValue[MOTOR_A].TachoCountTableOld = MotorTachoValue[MOTOR_A].TachoCountTable;\
+										   MotorDataB = (MotorTachoValue[MOTOR_B].TachoCountTable - MotorTachoValue[MOTOR_B].TachoCountTableOld);\
+										   MotorTachoValue[MOTOR_B].TachoCountTableOld = MotorTachoValue[MOTOR_B].TachoCountTable;\
+										   MotorDataC = (MotorTachoValue[MOTOR_C].TachoCountTable - MotorTachoValue[MOTOR_C].TachoCountTableOld);\
+										   MotorTachoValue[MOTOR_C].TachoCountTableOld = MotorTachoValue[MOTOR_C].TachoCountTable;\
+    									 }
 
 
 

@@ -306,10 +306,12 @@ void cCmdDrawTextHelper(ULONG DrawOptions, UBYTE *pString, IMG_PT * pPt)
 NXT_STATUS cCmdWrapDrawText(UBYTE * ArgV[])
 {
   IMG_PT * pPt = (IMG_PT*) ArgV[1];
+
   ArgV[2] = (UBYTE*)cCmdDVPtr(*(DV_INDEX *)(ArgV[2]));   //Resolve array argument
   cCmdDrawTextHelper(*(ULONG*)ArgV[3], ArgV[2], pPt);
   // Set return value
   *((SBYTE*)(ArgV[0])) = NO_ERR;
+
   return NO_ERR;
 }
 
@@ -382,8 +384,10 @@ NXT_STATUS cCmdWrapDrawCircle(UBYTE * ArgV[])
     cCmdDrawCircle(pPt->X, pPt->Y, radius, pixelMode, fillMode);
     
   pMapDisplay->UpdateMask |= SCREEN_BIT(SCREEN_BACKGROUND);
+
   // Set return value
   *((SBYTE*)(ArgV[0])) = NO_ERR;
+
   return NO_ERR;
 }
 
@@ -1532,6 +1536,7 @@ void cCmdSetPixel(SLONG X, SLONG Y, ULONG PixelMode)
   if (X>=0 && X<DISPLAY_WIDTH && Y>=0 && Y<DISPLAY_HEIGHT)
     pMapDisplay->pFunc(DISPLAY_PIXEL, (UBYTE)PixelMode, (UBYTE)X, (UBYTE)Y, 0, 0);
 }
+
 
 //-----------------------------------------------------------------
 //cCmdWrapSetScreenMode

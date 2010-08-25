@@ -1125,13 +1125,12 @@ void dOutputMotorReachedTachoLimit(UBYTE MotorNr)
       {
         //Synchronise motor A & B
         MotorData[MotorOne].MotorSetSpeed = 0;
-        MotorData[MotorOne].MotorTargetSpeed = 0;
+	      MotorData[MotorOne].MotorTargetSpeed = 0;
         MotorData[MotorOne].MotorActualSpeed = 0;
         MotorData[MotorOne].MotorRunState = pOne->RunStateAtLimit;
         MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        
         MotorData[MotorTwo].MotorSetSpeed = 0;
-        MotorData[MotorTwo].MotorTargetSpeed = 0;
+	      MotorData[MotorTwo].MotorTargetSpeed = 0;
         MotorData[MotorTwo].MotorActualSpeed = 0;
         MotorData[MotorTwo].MotorRunState = pTwo->RunStateAtLimit;
         MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
@@ -1143,12 +1142,12 @@ void dOutputMotorReachedTachoLimit(UBYTE MotorNr)
         {
           //Synchronise motor A & C
           MotorData[MotorOne].MotorSetSpeed = 0;
-          MotorData[MotorOne].MotorTargetSpeed = 0;
+	        MotorData[MotorOne].MotorTargetSpeed = 0;
           MotorData[MotorOne].MotorActualSpeed = 0;
           MotorData[MotorOne].MotorRunState = pOne->RunStateAtLimit;
           MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
           MotorData[MotorTwo].MotorSetSpeed = 0;
-          MotorData[MotorTwo].MotorTargetSpeed = 0;
+	        MotorData[MotorTwo].MotorTargetSpeed = 0;
           MotorData[MotorTwo].MotorActualSpeed = 0;
           MotorData[MotorTwo].MotorRunState = pTwo->RunStateAtLimit;
           MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
@@ -1157,7 +1156,7 @@ void dOutputMotorReachedTachoLimit(UBYTE MotorNr)
         {
           //Only Motor A has Sync setting => Stop normal
           MotorData[MotorNr].MotorSetSpeed = 0;
-          MotorData[MotorNr].MotorTargetSpeed = 0;
+	        MotorData[MotorNr].MotorTargetSpeed = 0;
           MotorData[MotorNr].MotorActualSpeed = 0;
           MotorData[MotorNr].MotorRunState = pOne->RunStateAtLimit;
           MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
@@ -1244,7 +1243,7 @@ void dOutputMotorReachedTachoLimit(UBYTE MotorNr)
       {
         //Only Motor C has Sync settings => Stop normal
         MotorData[MotorNr].MotorSetSpeed = 0;
-        MotorData[MotorNr].MotorTargetSpeed = 0;
+	      MotorData[MotorNr].MotorTargetSpeed = 0;
         MotorData[MotorNr].MotorActualSpeed = 0;
         MotorData[MotorNr].MotorRunState = pOne->RunStateAtLimit;
         MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;

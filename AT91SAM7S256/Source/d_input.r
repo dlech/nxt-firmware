@@ -247,7 +247,7 @@ static    ULONG ColorTimer[NO_OF_INPUTS];
                                         {\
                                           V = TRUE;\
                                         }
-
+                                        
 
 
 void      rInputSingleADC(UBYTE Port, UWORD *Val)

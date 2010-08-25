@@ -362,6 +362,7 @@ typedef struct
 #define SET_WRITE_DTLG(DVIndex) (VarsCmd.DatalogBuffer.Datalogs[VarsCmd.DatalogBuffer.WriteIndex] = (DVIndex))
 #define SET_READ_DTLG(DVIndex) (VarsCmd.DatalogBuffer.Datalogs[VarsCmd.DatalogBuffer.ReadIndex] = (DVIndex))
 
+
 //
 //Definitions related to dataflow scheduling
 //

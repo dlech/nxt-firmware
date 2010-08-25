@@ -1091,7 +1091,7 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
           }
         }
       break;
-      case RC_UPDATE_RESET_COUNT:
+    case RC_UPDATE_RESET_COUNT:
       {
         i = pInBuf[1];
 
@@ -1531,7 +1531,7 @@ void cCmdCtrl(void)
 
       cCmdWriteBenchmarkFile();
 #endif
-      
+
       //Re-initialize program state data (contents of memory pool preserved)
       //!!! Skip this step in simulator builds so helper access methods still work
 #ifndef SIM_NXT
@@ -1579,7 +1579,7 @@ void cCmdCtrl(void)
       }
     while (IOMapCmd.Tick == dTimerRead()); // delay until scheduled time
     }
-    break;
+      break;
     
     case VM_RUN_PAUSE:
     {
@@ -2079,7 +2079,7 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
   {
     VarsCmd.DatalogBuffer.Datalogs[j] = NOT_A_DS_ID;
   }
-  
+
   // now that we've loaded program, prime memmgr dopevectors based upon number of handles in ds.
   ULONG numHandles= DV_ARRAY[0].Count/2;
   if(numHandles > 200)
@@ -3535,13 +3535,14 @@ NXT_STATUS cCmdDatalogRead(UBYTE * pBuffer, UWORD Length, UBYTE Remove)
   return Status;
 }
 
+
 //
 // Color Sensor Functions
 //
 NXT_STATUS cCmdColorSensorRead (UBYTE Port, SWORD * SensorValue, UWORD * RawArray, UWORD * NormalizedArray,
 								SWORD * ScaledArray, UBYTE * InvalidData)
 {
-	ULONG i;
+  ULONG i;
 	//Make sure Port is valid for Color Sensor
         INPUTSTRUCT * pIn = &(pMapInput->Inputs[Port]);
 	UBYTE sType = pIn->SensorType;
@@ -4559,8 +4560,8 @@ afterCompaction:
     else if (Status == CLUMP_SUSPEND || Status == BREAKOUT_REQ || Status == ROTATE_QUEUE)  // already requeued
     {
       pClumpRec->PC = pInstr + gPCDelta;
-      //Throw error if we ever advance beyond the clump's codespace
-      if (pInstr > lastClumpInstr)
+    //Throw error if we ever advance beyond the clump's codespace
+    if (pInstr > lastClumpInstr)
       {
         NXT_BREAK;
         Status = ERR_INSTR;
@@ -5153,7 +5154,7 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
     }
     break;
 
-    default:
+  default:
     {
       //Fatal error: Unrecognized instruction
       NXT_BREAK;
@@ -5205,8 +5206,8 @@ NXT_STATUS cCmdInterpPolyUnop2(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset
     else
     {
       ArgVal2= cCmdGetScalarValFromDataArg(Arg2, Offset2);
-      if (opCode == OP_MOV)
-        ArgVal1 = ArgVal2;
+      if(opCode == OP_MOV)
+        ArgVal1= ArgVal2;
       else
         ArgVal1 = cCmdUnop2(Code, ArgVal2, TypeCode2);
       cCmdSetVal(pArg1, TypeCode1, ArgVal1);
@@ -5215,10 +5216,11 @@ NXT_STATUS cCmdInterpPolyUnop2(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset
   }
 
   //At least one of the args is an aggregate type
+
   if(TypeCode1 == TC_ARRAY && TypeCode2 == TC_ARRAY && opCode == OP_MOV) {
     TYPE_CODE tc1, tc2;
-    tc1 = cCmdDSType(INC_ID(Arg1));
-    tc2 = cCmdDSType(INC_ID(Arg2));
+    tc1=  cCmdDSType(INC_ID(Arg1));
+    tc2=  cCmdDSType(INC_ID(Arg2));
     if((tc1 <= TC_LAST_INT_SCALAR || tc1 == TC_FLOAT) && tc1 == tc2) {
       void *pArg1, *pArg2;
       ULONG Count = cCmdArrayCount(Arg2, Offset2);
@@ -5504,12 +5506,12 @@ NXT_STATUS cCmdInterpScalarBinop(CODE_WORD * const pCode)
     if(TypeCode2 <= TC_LAST_INT_SCALAR && TypeCode3 <= TC_LAST_INT_SCALAR) {
       ArgVal2= GetProcArray[TypeCode2](VarsCmd.pDataspace + dsTOC2Ptr->DSOffset);
       ArgVal3= GetProcArray[TypeCode3](VarsCmd.pDataspace + dsTOC3Ptr->DSOffset);
-      ArgVal1= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
+    ArgVal1= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
       DS_TOC_ENTRY *dsTOC1Ptr= &VarsCmd.pDataspaceTOC[Arg1];
       SetProcArray[dsTOC1Ptr->TypeCode](VarsCmd.pDataspace + dsTOC1Ptr->DSOffset, ArgVal1);
-      scalarCmp++;
-      Status = NO_ERR;
-    }
+    scalarCmp++;
+  Status = NO_ERR;
+  }
     else if (TypeCode2 == TC_ARRAY) // two strings
     {
       // memcmp(); here or in compareagg, could use memcmp to speed up string compares ???
@@ -5523,31 +5525,31 @@ NXT_STATUS cCmdInterpScalarBinop(CODE_WORD * const pCode)
     }
   }
   else if(opCode == OP_BRCMP) { // t2 and t3 guaranteed scalar
-    TYPE_CODE TypeCode2, TypeCode3;
-    ULONG ArgVal2, ArgVal3;
+      TYPE_CODE TypeCode2, TypeCode3;
+      ULONG ArgVal2, ArgVal3;
 
-    Arg1 = pCode[1];
-    Arg2 = pCode[2];
-    Arg3 = pCode[3];
-    TypeCode2= cCmdDSType(Arg2);
-    TypeCode3= cCmdDSType(Arg3);
-    ArgVal2= cCmdGetScalarValFromDataArg(Arg2, 0);
-    ArgVal3= cCmdGetScalarValFromDataArg(Arg3, 0);
-    CmpBool= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
+      Arg1 = pCode[1];
+      Arg2 = pCode[2];
+      Arg3 = pCode[3];
+      TypeCode2= cCmdDSType(Arg2);
+      TypeCode3= cCmdDSType(Arg3);
+      ArgVal2= cCmdGetScalarValFromDataArg(Arg2, 0);
+      ArgVal3= cCmdGetScalarValFromDataArg(Arg3, 0);
+      CmpBool= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
 
-    if (CmpBool)
-      gPCDelta =  (SWORD)Arg1;
-    else
-      gPCDelta= 4;
-    Status= NO_ERR;
-  }
+      if (CmpBool)
+        gPCDelta =  (SWORD)Arg1;
+  else
+        gPCDelta= 4;
+      Status= NO_ERR;
+    }
   else if(opCode >= OP_SETIN && opCode <= OP_GETOUT) {
-    Arg1 = pCode[1];
-    Arg2 = pCode[2];
-    Arg3 = pCode[3];
+      Arg1 = pCode[1];
+      Arg2 = pCode[2];
+      Arg3 = pCode[3];
     Status= cCmdIOGetSet(opCode, Arg1, Arg2, Arg3);
     gPCDelta= 4;
-  }
+    }
   else {
     scalarOther ++;
     Status= cCmdInterpBinop(pCode);
@@ -5573,10 +5575,10 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
   gPCDelta= 4;
 
   NXT_ASSERT(pCode != NULL);
-  opCode = OP_CODE(pCode);
-  Arg1 = pCode[1];
-  Arg2 = pCode[2];
-  Arg3 = pCode[3];
+    opCode = OP_CODE(pCode);
+    Arg1 = pCode[1];
+    Arg2 = pCode[2];
+    Arg3 = pCode[3];
 
   if ((opCode <= OP_XOR) || 
       (opCode >= OP_LSL && opCode <= OP_ROTR) ||
@@ -5585,96 +5587,96 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
   else if(opCode >= OP_SETIN && opCode <= OP_GETOUT)
     Status= cCmdIOGetSet(opCode, Arg1, Arg2, Arg3);
   else {
-    switch (opCode)
+  switch (opCode)
+  {
+    case OP_CMP:
     {
-      case OP_CMP:
-      {
         TYPE_CODE TypeCode2= cCmdDSType(Arg2), TypeCode3= cCmdDSType(Arg3);
-        if(TypeCode2 <= TC_LAST_INT_SCALAR && TypeCode3 <= TC_LAST_INT_SCALAR) {
-            ULONG ArgVal1, ArgVal2, ArgVal3;
-            ArgVal2= cCmdGetScalarValFromDataArg(Arg2, 0);
-            ArgVal3= cCmdGetScalarValFromDataArg(Arg3, 0);
-            ArgVal1= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
-            cCmdSetScalarValFromDataArg(Arg1, ArgVal1);
-            PolyScalarCmp++;
-          }
-        else if (IS_AGGREGATE_TYPE(TypeCode2) && IS_AGGREGATE_TYPE(TypeCode3) && !IS_AGGREGATE_TYPE(cCmdDSType(Arg1)))
-        {
-          //Compare Aggregates
-          Status = cCmdCompareAggregates(COMP_CODE(pCode), &CmpBool, Arg2, 0, Arg3, 0);
-          cCmdSetScalarValFromDataArg(Arg1, CmpBool);
-          recursiveCmp++;
-        }
-        else
-        {
-          //Compare Elements
-          Status = cCmdInterpPolyBinop(*pCode, Arg1, 0, Arg2, 0, Arg3, 0);
-          polyPolyCmp++;
-        }
-      }
-      break;
-  
-      case OP_BRCMP:
-      {
-        TYPE_CODE TypeCode2= cCmdDSType(Arg2), TypeCode3= cCmdDSType(Arg3);
-        if(TypeCode2 <= TC_LAST_INT_SCALAR && TypeCode3 <= TC_LAST_INT_SCALAR) {
-          ULONG ArgVal2, ArgVal3;
+      if(TypeCode2 <= TC_LAST_INT_SCALAR && TypeCode3 <= TC_LAST_INT_SCALAR) {
+          ULONG ArgVal1, ArgVal2, ArgVal3;
           ArgVal2= cCmdGetScalarValFromDataArg(Arg2, 0);
           ArgVal3= cCmdGetScalarValFromDataArg(Arg3, 0);
-          CmpBool= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
+          ArgVal1= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
+          cCmdSetScalarValFromDataArg(Arg1, ArgVal1);
+          PolyScalarCmp++;
         }
-        else //Compare Aggregates
+      else if (IS_AGGREGATE_TYPE(TypeCode2) && IS_AGGREGATE_TYPE(TypeCode3) && !IS_AGGREGATE_TYPE(cCmdDSType(Arg1)))
+      {
+        //Compare Aggregates
         Status = cCmdCompareAggregates(COMP_CODE(pCode), &CmpBool, Arg2, 0, Arg3, 0);
-  
-        if (CmpBool)
-            gPCDelta =  (SWORD)Arg1;
+        cCmdSetScalarValFromDataArg(Arg1, CmpBool);
+        recursiveCmp++;
       }
-      break;
-  
-      case OP_INDEX:
+      else
       {
+        //Compare Elements
+        Status = cCmdInterpPolyBinop(*pCode, Arg1, 0, Arg2, 0, Arg3, 0);
+        polyPolyCmp++;
+      }
+    }
+    break;
+
+    case OP_BRCMP:
+    {
+      TYPE_CODE TypeCode2= cCmdDSType(Arg2), TypeCode3= cCmdDSType(Arg3);
+      if(TypeCode2 <= TC_LAST_INT_SCALAR && TypeCode3 <= TC_LAST_INT_SCALAR) {
+        ULONG ArgVal2, ArgVal3;
+        ArgVal2= cCmdGetScalarValFromDataArg(Arg2, 0);
+        ArgVal3= cCmdGetScalarValFromDataArg(Arg3, 0);
+        CmpBool= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
+      }
+      else //Compare Aggregates
+      Status = cCmdCompareAggregates(COMP_CODE(pCode), &CmpBool, Arg2, 0, Arg3, 0);
+
+      if (CmpBool)
+          gPCDelta =  (SWORD)Arg1;
+    }
+    break;
+
+    case OP_INDEX:
+    {
         ArgVal3 = (Arg3 != NOT_A_DS_ID) ? cCmdGetScalarValFromDataArg(Arg3, 0) : 0;
-  
-        DVIndex2 = cCmdGetDVIndex(Arg2, 0);
-        if (ArgVal3 >= DV_ARRAY[DVIndex2].Count)
-          return (ERR_ARG);
-  
-        Status = cCmdInterpPolyUnop2(OP_MOV, Arg1, 0, INC_ID(Arg2), ARRAY_ELEM_OFFSET(DVIndex2, ArgVal3));
-      }
-      break;
-  
-      case OP_ARRINIT:
-      {
-        //Arg1 - Dst, Arg2 - element type/default val, Arg3 - length
-  
+
+      DVIndex2 = cCmdGetDVIndex(Arg2, 0);
+      if (ArgVal3 >= DV_ARRAY[DVIndex2].Count)
+        return (ERR_ARG);
+
+      Status = cCmdInterpPolyUnop2(OP_MOV, Arg1, 0, INC_ID(Arg2), ARRAY_ELEM_OFFSET(DVIndex2, ArgVal3));
+    }
+    break;
+
+    case OP_ARRINIT:
+    {
+      //Arg1 - Dst, Arg2 - element type/default val, Arg3 - length
+
         NXT_ASSERT(cCmdDSType(Arg1) == TC_ARRAY);
-  
+
         // determine the type of the array destination arg
         TYPE_CODE TypeCode = cCmdDSType(INC_ID(Arg1));
-        
+
         // How many elements do we want?
         ArgVal3 = (Arg3 != NOT_A_DS_ID) ? cCmdGetScalarValFromDataArg(Arg3, 0) : 0;
-  
-        Status = cCmdDSArrayAlloc(Arg1, 0, (UWORD)ArgVal3);
+
+      Status = cCmdDSArrayAlloc(Arg1, 0, (UWORD)ArgVal3);
         if (!IS_ERR(Status))
         {
-          DVIndex1 = cCmdGetDVIndex(Arg1, 0);
+      DVIndex1 = cCmdGetDVIndex(Arg1, 0);
           if(cCmdDSType(Arg2) <= TC_LAST_INT_SCALAR && TypeCode <= TC_LAST_INT_SCALAR)
           {
             ULONG val= cCmdGetScalarValFromDataArg(Arg2, 0);
             for (i = 0; i < ArgVal3; i++) // could init ptr and incr by offset GM???
-            {
-              //copy Arg2 into each element of Arg1
+      {
+        //copy Arg2 into each element of Arg1
               cCmdSetVal(VarsCmd.pDataspace + ARRAY_ELEM_OFFSET(DVIndex1, i), TypeCode, val);
             }
           }
           else
             for (i = 0; i < ArgVal3; i++)  //copy Arg2 into each element of Arg1
-              Status = cCmdInterpPolyUnop2(OP_MOV, INC_ID(Arg1), ARRAY_ELEM_OFFSET(DVIndex1, i), Arg2, 0);
-        }
+        Status = cCmdInterpPolyUnop2(OP_MOV, INC_ID(Arg1), ARRAY_ELEM_OFFSET(DVIndex1, i), Arg2, 0);
       }
-      break;
-  
+    }
+    break;
+
       case OP_FMTNUM:
       {
         //Check that the destination is a string (array of bytes)
@@ -5682,13 +5684,13 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
           Status = ERR_INSTR;
           return (Status);
         }
-  
+
         //Check that the format is a string (array of bytes)
         if (cCmdDSType(Arg2) != TC_ARRAY || cCmdDSType(INC_ID(Arg2)) != TC_UBYTE) {
           Status = ERR_INSTR;
           return (Status);
         }
-  
+
         pArg2 = cCmdResolveDataArg(Arg2, 0, NULL);
         TYPE_CODE TypeCode3 = cCmdDSType(Arg3);
 
@@ -5697,7 +5699,7 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
           Status = ERR_INSTR;
           return (Status);
         }
-  
+
         char fmtBuf[256]; // arbitrary limit!!!
         // handle floats separately from scalar types
         if (TypeCode3 == TC_FLOAT) {
@@ -5717,17 +5719,17 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
             Count = sprintf(fmtBuf, pArg2, ArgVal3);
           }
         }
-  
+
         //add room for NULL terminator
         Count++;
-  
+
         //Allocate array
         Status = cCmdDSArrayAlloc(Arg1, 0, Count);
         if (IS_ERR(Status))
           return Status;
-  
+
         pArg1 = cCmdResolveDataArg(Arg1, 0, NULL);
-  
+
         //Populate array
         memcpy(pArg1, fmtBuf, Count);
       }
@@ -5748,14 +5750,14 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
       }
       break;
 
-      default:
-      {
-        //Fatal error: Unrecognized instruction
-        NXT_BREAK;
-        Status = ERR_INSTR;
-      }
-      break;
+    default:
+    {
+      //Fatal error: Unrecognized instruction
+      NXT_BREAK;
+      Status = ERR_INSTR;
     }
+    break;
+  }
   }
   return (Status);
 }
@@ -5800,10 +5802,10 @@ NXT_STATUS cCmdInterpPolyBinop(CODE_WORD const Code, DATA_ARG Arg1, UWORD Offset
     }
     else
     {
-      ArgVal2 = cCmdGetScalarValFromDataArg(Arg2, Offset2);
-      ArgVal3 = cCmdGetScalarValFromDataArg(Arg3, Offset3);
-      ArgVal1 = cCmdBinop(Code, ArgVal2, ArgVal3, TypeCode2, TypeCode3);
-      cCmdSetVal(pArg1, TypeCode1, ArgVal1);
+    ArgVal2 = cCmdGetScalarValFromDataArg(Arg2, Offset2);
+    ArgVal3 = cCmdGetScalarValFromDataArg(Arg3, Offset3);
+    ArgVal1 = cCmdBinop(Code, ArgVal2, ArgVal3, TypeCode2, TypeCode3);
+    cCmdSetVal(pArg1, TypeCode1, ArgVal1);
     }
     return Status;
   }
@@ -6219,7 +6221,7 @@ NXT_STATUS cCmdMove(DATA_ARG Arg1, DATA_ARG Arg2)
         *(UWORD*)pArg1= *(UWORD*)pArg2;
       Status= NO_ERR;
     }
-    else
+  else
     {
       moveDiffInt++;
       ULONG val= cCmdGetScalarValFromDataArg(Arg2, 0);
@@ -8682,6 +8684,7 @@ void cCmdWriteBenchmarkFile()
   }
 }
 #endif
+
 
 /////////////////////////////////////////////////////////////
 // Dymanic syscall implementations

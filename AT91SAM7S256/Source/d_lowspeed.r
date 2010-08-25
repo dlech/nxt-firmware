@@ -74,17 +74,17 @@ const ULONG CLK_OR_DATA_PINS[4] = {CHANNEL_ONE_CLK | CHANNEL_ONE_DATA,
 #define   PIO_INQ            0x04
 
 //Used for variable ChannelState
-#define   LOWSPEED_IDLE              0x00
-#define   LOWSPEED_TX_STOP_BIT       0x01
+#define   LOWSPEED_IDLE		         0x00
+#define   LOWSPEED_TX_STOP_BIT		 0x01
 #define   LOWSPEED_TRANSMITTING      0x02
-#define   LOWSPEED_RECEIVING         0x04
+#define   LOWSPEED_RECEIVING		 0x04
 #define   LOWSPEED_TEST_WAIT_STATE   0x08
 #define   LOWSPEED_RESTART_CONDITION 0x10
 #define   LOWSPEED_WAIT_BEFORE_RX    0x20
 
 //Used for variable TxState
-#define   TX_IDLE                    0x00
-#define   TX_DATA_MORE_DATA          0x01
+#define   TX_IDLE					 0x00
+#define   TX_DATA_MORE_DATA			 0x01
 #define   TX_DATA_CLK_HIGH           0x02
 #define   TX_EVALUATE_ACK_CLK_HIGH   0x03
 #define   TX_DATA_READ_ACK_CLK_LOW   0x04
@@ -92,56 +92,57 @@ const ULONG CLK_OR_DATA_PINS[4] = {CHANNEL_ONE_CLK | CHANNEL_ONE_DATA,
 #define   TX_ACK_EVALUATED_CLK_LOW   0x06
 
 //Used for variable RxState
-#define   RX_IDLE                    0x00
-#define   RX_START_BIT_CLK_HIGH      0x01
+#define   RX_IDLE					 0x00
+#define   RX_START_BIT_CLK_HIGH		 0x01
 #define   RX_DATA_CLK_HIGH           0x02
 #define   RX_ACK_TX_CLK_HIGH         0x03
-#define   RX_DATA_CLK_LOW            0x04
+#define   RX_DATA_CLK_LOW			 0x04
 #define   RX_DONE_OR_NOT_CLK_LOW     0x05
 
 //Used for variable ReStart
 #define   RESTART_STATE_IDLE		 0x00
-#define   RESTART_STATE_ONE		 0x01
-#define   RESTART_STATE_TWO		 0x02
+#define   RESTART_STATE_ONE			 0x01
+#define   RESTART_STATE_TWO			 0x02
 #define   RESTART_STATE_THREE   	 0x03
 #define   RESTART_STATE_FOUR		 0x04
 #define   RESTART_STATE_FIVE		 0x05
 #define   RESTART_STATE_SIX 		 0x06
 #define   RESTART_STATE_SEVEN		 0x07
 
-#define   LOWSpeedTxInit  {\
-  LowSpeedData[LOWSPEED_CHANNEL1].ChannelState = 0;\
-  LowSpeedData[LOWSPEED_CHANNEL2].ChannelState = 0;\
-  LowSpeedData[LOWSPEED_CHANNEL3].ChannelState = 0;\
-  LowSpeedData[LOWSPEED_CHANNEL4].ChannelState = 0;\
-}
+#define   LOWSpeedTxInit                {\
+                                          LowSpeedData[LOWSPEED_CHANNEL1].ChannelState = 0;\
+                                          LowSpeedData[LOWSPEED_CHANNEL2].ChannelState = 0;\
+                                          LowSpeedData[LOWSPEED_CHANNEL3].ChannelState = 0;\
+                                          LowSpeedData[LOWSPEED_CHANNEL4].ChannelState = 0;\
+                                        }
 
-#define   LOWSpeedTimerInit  {\
-  *AT91C_PMC_PCER       = 0x400;				/* Enable clock for PWM, PID10*/\
-  *AT91C_PWMC_MR	= 0x01;					/* CLKA is output from prescaler */\
-  *AT91C_PWMC_MR	|= 0x600;				/* Prescaler MCK divided with 64 */\
-  *AT91C_PWMC_CH0_CMR   = 0x06;					/* Channel 0 uses MCK divided by 64 */\
-  *AT91C_PWMC_CH0_CMR   &= 0xFFFFFEFF;				/* Left alignment on periode */\
-  *AT91C_PWMC_CH0_CPRDR = 0x20;					/* Set to 39 => 52uSecondes interrupt */\
-  *AT91C_PWMC_IDR	= AT91C_PWMC_CHID0;			/* Disable interrupt for PWM output channel 0 */\
-  *AT91C_AIC_IDCR       = 0x400;				/* Disable AIC intterupt on ID10 PWM */\
-  AT91C_AIC_SVR[10]     = (unsigned int)LowSpeedPwmIrqHandler;\
-  AT91C_AIC_SMR[10]     = 0x01;					/* Enable trigger on level */\
-  *AT91C_AIC_ICCR       = 0x400;				/* Clear interrupt register PID10*/\
-  *AT91C_PWMC_IER	= AT91C_PWMC_CHID0;			/* Enable interrupt for PWM output channel 0 */\
-  *AT91C_AIC_IECR       = 0x400;				/* Enable interrupt from PWM */\
-}
+#define   LOWSpeedTimerInit             {\
+                                          *AT91C_PMC_PCER       = 0x400;					/* Enable clock for PWM, PID10*/\
+										  *AT91C_PWMC_MR	    = 0x01;						/* CLKA is output from prescaler */\
+										  *AT91C_PWMC_MR	   |= 0x600;					/* Prescaler MCK divided with 64 */\
+										  *AT91C_PWMC_CH0_CMR   = 0x06;						/* Channel 0 uses MCK divided by 64 */\
+										  *AT91C_PWMC_CH0_CMR  &= 0xFFFFFEFF;				/* Left alignment on periode */\
+										  *AT91C_PWMC_CH0_CPRDR = 0x20;						/* Set to 39 => 52uSecondes interrupt */\
+										  *AT91C_PWMC_IDR	    = AT91C_PWMC_CHID0;			/* Disable interrupt for PWM output channel 0 */\
+										  *AT91C_AIC_IDCR       = 0x400;					/* Disable AIC intterupt on ID10 PWM */\
+                                           AT91C_AIC_SVR[10]    = (unsigned int)LowSpeedPwmIrqHandler;\
+                                           AT91C_AIC_SMR[10]    = 0x01;						/* Enable trigger on level */\
+                                          *AT91C_AIC_ICCR       = 0x400;					/* Clear interrupt register PID10*/\
+										  *AT91C_PWMC_IER		= AT91C_PWMC_CHID0;			/* Enable interrupt for PWM output channel 0 */\
+										  *AT91C_AIC_IECR       = 0x400;					/* Enable interrupt from PWM */\
+										}
 
 #define   LOWSpeedExit
 
-#define   ENABLEDebugOutput  {\
-  *AT91C_PIOA_PER   = AT91C_PIO_PA29; /* Enable PIO on PA029 */\
-  *AT91C_PIOA_OER   = AT91C_PIO_PA29; /* PA029 set to Output  */\
-  *AT91C_PIOA_CODR  = 0x20000000;\
-}
+#define   ENABLEDebugOutput				{\
+                                          *AT91C_PIOA_PER   = AT91C_PIO_PA29; /* Enable PIO on PA029 */\
+                                          *AT91C_PIOA_OER   = AT91C_PIO_PA29; /* PA029 set to Output  */\
+                                          *AT91C_PIOA_CODR	= 0x20000000;\
+                                        }
 
-#define   SETDebugOutputHigh		*AT91C_PIOA_SODR = 0x20000000
-#define   SETDebugOutputLow		*AT91C_PIOA_CODR = 0x20000000
+#define   SETDebugOutputHigh			*AT91C_PIOA_SODR	= 0x20000000
+
+#define   SETDebugOutputLow				*AT91C_PIOA_CODR	= 0x20000000
 
 #define	  SETClkComOneHigh		*AT91C_PIOA_SODR = CHANNEL_ONE_CLK
 #define	  SETClkComOneLow		*AT91C_PIOA_CODR = CHANNEL_ONE_CLK
@@ -253,13 +254,13 @@ const ULONG CLK_OR_DATA_PINS[4] = {CHANNEL_ONE_CLK | CHANNEL_ONE_DATA,
   *AT91C_PWMC_DIS = AT91C_PWMC_CHID0;	/* Disable PWM output channel 0 */\
 }
 										
-#define    OLD_DISABLEPWMTimerForLowCom {\
-  *AT91C_PWMC_DIS = AT91C_PWMC_CHID0;			/* Disable PWM output channel 0 */\
-  *AT91C_PWMC_IDR = AT91C_PWMC_CHID0;			/* Disable interrupt from PWM output channel 0 */\
-  *AT91C_AIC_IDCR = 0x400;				/* Disable Irq from PID10 */\
-  *AT91C_AIC_ICCR = 0x400;				/* Clear interrupt register PID10*/\
-  *AT91C_PMC_PCDR = 0x400;				/* Disable clock for PWM, PID10*/\
-}
+#define    OLD_DISABLEPWMTimerForLowCom	{\
+										  *AT91C_PWMC_DIS	 = AT91C_PWMC_CHID0;			/* Disable PWM output channel 0 */\
+                                          *AT91C_PWMC_IDR	 = AT91C_PWMC_CHID0;			/* Disable interrupt from PWM output channel 0 */\
+										  *AT91C_AIC_IDCR    = 0x400;						/* Disable Irq from PID10 */\
+                                          *AT91C_AIC_ICCR    = 0x400;						/* Clear interrupt register PID10*/\
+                                          *AT91C_PMC_PCDR    = 0x400;						/* Disable clock for PWM, PID10*/\
+										}
 
 __ramfunc void LowSpeedPwmIrqHandler(void)
 {
@@ -452,11 +453,11 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
             LowSpeedData[ChannelNr].ReStartBit = 0;
             LowSpeedData[ChannelNr].pComOutBuffer = &LowSpeedData[ChannelNr].ComDeviceAddress;
             *LowSpeedData[ChannelNr].pComOutBuffer += 0x01;
-            LowSpeedData[ChannelNr].ChannelState = LOWSPEED_TRANSMITTING;
-            LowSpeedData[ChannelNr].MaskBit = MASK_BIT_8;
-            LowSpeedData[ChannelNr].TxByteCnt = 0x01;
-            LowSpeedData[ChannelNr].TxState = TX_DATA_CLK_HIGH;
-            LowSpeedData[ChannelNr].AckStatus = 0;
+			LowSpeedData[ChannelNr].ChannelState = LOWSPEED_TRANSMITTING;
+			LowSpeedData[ChannelNr].MaskBit = MASK_BIT_8;
+			LowSpeedData[ChannelNr].TxByteCnt = 0x01;
+			LowSpeedData[ChannelNr].TxState = TX_DATA_CLK_HIGH;
+			LowSpeedData[ChannelNr].AckStatus = 0;
           }
           break;
         }
@@ -514,9 +515,9 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
             SETClkLow(ChannelNr);
             SETDataToInput(ChannelNr);
             LowSpeedData[ChannelNr].pComInBuffer++;
-            LowSpeedData[ChannelNr].RxByteCnt--;
-            LowSpeedData[ChannelNr].RxBitCnt = 0;
-            LowSpeedData[ChannelNr].RxState = RX_DONE_OR_NOT_CLK_LOW;
+		    LowSpeedData[ChannelNr].RxByteCnt--;
+		    LowSpeedData[ChannelNr].RxBitCnt = 0;
+	        LowSpeedData[ChannelNr].RxState = RX_DONE_OR_NOT_CLK_LOW;
           }
           break;
 
@@ -611,69 +612,69 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
 }
 											
 											
-#define STATUSTxCom(ChannelNumber, Status)  {\
-  if (LowSpeedData[ChannelNumber].ChannelState != 0)\
-  {\
-    if ((LowSpeedData[ChannelNumber].TxByteCnt == 0) && (LowSpeedData[ChannelNumber].ChannelState != LOWSPEED_RESTART_CONDITION))\
-    {\
-      if (LowSpeedData[ChannelNumber].MaskBit == 0)\
-      {\
-        if (LowSpeedData[ChannelNumber].AckStatus == 1)\
-        {\
-          Status = 0x01;  /* TX SUCCESS  */\
-        }\
-        else\
-        {\
-          Status = 0xFF; /* TX ERROR */\
-        }\
-      }\
-      else\
-      {\
-        Status = 0;\
-      }\
-    }\
-    else\
-    {\
-      Status = 0;\
-    }\
-  }\
-  else\
-  {\
-    if (LowSpeedData[ChannelNumber].RxByteCnt == 0)\
-    {\
-      if (LowSpeedData[ChannelNumber].AckStatus == 1)\
-      {\
-        Status = 0x01;  /* TX SUCCESS  */\
-      }\
-      else\
-      {\
-        Status = 0xFF; /* TX ERROR */\
-      }\
-    }\
-    else\
-    {\
-      Status = 0xFF; /* TX ERROR */\
-    }\
-  }\
-}
+#define STATUSTxCom(ChannelNumber, Status)     {\
+											     if (LowSpeedData[ChannelNumber].ChannelState != 0)\
+											     {\
+											       if ((LowSpeedData[ChannelNumber].TxByteCnt == 0) && (LowSpeedData[ChannelNumber].ChannelState != LOWSPEED_RESTART_CONDITION))\
+											       {\
+											         if (LowSpeedData[ChannelNumber].MaskBit == 0)\
+											         {\
+											           if (LowSpeedData[ChannelNumber].AckStatus == 1)\
+											           {\
+													     Status = 0x01;  /* TX SUCCESS  */\
+											           }\
+											           else\
+											           {\
+                                                                                                     Status = 0xFF; /* TX ERROR */\
+											           }\
+											         }\
+											         else\
+											         {\
+											           Status = 0;\
+											         }\
+											       }\
+											       else\
+											       {\
+											         Status = 0;\
+											       }\
+											     }\
+											     else\
+											     {\
+											       if (LowSpeedData[ChannelNumber].RxByteCnt == 0)\
+											       {\
+											         if (LowSpeedData[ChannelNumber].AckStatus == 1)\
+											         {\
+													   Status = 0x01;  /* TX SUCCESS  */\
+											         }\
+											         else\
+											         {\
+											           Status = 0xFF; /* TX ERROR */\
+											         }\
+											       }\
+											       else\
+											       {\
+											         Status = 0xFF; /* TX ERROR */\
+											       }\
+											     }\
+											   }
 											
-#define STATUSRxCom(ChannelNumber, Status)  {\
-  if (LowSpeedData[ChannelNumber].ChannelState == LOWSPEED_IDLE)\
-  {\
-    if (LowSpeedData[ChannelNumber].RxByteCnt == 0)\
-    {\
-      Status = 0x01;  /* RX SUCCESS  */\
-    }\
-    else\
-    {\
-      Status = 0xFF; /* RX ERROR */\
-    }\
-  }\
-  else\
-  {\
-    Status = 0;\
-  }\
-}
+#define STATUSRxCom(ChannelNumber, Status)     {\
+                                                 if (LowSpeedData[ChannelNumber].ChannelState == LOWSPEED_IDLE)\
+											     {\
+											       if (LowSpeedData[ChannelNumber].RxByteCnt == 0)\
+											       {\
+											         Status = 0x01;  /* RX SUCCESS  */\
+											       }\
+											       else\
+											       {\
+											         Status = 0xFF; /* RX ERROR */\
+											       }\
+											     }\
+											     else\
+											     {\
+											       Status = 0;\
+											     }\
+                                               }
 
 
 #endif

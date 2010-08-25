@@ -27,7 +27,7 @@
 
 #define   PER_ID6_UART_0        0x40
 #define   UART0_INQ             0x40
-#define   BAUD_RATE		921600L
+#define   BAUD_RATE			    921600L
 
 #define   SIZE_OF_INBUF         128
 #define   NO_OF_INBUFFERS       2
@@ -46,10 +46,10 @@ static    UBYTE  MsgIn;
 static    UBYTE  InBufOutCnt;
 
 #define   HIGHSPEEDInit                 {\
-					  *AT91C_PIOA_PER   = HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;   /* Enable PIO on PA07, PA06 & PA05 */\
-					  *AT91C_PIOA_PPUDR = HIGHSPEED_RX_PIN | HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN;   /* Disable Pull-up resistor */\
+										  *AT91C_PIOA_PER   = HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;   /* Enable PIO on PA07, PA06 & PA05 */\
+										  *AT91C_PIOA_PPUDR = HIGHSPEED_RX_PIN | HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN;   /* Disable Pull-up resistor */\
                                           *AT91C_PIOA_OER   = HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;   /* PA07 & PA06 set to Output  */\
-                                          *AT91C_PIOA_CODR  = HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;	 /* Set output low */\
+                                          *AT91C_PIOA_CODR	= HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;	 /* Set output low */\
                                         }
 
 #define   HIGHSPEEDSetupUart(_baud, _mode) {\
@@ -94,7 +94,7 @@ static    UBYTE  InBufOutCnt;
 
 #define HIGHSPEEDInitReceiver(InputBuffer)\
                                         {\
-					  UBYTE Tmp;\
+										  UBYTE Tmp;\
                                           pBuffer     = InputBuffer;\
                                           *AT91C_US0_PTCR = (AT91C_PDC_RXTDIS | AT91C_PDC_TXTDIS); /* Disable of TX & RX with DMA */\
                                           *AT91C_US0_RCR  = 0;                                     /* Receive Counter Register */\
@@ -174,7 +174,7 @@ static    UBYTE  InBufOutCnt;
 #define HIGHSPEEDExit                   {\
                                           *AT91C_PMC_PCDR = PER_ID6_UART_0;    /* Disable PMC clock for UART 0*/\
                                           *AT91C_PIOA_PER   = HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;   /* Enable PIO on PA07, PA06 & PA05 */\
-					  *AT91C_PIOA_PPUDR = HIGHSPEED_RX_PIN | HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN;   /* Disable Pull-up resistor */\
+										  *AT91C_PIOA_PPUDR = HIGHSPEED_RX_PIN | HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN;   /* Disable Pull-up resistor */\
                                           *AT91C_PIOA_OER   = HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;   /* PA07 & PA06 set to Output  */\
                                           *AT91C_PIOA_CODR	= HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;	 /* Set output low */\
                                         }

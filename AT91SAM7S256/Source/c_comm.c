@@ -219,6 +219,7 @@ void      cCommCtrl(void)
         }
       }
       break;
+
       case BT_ARM_DATA_MODE:
       case BT_ARM_GPS_MODE:
       case BT_ARM_RAW_MODE: 
@@ -1229,16 +1230,16 @@ UWORD     cCommReceivedBtData(void)
         {
           if (VarsComm.BtState == BT_ARM_DATA_MODE)
           {
-  
+
             /* Move the inptr ahead */
             IOMapComm.BtInBuf.InPtr = NumberOfBytes;
-  
+
             /* using the outbuf inptr in order to get the number of bytes in the return answer at the right place*/
             IOMapComm.BtOutBuf.InPtr = NumberOfBytes;
-  
+
             /* call the data stream interpreter */
             cCommInterprete(IOMapComm.BtInBuf.Buf, IOMapComm.BtOutBuf.Buf, &(IOMapComm.BtOutBuf.InPtr), (UBYTE) BT_CMD_READY, BytesToGo);
-  
+
             /* if there is a reply to be sent then send it */
             if (IOMapComm.BtOutBuf.InPtr)
             {

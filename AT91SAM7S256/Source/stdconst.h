@@ -20,6 +20,8 @@
 #ifndef   STDCONST
 #define   STDCONST
 
+#include "config.h"
+
 #ifndef NULL
 #define NULL    ((void *)0)
 #endif

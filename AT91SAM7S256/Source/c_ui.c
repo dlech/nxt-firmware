@@ -1313,7 +1313,7 @@ void      cUiCtrl(void)
 
       VarsUi.State                                    =  0;
       VarsUi.Pointer                                  =  0;
-      VarsUi.Timer                                    =  -INTRO_START_TIME;
+      VarsUi.Timer                                    =  CONFIG_INTRO ? -INTRO_START_TIME : 0;
 
       VarsUi.FNOFState                                =  0;
       VarsUi.FBState                                  =  0;
@@ -1325,10 +1325,10 @@ void      cUiCtrl(void)
       VarsUi.GUSState                                 =  0;
 
       IOMapUi.pMenu                                   =  (MENU*)cUiGetMenuPointer(0);
-      IOMapUi.State                                   =  INIT_INTRO;
+      IOMapUi.State                                   =  CONFIG_INTRO ? INIT_INTRO : INIT_WAIT;
 
       pMapDisplay->EraseMask                          =  SCREEN_BIT(SCREEN_BACKGROUND);
-      pMapDisplay->pBitmaps[BITMAP_1]                 =  (BMPMAP*)Intro[VarsUi.Pointer];
+      pMapDisplay->pBitmaps[BITMAP_1]                 =  CONFIG_INTRO ? (BMPMAP*)Intro[VarsUi.Pointer] : RCXintro_16;
       pMapDisplay->UpdateMask                         =  BITMAP_BIT(BITMAP_1);
       pMapDisplay->Flags                             |=  DISPLAY_ON;
 
@@ -1338,6 +1338,7 @@ void      cUiCtrl(void)
     }
     break;
 
+#if CONFIG_INTRO
     case INIT_LOW_BATTERY :
     {
       if (++VarsUi.Timer >= (INTRO_LOWBATT_TIME))
@@ -1431,6 +1432,7 @@ void      cUiCtrl(void)
       }
     }
     break;
+#endif /* CONFIG_INTRO */
 
     case INIT_WAIT :
     {

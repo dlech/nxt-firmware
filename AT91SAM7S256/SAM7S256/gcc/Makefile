@@ -28,14 +28,15 @@ MCU = arm7tdmi
 STARTOFUSERFLASH_DEFINES = -DSTARTOFUSERFLASH_FROM_LINKER=1
 DEFINES = -DPROTOTYPE_PCB_4 -DNEW_MENU -DROM_RUN -DVECTORS_IN_RAM \
 	  $(STARTOFUSERFLASH_DEFINES)
-OPTIMIZE = -Os -fno-strict-aliasing
+OPTIMIZE = -Os -fno-strict-aliasing \
+	   -ffunction-sections -fdata-sections
 WARNINGS = -Wall -W -Wundef -Wno-unused -Wno-format
 THUMB_INTERWORK = -mthumb-interwork
 CFLAGS = -mcpu=$(MCU) $(THUMB) $(THUMB_INTERWORK) $(WARNINGS) $(OPTIMIZE)
 ASFLAGS = -mcpu=$(MCU) $(THUMB) $(THUMB_INTERWORK)
 CPPFLAGS = $(INCLUDES) $(DEFINES) -MMD
 LDSCRIPT = nxt.ld
-LDFLAGS = -nostdlib -T $(LDSCRIPT)
+LDFLAGS = -nostdlib -T $(LDSCRIPT) -Wl,--gc-sections
 LDLIBS = -lc -lm -lgcc
 
 CROSS_COMPILE = arm-none-eabi-

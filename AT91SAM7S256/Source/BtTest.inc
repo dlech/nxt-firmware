@@ -22,7 +22,12 @@ void      GetProtocolVersion(UBYTE *String)
 
   if (Tmp < 100)
   {
+#ifdef CUSTOM_FIRMWAREVERSION
+    int pad = (sizeof (CUSTOM_FIRMWAREVERSION) - 1) > 7 ? 1 : 1 + 7 - (sizeof (CUSTOM_FIRMWAREVERSION) - 1);
+    sprintf((char*)String,"FW %*u.%02ui-%.7s", pad, (FIRMWAREVERSION >> 8) & 0x00FF,Tmp & 0x00FF, CUSTOM_FIRMWAREVERSION);
+#else
     sprintf((char*)String,"FW        %3u.%02u",(FIRMWAREVERSION >> 8) & 0x00FF,Tmp & 0x00FF);
+#endif
   }
   else
   {

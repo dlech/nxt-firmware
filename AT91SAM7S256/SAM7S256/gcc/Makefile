@@ -2,6 +2,9 @@ BASE = ../..
 SRCDIR = $(BASE)/Source
 CPUINCDIR = $(BASE)/SAM7S256/Include
 
+GIT_VERSION := $(shell git rev-parse --short=7 HEAD)
+CUSTOM_FIRMWAREVERSION = $(GIT_VERSION)
+
 TARGET = nxt_firmware
 
 ARM_SOURCES =
@@ -26,8 +29,9 @@ INCLUDES =
 
 MCU = arm7tdmi
 STARTOFUSERFLASH_DEFINES = -DSTARTOFUSERFLASH_FROM_LINKER=1
+VERSION_DEFINES = -DCUSTOM_FIRMWAREVERSION=\"$(CUSTOM_FIRMWAREVERSION)\"
 DEFINES = -DPROTOTYPE_PCB_4 -DNEW_MENU -DROM_RUN -DVECTORS_IN_RAM \
-	  $(STARTOFUSERFLASH_DEFINES)
+	  $(STARTOFUSERFLASH_DEFINES) $(VERSION_DEFINES)
 OPTIMIZE = -Os -fno-strict-aliasing \
 	   -ffunction-sections -fdata-sections
 WARNINGS = -Wall -W -Wundef -Wno-unused -Wno-format
@@ -74,9 +78,19 @@ $(THUMB_OBJECTS): THUMB = -mthumb
 
 -include $(OBJECTS:%.o=%.d)
 
+LAST_CUSTOM_FIRMWAREVERSION=none
+-include version.mak
+ifneq ($(LAST_CUSTOM_FIRMWAREVERSION),$(CUSTOM_FIRMWAREVERSION))
+.PHONY: version.mak
+version.mak:
+	echo "LAST_CUSTOM_FIRMWAREVERSION = $(CUSTOM_FIRMWAREVERSION)" > $@
+endif
+
+c_ui.o: version.mak
+
 program: $(TARGET).bin
 	$(FWFLASH) $(TARGET).bin
 
 clean:
 	rm -f $(TARGET).elf $(TARGET).bin $(TARGET).sym $(TARGET).lst \
-	$(OBJECTS) $(OBJECTS:%.o=%.d)
+	$(OBJECTS) $(OBJECTS:%.o=%.d) version.mak

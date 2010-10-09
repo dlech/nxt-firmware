@@ -43,6 +43,7 @@
 #define REGSTATE_IDLE           0x00
 #define REGSTATE_REGULATED      0x01
 #define REGSTATE_SYNCHRONE      0x02
+#define REGSTATE_POSITION       0x04
 
 //Constant reffering to RunState parameter
 #define MOTOR_RUN_STATE_IDLE      0x00
@@ -79,6 +80,7 @@ void      dOutputCalculateRampUpParameter(UBYTE MotorNr, ULONG NewTachoLimit);
 void      dOutputRampDownFunction(UBYTE MotorNr);
 void      dOutputRampUpFunction(UBYTE MotorNr);
 void      dOutputTachoLimitControl(UBYTE MotorNr);
+void      dOutputAbsolutePositionRegulation(UBYTE MotorNr);
 void      dOutputCalculateMotorPosition(UBYTE MotorNr);
 void      dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo);
 void      dOutputMotorReachedTachoLimit(UBYTE MotorNr);

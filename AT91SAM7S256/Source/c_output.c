@@ -93,11 +93,6 @@ void cOutputCtrl(void)
           dOutputSetSpeed(Tmp, pOut->RunState, pOut->Speed, pOut->SyncTurnParameter);
         }
       }
-      if (pOut->Flags & UPDATE_TACHO_LIMIT)
-      {
-        pOut->Flags &= ~UPDATE_TACHO_LIMIT;
-        dOutputSetTachoLimit(Tmp, pOut->TachoLimit);
-      }
       if (pOut->Flags & UPDATE_MODE)
       {
         pOut->Flags &= ~UPDATE_MODE;
@@ -127,6 +122,11 @@ void cOutputCtrl(void)
           dOutputSetSpeed(Tmp, 0x00, 0x00, 0x00);
           dOutputDisableRegulation(Tmp);
         }
+      }
+      if (pOut->Flags & UPDATE_TACHO_LIMIT)
+      {
+        pOut->Flags &= ~UPDATE_TACHO_LIMIT;
+        dOutputSetTachoLimit(Tmp, pOut->TachoLimit);
       }
       if (pOut->Flags & UPDATE_PID_VALUES)
       {

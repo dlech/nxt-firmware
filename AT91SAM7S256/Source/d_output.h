@@ -39,6 +39,8 @@
 
 #endif
 
+#define REGULATION_TIME         100          // Measured in 1 mS, regulation interval
+
 //Constant reffering to RegMode parameter
 #define REGSTATE_IDLE           0x00
 #define REGSTATE_REGULATED      0x01
@@ -74,6 +76,7 @@ void      dOutputResetTachoLimit(UBYTE MotorNr);
 void      dOutputResetBlockTachoLimit(UBYTE MotorNr);
 void      dOutputResetRotationCaptureCount(UBYTE MotorNr);
 void      dOutputSetPIDParameters(UBYTE MotorNr, UBYTE NewRegPParameter, UBYTE NewRegIParameter, UBYTE NewRegDParameter);
+void      dOutputSetRegulationTime(UBYTE NewRegulationTime);
 
 void 	    dOutputRegulateMotor(UBYTE MotorNr);
 void      dOutputCalculateRampUpParameter(UBYTE MotorNr, ULONG NewTachoLimit);

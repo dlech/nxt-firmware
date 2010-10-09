@@ -27,7 +27,6 @@
 #define REG_MAX_VALUE            100
 
 #define RAMP_TIME_INTERVAL       25           // Measured in 1 mS => 25 mS interval
-#define REGULATION_TIME          100          // Measured in 1 mS => 100 mS regulation interval
 
 #define RAMPDOWN_STATE_RAMPDOWN  0
 #define RAMPDOWN_STATE_CONTINIUE 1
@@ -76,6 +75,7 @@ typedef struct
 
 static    MOTORDATA         MotorData[3];
 static    SYNCMOTORDATA     SyncData;
+static    UBYTE             RegulationTime;
 
 void      dOutputInit(void)
 {
@@ -157,7 +157,7 @@ void dOutputCtrl(void)
       pMD->MotorRunState = MOTOR_RUN_STATE_RUNNING;
 
     }
-    if (pMD->RegulationTimeCount > REGULATION_TIME)
+    if (pMD->RegulationTimeCount > RegulationTime)
     {
       pMD->RegulationTimeCount = 0;
       dOutputRegulateMotor(MotorNr);
@@ -270,6 +270,12 @@ void dOutputSetPIDParameters(UBYTE MotorNr, UBYTE NewRegPParameter, UBYTE NewReg
   pMD->RegPParameter = NewRegPParameter;
   pMD->RegIParameter = NewRegIParameter;
   pMD->RegDParameter = NewRegDParameter;
+}
+
+/* Set new regulation time */
+void dOutputSetRegulationTime(UBYTE NewRegulationTime)
+{
+  RegulationTime = NewRegulationTime;
 }
 
 /* Called to set TachoCountToRun which is used for position control for the model */

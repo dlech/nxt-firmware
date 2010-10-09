@@ -82,7 +82,7 @@ typedef   struct
 typedef   struct
 {
   OUTPUT  Outputs[NO_OF_OUTPUTS];
-  UBYTE   PwnFreq;
+  UBYTE   RegulationTime;               /* RW - Interval between regulation computations */
 }IOMAPOUTPUT;
 
 

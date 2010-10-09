@@ -57,6 +57,7 @@ void      cOutputInit(void* pHeader)
     pOut->RegDParameter = DEFAULT_D_GAIN_FACTOR;
     pOut->Options = 0x00;
   }
+  IOMapOutput.RegulationTime = REGULATION_TIME;
   VarsOutput.TimeCnt = 0;
   dOutputInit();
 }
@@ -135,6 +136,7 @@ void cOutputCtrl(void)
       }
     }
   }
+  dOutputSetRegulationTime(IOMapOutput.RegulationTime);
   dOutputCtrl();
   cOutputUpdateIomap();
 }

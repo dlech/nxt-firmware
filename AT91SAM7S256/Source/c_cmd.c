@@ -255,7 +255,7 @@ static pSysCall SysCallFuncs[SYSCALL_COUNT] =
   cCmdWrapDrawPolygon, 
   cCmdWrapDrawEllipse,
   cCmdWrapDrawFont, // 95
-  cCmdWrapUndefinedSysCall, 
+  cCmdWrapMemoryManager, 
   cCmdWrapUndefinedSysCall, 
   cCmdWrapUndefinedSysCall, 
   cCmdWrapUndefinedSysCall // 99 --> 100 system call slots
@@ -9518,6 +9518,24 @@ NXT_STATUS cCmdWrapFileResize(UBYTE * ArgV[])
   *((UWORD *)ArgV[0]) = LOADER_ERR(LStatus);
   //File handle in low byte of LStatus
   *(ArgV[1]) = LOADER_HANDLE(LStatus);
+  return (NO_ERR);
+}
+
+//cCmdWrapMemoryManager
+//ArgV[0]: (return) Status byte, SBYTE
+//ArgV[1]: Compact?, UBYTE (true or false)
+//ArgV[2]: PoolSize, UWORD
+//ArgV[3]: DataspaceSize, UWORD
+NXT_STATUS cCmdWrapMemoryManager(UBYTE * ArgV[])
+{
+  SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);
+  *pReturnVal = NO_ERR;
+  if (*(ArgV[1])) {
+    *pReturnVal = cCmdDSCompact();  
+  }
+  *(UWORD*)(ArgV[2]) = (UWORD)VarsCmd.PoolSize;
+  *(UWORD*)(ArgV[3]) = VarsCmd.DataspaceSize;
+  
   return (NO_ERR);
 }
 

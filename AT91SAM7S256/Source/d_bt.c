@@ -124,12 +124,12 @@ void      dBtSend(UBYTE *OutputBuffer, UBYTE BytesToSend)
   BTSend(OutputBuffer, BytesToSend);
 }
 
-UWORD     dBtReceivedData(UWORD *pLength, UWORD *pBytesToGo)
+UWORD     dBtReceivedData(UWORD *pLength, UWORD *pBytesToGo, UBYTE NoLengthBytes)
 {
   UWORD    RtnVal;
 
   RtnVal = TRUE;
-  BTReceivedData(pLength, pBytesToGo);
+  BTReceivedData(pLength, pBytesToGo, NoLengthBytes);
   if (*pLength)
   {
     SETTimeout(0);

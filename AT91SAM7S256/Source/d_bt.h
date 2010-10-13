@@ -33,7 +33,7 @@ void      dBtResetTimeOut(void);
 void      dBtClearTimeOut(void);
 UBYTE     dBtGetBc4CmdSignal(void);
 UWORD     dBtTxEnd(void);
-UWORD     dBtReceivedData(UWORD *pLength, UWORD *pBytesToGo);
+UWORD     dBtReceivedData(UWORD *pLength, UWORD *pBytesToGo, UBYTE NoLengthBytes);
 UWORD     dBtCheckForTxBuf(void);
 
 #endif

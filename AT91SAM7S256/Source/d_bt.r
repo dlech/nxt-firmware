@@ -219,7 +219,7 @@ static    UWORD  RemainingLength;
                                         }
 
 
-#define   BTReceivedData(pByteCnt, pToGo)\
+#define   BTReceivedData(pByteCnt, pToGo, noLenBytes)\
                                         {\
                                           UWORD InCnt, Cnt;\
                                           *pByteCnt = 0;\
@@ -228,6 +228,11 @@ static    UWORD  RemainingLength;
                                           if (*AT91C_US1_RNCR == 0)\
                                           {\
                                             InCnt = SIZE_OF_INBUF;\
+                                          }\
+                                          if (noLenBytes)\
+                                          {\
+                                            FullRxLength = InCnt;\
+                                            RemainingLength = InCnt;\
                                           }\
                                           InCnt -= InBufOutCnt; /* Remove already read bytes */\
                                           if (InCnt)\

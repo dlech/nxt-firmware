@@ -336,8 +336,7 @@ void cDisplayLineX(UBYTE X1, UBYTE X2, UBYTE Y, UBYTE PixelMode)
   
   M   = 1 << (Y % 8);
   Y >>= 3;
-  
-  for (X=X1; X<=X2; X++)
+  for (X = X1;X <= X2;X++)
   {
     switch (PixelMode)
     {
@@ -460,6 +459,7 @@ void      cDisplayFillScreen(SCREEN_CORDINATE *pCord, UBYTE PixelMode)
     Y += 8;
   }
 }
+
 
 void cDisplayDraw(UBYTE Cmd,UBYTE PixelMode,UBYTE X1,UBYTE Y1,UBYTE X2,UBYTE Y2)
 {

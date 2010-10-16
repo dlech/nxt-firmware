@@ -312,10 +312,7 @@ UWORD     cLoaderFileRq(UBYTE Cmd, UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLen
     case DELETE:
     {
       ReturnState = cLoaderDeleteFile(pFileName);
-/*
-      ReturnState = dLoaderDelete(pFileName);
-      IOMapLoader.FreeUserFlash = dLoaderReturnFreeUserFlash();
-*/
+
     }
     break;
     case DELETEUSERFLASH:

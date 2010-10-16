@@ -963,6 +963,16 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
 
   SyncData.SyncTachoDif += SyncData.SyncTurnParameter;
 
+  if (SyncData.SyncTachoDif > 500)
+  {
+    SyncData.SyncTachoDif = 500;
+  }
+  if (SyncData.SyncTachoDif < -500)
+  {
+    SyncData.SyncTachoDif = -500;
+  }
+
+  /*
   if ((SWORD)SyncData.SyncTachoDif > 500)
   {
     SyncData.SyncTachoDif = 500;
@@ -971,6 +981,7 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
   {
     SyncData.SyncTachoDif = -500;
   }
+  */
 
   PValue = (SWORD)SyncData.SyncTachoDif * (SWORD)(pOne->RegPParameter/REG_CONST_DIV);
 
@@ -1116,140 +1127,6 @@ void dOutputMotorReachedTachoLimit(UBYTE MotorNr)
       pTwo->MotorRunState    = pTwo->RunStateAtLimit;
       pTwo->RegulationMode   = REGSTATE_IDLE;
     }
-/*
-    if (MotorNr == MOTOR_A)
-    {
-      MotorOne = MotorNr;
-      MotorTwo = MotorOne + 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & B
-        MotorData[MotorOne].MotorSetSpeed = 0;
-	      MotorData[MotorOne].MotorTargetSpeed = 0;
-        MotorData[MotorOne].MotorActualSpeed = 0;
-        MotorData[MotorOne].MotorRunState = pOne->RunStateAtLimit;
-        MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        MotorData[MotorTwo].MotorSetSpeed = 0;
-	      MotorData[MotorTwo].MotorTargetSpeed = 0;
-        MotorData[MotorTwo].MotorActualSpeed = 0;
-        MotorData[MotorTwo].MotorRunState = pTwo->RunStateAtLimit;
-        MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-      }
-      else
-      {
-        MotorTwo = MotorOne + 2;
-        if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-        {
-          //Synchronise motor A & C
-          MotorData[MotorOne].MotorSetSpeed = 0;
-	        MotorData[MotorOne].MotorTargetSpeed = 0;
-          MotorData[MotorOne].MotorActualSpeed = 0;
-          MotorData[MotorOne].MotorRunState = pOne->RunStateAtLimit;
-          MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-          MotorData[MotorTwo].MotorSetSpeed = 0;
-	        MotorData[MotorTwo].MotorTargetSpeed = 0;
-          MotorData[MotorTwo].MotorActualSpeed = 0;
-          MotorData[MotorTwo].MotorRunState = pTwo->RunStateAtLimit;
-          MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-        }
-        else
-        {
-          //Only Motor A has Sync setting => Stop normal
-          MotorData[MotorNr].MotorSetSpeed = 0;
-	        MotorData[MotorNr].MotorTargetSpeed = 0;
-          MotorData[MotorNr].MotorActualSpeed = 0;
-          MotorData[MotorNr].MotorRunState = pOne->RunStateAtLimit;
-          MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
-        }
-      }
-    }
-    if (MotorNr == MOTOR_B)
-    {
-      MotorOne = MotorNr;
-      MotorTwo = MotorOne - 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & B
-        MotorData[MotorOne].MotorSetSpeed = 0;
-	      MotorData[MotorOne].MotorTargetSpeed = 0;
-        MotorData[MotorOne].MotorActualSpeed = 0;
-        MotorData[MotorOne].MotorRunState = pOne->RunStateAtLimit;
-        MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        MotorData[MotorTwo].MotorSetSpeed = 0;
-	      MotorData[MotorTwo].MotorTargetSpeed = 0;
-        MotorData[MotorTwo].MotorActualSpeed = 0;
-        MotorData[MotorTwo].MotorRunState = pTwo->RunStateAtLimit;
-        MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-      }
-      MotorTwo = MotorOne + 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-        MotorData[MotorOne].MotorSetSpeed = 0;
-	      MotorData[MotorOne].MotorTargetSpeed = 0;
-        MotorData[MotorOne].MotorActualSpeed = 0;
-        MotorData[MotorOne].MotorRunState = pOne->RunStateAtLimit;
-        MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        MotorData[MotorTwo].MotorSetSpeed = 0;
-	      MotorData[MotorTwo].MotorTargetSpeed = 0;
-        MotorData[MotorTwo].MotorActualSpeed = 0;
-        MotorData[MotorTwo].MotorRunState = pTwo->RunStateAtLimit;
-        MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-      }
-      else
-      {
-        //Only Motor B has Sync settings => Stop normal
-        MotorData[MotorNr].MotorSetSpeed = 0;
-	      MotorData[MotorNr].MotorTargetSpeed = 0;
-        MotorData[MotorNr].MotorActualSpeed = 0;
-        MotorData[MotorNr].MotorRunState = pOne->RunStateAtLimit;
-        MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
-      }
-    }
-    if (MotorNr == MOTOR_C)
-    {
-      MotorOne = MotorNr;
-      MotorTwo = MotorOne - 2;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & C
-        MotorData[MotorOne].MotorSetSpeed = 0;
-	      MotorData[MotorOne].MotorTargetSpeed = 0;
-        MotorData[MotorOne].MotorActualSpeed = 0;
-        MotorData[MotorOne].MotorRunState = pOne->RunStateAtLimit;
-        MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        MotorData[MotorTwo].MotorSetSpeed = 0;
-	      MotorData[MotorTwo].MotorTargetSpeed = 0;
-        MotorData[MotorTwo].MotorActualSpeed = 0;
-        MotorData[MotorTwo].MotorRunState = pTwo->RunStateAtLimit;
-        MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-      }
-      MotorTwo = MotorOne - 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-        MotorData[MotorOne].MotorSetSpeed = 0;
-	      MotorData[MotorOne].MotorTargetSpeed = 0;
-        MotorData[MotorOne].MotorActualSpeed = 0;
-        MotorData[MotorOne].MotorRunState = pOne->RunStateAtLimit;
-        MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        MotorData[MotorTwo].MotorSetSpeed = 0;
-	      MotorData[MotorTwo].MotorTargetSpeed = 0;
-        MotorData[MotorTwo].MotorActualSpeed = 0;
-        MotorData[MotorTwo].MotorRunState = pTwo->RunStateAtLimit;
-        MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-      }
-      else
-      {
-        //Only Motor C has Sync settings => Stop normal
-        MotorData[MotorNr].MotorSetSpeed = 0;
-	      MotorData[MotorNr].MotorTargetSpeed = 0;
-        MotorData[MotorNr].MotorActualSpeed = 0;
-        MotorData[MotorNr].MotorRunState = pOne->RunStateAtLimit;
-        MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
-      }
-    }
-*/
   }
   else
   {
@@ -1281,83 +1158,6 @@ void dOutputSyncTachoLimitControl(UBYTE MotorNr)
   }
   if (MotorTwo == 0xFF)
     MotorOne = 0xFF;
-/*
-  if (MotorNr == MOTOR_A)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne + 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B
-    }
-    else
-    {
-      MotorTwo = MotorOne + 2;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & C
-      }
-      else
-      {
-        //Only Motor A has Sync setting => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-  if (MotorNr == MOTOR_B)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B, which has already been called when running throught motor A
-      //MotorOne = 0xFF;
-      //MotorTwo = 0xFF;
-    }
-    else
-    {
-      MotorTwo = MotorOne + 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-      }
-      else
-      {
-        //Only Motor B has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-  if (MotorNr == MOTOR_C)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 2;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & C, which has already been called when running throught motor A
-      //MotorOne = 0xFF;
-      //MotorTwo = 0xFF;
-    }
-    else
-    {
-      MotorTwo = MotorOne - 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C, which has already been called when running throught motor B
-        //MotorOne = 0xFF;
-        //MotorTwo = 0xFF;
-      }
-      else
-      {
-        //Only Motor C has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-*/
   if ((MotorOne != 0xFF) && (MotorTwo != 0xFF))
   {
     MOTORDATA * pOne = &(MotorData[MotorOne]);
@@ -1523,77 +1323,6 @@ void dOutputResetSyncMotors(UBYTE MotorNr)
   }
   if (MotorTwo == 0xFF)
     MotorOne = 0xFF;
-/*
-  if (MotorNr == MOTOR_A)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne + 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B
-    }
-    else
-    {
-      MotorTwo = MotorOne + 2;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & C
-      }
-      else
-      {
-        //Only Motor A has Sync setting => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-  if (MotorNr == MOTOR_B)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B
-    }
-    else
-    {
-      MotorTwo = MotorOne + 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-      }
-      else
-      {
-        //Only Motor B has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-  if (MotorNr == MOTOR_C)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 2;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & C
-    }
-    else
-    {
-      MotorTwo = MotorOne - 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-      }
-      else
-      {
-        //Only Motor C has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-*/
   MOTORDATA * pMD = &(MotorData[MotorNr]);
   if ((MotorOne != 0xFF) && (MotorTwo != 0xFF))
   {
@@ -1627,79 +1356,6 @@ void dOutputRampDownSynch(UBYTE MotorNr)
   }
   if (MotorTwo == 0xFF)
     MotorOne = 0xFF;
-/*
-  if (MotorNr == MOTOR_A)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne + 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B
-    }
-    else
-    {
-      MotorTwo = MotorOne + 2;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & C
-      }
-      else
-      {
-        //Only Motor A has Sync setting => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-  if (MotorNr == MOTOR_B)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B, which has already been called when running throught motor A
-      //MotorOne = 0xFF;
-      //MotorTwo = 0xFF;
-    }
-    else
-    {
-      MotorTwo = MotorOne + 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-      }
-      else
-      {
-        //Only Motor B has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-  if (MotorNr == MOTOR_C)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 2;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & C, which has already been called when running throught motor A
-    }
-    else
-    {
-      MotorTwo = MotorOne - 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C,, which has already been called when running throught motor B
-      }
-      else
-      {
-        //Only Motor C has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-*/
   if ((MotorOne != 0xFF) && (MotorTwo != 0xFF))
   {
     MOTORDATA * pOne = &(MotorData[MotorOne]);

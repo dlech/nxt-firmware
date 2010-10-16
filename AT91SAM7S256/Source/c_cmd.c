@@ -1,11 +1,11 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date: 17-02-09 7:30 $
+// Revision date   $Date: 26-02-10 11:38 $
 //
 // Filename        $Workfile:: c_cmd.c                                       $
 //
-// Version         $Revision: 13 $
+// Version         $Revision: 15 $
 //
 // Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_cmd. $
 //
@@ -256,7 +256,7 @@ static pSysCall SysCallFuncs[SYSCALL_COUNT] =
   cCmdWrapDrawEllipse,
   cCmdWrapDrawFont, // 95
   cCmdWrapMemoryManager, 
-  cCmdWrapUndefinedSysCall, 
+  cCmdWrapReadLastResponse, 
   cCmdWrapUndefinedSysCall, 
   cCmdWrapUndefinedSysCall // 99 --> 100 system call slots
     
@@ -408,6 +408,100 @@ UBYTE     cCmdBTGetDeviceType(UBYTE *pCOD)
 
   return (Result);
 }
+
+UBYTE CMD_RESPONSE_LENGTH[255] = 
+{
+   3, // DCStartProgram (x00)
+   3, // DCStopProgram (x01)
+   3, // DCPlaySoundFile (x02)
+   3, // DCPlayTone (x03)
+   3, // DCSetOutputState (x04)
+   3, // DCSetInputMode (x05)
+  25, // DCGetOutputState (x06)
+  16, // DCGetInputValues (x07)
+   3, // DCResetInputScaledValue (x08)
+   3, // DCMessageWrite (x09)
+   3, // DCResetMotorPosition (x0a)
+   5, // DCGetBatteryLevel (x0b)
+   3, // DCStopSoundPlayback (x0c)
+   7, // DCKeepAlive (x0d)
+   4, // DCLSGetStatus (x0e)
+   3, // DCLSWrite (x0f)
+  20, // DCLSRead (x10)
+  23, // DCGetCurrentProgramName (x11)
+   0, // DCGetButtonState (not implemented) (x12)
+  64, // DCMessageRead (x13)
+   0, // DCRESERVED1 (x14)
+   0, // DCRESERVED2 (x15)
+   0, // DCRESERVED3 (x16)
+   0, // DCRESERVED4 (x17)
+   0, // DCRESERVED5 (x18)
+  64, // DCDatalogRead (1.28+) (x19)
+   3, // DCDatalogSetTimes (1.28+) (x1a)
+   4, // DCBTGetContactCount (1.28+) (x1b)
+  21, // DCBTGetContactName (1.28+) (x1c)
+   4, // DCBTGetConnCount (1.28+) (x1d)
+  21, // DCBTGetConnName (1.28+) (x1e)
+   3, // DCSetProperty(1.28+) (x1f)
+   7, // DCGetProperty (1.28+) (x20)
+   3, // DCUpdateResetCount (1.28+) (x21)
+   7, // RC_SET_VM_STATE (enhanced only) (x22)
+   7, // RC_GET_VM_STATE (enhanced only) (x23)
+  15, // RC_SET_BREAKPOINTS (enhanced only) (x24)
+  15, // RC_GET_BREAKPOINTS (enhanced only) (x25)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (x26-x2f)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (x30-x3f)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (x40-x4f)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (x50-x5f)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (x60-x6f)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (x70-x7f)
+   8, //   OPENREAD        = 0x80,
+   4, //   OPENWRITE       = 0x81,
+  64, //   READ            = 0x82, (actually is a variable length response)
+   6, //   WRITE           = 0x83,
+   4, //   CLOSE           = 0x84,
+  23, //   DELETE          = 0x85,
+  28, //   FINDFIRST       = 0x86,
+  28, //   FINDNEXT        = 0x87,
+   7, //   VERSIONS        = 0x88,
+   4, //   OPENWRITELINEAR = 0x89,
+   7, //   OPENREADLINEAR  = 0x8A, (not actually implemented)
+   4, //   OPENWRITEDATA   = 0x8B,
+   8, //   OPENAPPENDDATA  = 0x8C,
+   4, //   CROPDATAFILE    = 0x8D,    /* New cmd for datalogging */
+   0, //   XXXXXXXXXXXXXX  = 0x8E,
+   0, //   XXXXXXXXXXXXXX  = 0x8F,
+  34, //   FINDFIRSTMODULE = 0x90,
+  34, //   FINDNEXTMODULE  = 0x91,
+   4, //   CLOSEMODHANDLE  = 0x92,
+   0, //   XXXXXXXXXXXXXX  = 0x93,
+  64, //   IOMAPREAD       = 0x94, (actually is a variable length response)
+   9, //   IOMAPWRITE      = 0x95,
+   0, //   XXXXXXXXXXXXXX  = 0x96,
+   7, //   BOOTCMD         = 0x97,  (can only be executed via USB)
+   3, //   SETBRICKNAME    = 0x98,
+   0, //   XXXXXXXXXXXXXX  = 0x99,
+  10, //   BTGETADR        = 0x9A,
+  33, //   DEVICEINFO      = 0x9B,
+   0, //   XXXXXXXXXXXXXX  = 0x9C,
+   0, //   XXXXXXXXXXXXXX  = 0x9D,
+   0, //   XXXXXXXXXXXXXX  = 0x9E,
+   0, //   XXXXXXXXXXXXXX  = 0x9F,
+   3, //   DELETEUSERFLASH = 0xA0,
+   5, //   POLLCMDLEN      = 0xA1,
+  64, //   POLLCMD         = 0xA2,
+  44, //   RENAMEFILE      = 0xA3,
+   3, //   BTFACTORYRESET  = 0xA4,
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (xA5-xAF)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (xB0-xBf)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (xC0-xCf)
+   0, //   RESIZEDATAFILE  = 0xD0,
+   0, //   SEEKFROMSTART   = 0xD1,
+   0, //   SEEKFROMCURRENT = 0xD2,
+   0, //   SEEKFROMEND     = 0xD3
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (xD4-xDF)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // (xF0-xFF)
+};
 
 //cCmdHandleRemoteCommands is the registered handler for "direct" command protocol packets
 //It is only intended to be called via c_comm's main protocol handler
@@ -1226,12 +1320,15 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
 
         //If telegram doesn't check out, do nothing.  No errors are ever returned for reply telegrams.
       }
-      break;
+      // fall through to the default case
+//      break;
 
       default:
       {
         //Unhandled reply telegram.  Do nothing.
         //!!! Could/should stash unhandled/all replies somewhere so a syscall could read them
+        VarsCmd.LastResponseLength = CMD_RESPONSE_LENGTH[pInBuf[0]];
+        memcpy((PSZ)VarsCmd.LastResponseBuffer, (PSZ)(&pInBuf[0]), VarsCmd.LastResponseLength-1);
       }
       break;
     };
@@ -1418,10 +1515,9 @@ void cCmdCtrl(void)
             IOMapCmd.ProgStatus = PROG_OK;
           }
         }
-        else if (Status == CLUMP_SUSPEND || Status == CLUMP_DONE) {
+        else if (Status == CLUMP_SUSPEND || Status == CLUMP_DONE)
           Continue = TRUE; // queue isn't empty, didn't timeout
           //Only rotate RunQ on a "normal" finish, i.e. no error, clump end, or breakout request
-        }
         else if (Status == ROTATE_QUEUE) { // done and suspend do their own
           cCmdRotateQ();
           Continue= TRUE;
@@ -1434,7 +1530,6 @@ void cCmdCtrl(void)
         {
           Continue = FALSE;
           VarsCmd.VMState = VM_RESET1;
-//          IOMapCmd.ProgStatus = PROG_ERROR;
           IOMapCmd.ProgStatus = Status;
         }
         else if (Status == STOP_REQ)
@@ -1476,7 +1571,6 @@ void cCmdCtrl(void)
         //2. Proceed to VM_RESET1 (some unneeded work, yes, but preserves contract with UI
         if (IS_ERR(Status))
         {
-//          IOMapCmd.ProgStatus = PROG_ERROR;
           IOMapCmd.ProgStatus = Status;
           VarsCmd.VMState = VM_RESET1;
         }
@@ -2101,6 +2195,9 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
   VarsCmd.Debugging  = FALSE;
   VarsCmd.PauseClump = NOT_A_CLUMP;
   VarsCmd.PausePC    = 0xFFFF;
+  // restore default data mode values
+  pMapComm->BtDataMode = DATA_MODE_NXT|DATA_MODE_UPDATE;
+  pMapComm->HsDataMode = DATA_MODE_RAW|DATA_MODE_UPDATE;
   return (Status);
 }
 
@@ -2151,8 +2248,7 @@ void cCmdDeactivateProgram()
     tmp = i;
     //Close file
     if (*(VarsCmd.FileHandleTable[i]) != 0)
-      pMapLoader->pFunc(CLOSE, &tmp, NULL, NULL);
-//      pMapLoader->pFunc(CROPDATAFILE, &tmp, NULL, NULL);
+      pMapLoader->pFunc(CROPDATAFILE, &tmp, NULL, NULL); /*CLOSE*/
   }
 
   //Clear FileHandleTable
@@ -4469,33 +4565,6 @@ NXT_STATUS cCmdInterpFromClump()
   pInstr = pClumpRec->PC; // abs
   lastClumpInstr= pClumpRec->CodeEnd; // abs
 
-/*
-  // are we free running and reach a breakpoint?
-  if (VarsCmd.VMState == VM_RUN_FREE)
-  {
-    CLUMP_BREAK_REC* pBreakpoints = pClumpRec->Breakpoints;
-    for(int j = 0; j < MAX_BREAKPOINTS; j++)
-    {
-      if (pBreakpoints[j].Enabled && 
-          (pBreakpoints[j].Location == (CODE_INDEX)(pClumpRec->PC-pClumpRec->CodeStart)))
-      {
-        VarsCmd.VMState = VM_RUN_PAUSE;
-        return BREAKOUT_REQ;
-      }
-    }
-    // auto pause at clump == pauseClump and relative PC = pausePC
-    if ((Clump == VarsCmd.PauseClump) && 
-        ((CODE_INDEX)(pClumpRec->PC-pClumpRec->CodeStart) == VarsCmd.PausePC))
-    {
-      VarsCmd.VMState     = VM_RUN_PAUSE;
-      // turn off the auto pause flags
-      VarsCmd.PauseClump = NOT_A_CLUMP;
-      VarsCmd.PausePC    = 0xFFFF;
-      return BREAKOUT_REQ;
-    }
-  }
-*/
-  
   if(VarsCmd.VMState == VM_RUN_FREE)
     i = pClumpRec->Priority;
   else
@@ -5056,7 +5125,11 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
       if (TypeCode2 == TC_FLOAT)
       {
         FltArgVal2 = cCmdGetFloatValFromDataArg(Arg2, 0);
-        Count = sprintf(Buffer, "%.4f", FltArgVal2);
+        if ((FltArgVal2 > (float)99999999999.9999)||(FltArgVal2 < (float)-9999999999.9999)){ // these are the widest %.4f numbers that will fit on display
+          Count = sprintf(Buffer, "%.6g", FltArgVal2);
+        }
+        else
+          Count = sprintf(Buffer, "%.4f", FltArgVal2);
         Count++; //add room for null terminator
         // remove trailing zeros
         while (Buffer[Count-2] == 0x30) {
@@ -5984,7 +6057,7 @@ ULONG cCmdBinop(CODE_WORD const Code, ULONG LeftOp, ULONG RightOp, TYPE_CODE Lef
 
     case OP_XOR:
     {
-      return ((LeftOp | RightOp) & (~(LeftOp & RightOp))); // LeftOp ^ RightOp
+      return ((LeftOp | RightOp) & (~(LeftOp & RightOp)));
     }
 
     case OP_CMP:
@@ -6229,7 +6302,7 @@ NXT_STATUS cCmdMove(DATA_ARG Arg1, DATA_ARG Arg2)
       Status= NO_ERR;
     }
   }
-  else if(tc1 == TC_FLOAT && tc2 == TC_FLOAT) { 
+  else if(tc1 == TC_FLOAT && tc2 == TC_FLOAT) { // may also need to speed up float to int and int to float conversions
     moveFloat++;
     pArg1= VarsCmd.pDataspace + TOC1Ptr->DSOffset;
     pArg2= VarsCmd.pDataspace + TOC2Ptr->DSOffset;
@@ -9535,6 +9608,47 @@ NXT_STATUS cCmdWrapMemoryManager(UBYTE * ArgV[])
   }
   *(UWORD*)(ArgV[2]) = (UWORD)VarsCmd.PoolSize;
   *(UWORD*)(ArgV[3]) = VarsCmd.DataspaceSize;
+  
+  return (NO_ERR);
+}
+
+//cCmdWrapReadLastResponse
+//ArgV[0]: (return) Status byte, SBYTE
+//ArgV[1]: Clear?, UBYTE (true or false)
+//ArgV[2]: Length, UBYTE out
+//ArgV[3]: Command, UBYTE out
+//ArgV[4]: Buffer, out
+NXT_STATUS cCmdWrapReadLastResponse(UBYTE * ArgV[])
+{
+  SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);
+  UWORD bufLen = 0;
+  if (VarsCmd.LastResponseLength > 0)
+    bufLen = VarsCmd.LastResponseLength-2;
+
+  //Resolve array arguments
+  // output buffer
+  DV_INDEX DVIndex = *(DV_INDEX *)(ArgV[4]);
+  //Size Buffer to Length
+  NXT_STATUS Status = cCmdDVArrayAlloc(DVIndex, bufLen);
+  if (IS_ERR(Status))
+    return Status;
+  UBYTE* pBuf = cCmdDVPtr(DVIndex);
+  ArgV[4] = pBuf;
+  *(ArgV[2]) = bufLen; // Length
+  *pReturnVal = NO_ERR;
+  
+  if (bufLen > 0)
+  {
+    memset(pBuf, 0, bufLen);
+    memcpy(pBuf, (PSZ)&(VarsCmd.LastResponseBuffer[2]), bufLen-1);
+    *pReturnVal = VarsCmd.LastResponseBuffer[1];
+    *(ArgV[3]) = VarsCmd.LastResponseBuffer[0];
+  }
+  // clear?
+  if (*(ArgV[1])) {
+    VarsCmd.LastResponseLength = 0;
+    memset(VarsCmd.LastResponseBuffer, 0, 64);
+  }
   
   return (NO_ERR);
 }

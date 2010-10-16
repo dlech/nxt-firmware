@@ -1709,7 +1709,7 @@ void cCmdDrawString(UBYTE *pString, ULONG X, ULONG Y, UBYTE InvertMode, UBYTE Lo
 
 //------------------------------------------------------------------
 // cCmdRestoreDefaultScreen - Restore to Default 'Running' screen
-__ramfunc  void cCmdRestoreDefaultScreen(void)
+void cCmdRestoreDefaultScreen(void)
 {
   //If this program has taken over the display, reset it for the UI
   if (VarsCmd.DirtyDisplay == TRUE)

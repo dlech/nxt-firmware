@@ -92,7 +92,7 @@ void cOutputCtrl(void)
 		    pOut->Flags &= ~UPDATE_SPEED;
 		    if (pOut->Mode & MOTORON)
         {  	
-		      dOutputSetSpeed(Tmp, pOut->RunState, pOut->Speed, pOut->SyncTurnParameter);
+		      dOutputSetSpeed (Tmp, pOut->RunState, pOut->Speed, pOut->SyncTurnParameter);
 		    }		
 		  }
       if (pOut->Flags & UPDATE_TACHO_LIMIT)

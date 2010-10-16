@@ -1,11 +1,11 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 3/21/09 10:03a                                    $
+// Revision date   $Date:: 24-06-09 12:15                                    $
 //
 // Filename        $Workfile:: d_loader.h                                    $
 //
-// Version         $Revision:: 17                                            $
+// Version         $Revision:: 18                                            $
 //
 // Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_load $
 //
@@ -18,7 +18,7 @@
 #define   FILETABLE_SIZE                ((2 * SECTORSIZE)/4)
 #define   STARTOFFILETABLE              (0x140000L - (FILETABLE_SIZE*4))
 #define   FILEPTRTABLE                  ((const ULONG*)(0x140000L - (FILETABLE_SIZE*4)))
-#define   STARTOFUSERFLASH              (0x125800L)//(0x124600L)
+#define   STARTOFUSERFLASH              (0x125800L)//(0x124600L) 1.31 == (0x122100L)
 #define   SIZEOFUSERFLASH               ((ULONG)STARTOFFILETABLE - STARTOFUSERFLASH)
 
 #define   SIZEOFFLASH                   262144L

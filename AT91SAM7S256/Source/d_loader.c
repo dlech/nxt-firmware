@@ -1,11 +1,11 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 2-12-08 14:30                                     $
+// Revision date   $Date:: 24-06-09 8:53                                     $
 //
 // Filename        $Workfile:: d_loader.c                                    $
 //
-// Version         $Revision:: 16                                            $
+// Version         $Revision:: 18                                            $
 //
 // Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_load $
 //
@@ -20,7 +20,7 @@
 #include  <string.h>
 #include  <ctype.h>
 
-#define   FILEVERSION                   (0x0000010CL)
+#define   FILEVERSION                   (0x0000010DL) //(0x0000010CL)
 
 #define   MAX_FILES                     ((FILETABLE_SIZE) - 1)  /* Last file entry is used for file version*/
 #define   FILEVERSIONINDEX              ((FILETABLE_SIZE) - 1)  /* Last file entry is used for file version*/
@@ -219,7 +219,9 @@ UWORD     dLoaderDeleteFilePtr(UWORD Handle)
       /* Update the HandleTable[].FileIndex */
       for (LongCnt = 0; LongCnt < MAX_HANDLES; LongCnt++)
       {
-        if ((HandleTable[Handle].FileIndex <= HandleTable[LongCnt].FileIndex) && (FREE != HandleTable[LongCnt].Status))
+        
+        /* FileIndex must not be decremented for to the file to be deleted (when Handle = LongCnt)*/
+        if ((HandleTable[Handle].FileIndex < HandleTable[LongCnt].FileIndex) && (FREE != HandleTable[LongCnt].Status))
         {
           (HandleTable[LongCnt].FileIndex)--;
         }

@@ -144,87 +144,121 @@ const ULONG CLK_OR_DATA_PINS[4] = {CHANNEL_ONE_CLK | CHANNEL_ONE_DATA,
 
 #define   SETDebugOutputLow				*AT91C_PIOA_CODR	= 0x20000000
 
+
 #define	  SETClkComOneHigh		*AT91C_PIOA_SODR = CHANNEL_ONE_CLK
+
 #define	  SETClkComOneLow		*AT91C_PIOA_CODR = CHANNEL_ONE_CLK
+
 #define   GetClkComOnePinLevel		*AT91C_PIOA_PDSR & CHANNEL_ONE_CLK
 
 #define	  SETClkComTwoHigh		*AT91C_PIOA_SODR = CHANNEL_TWO_CLK
+
 #define	  SETClkComTwoLow		*AT91C_PIOA_CODR = CHANNEL_TWO_CLK
+
 #define   GetClkComTwoPinLevel		*AT91C_PIOA_PDSR & CHANNEL_TWO_CLK
 
 #define	  SETClkComThreeHigh		*AT91C_PIOA_SODR = CHANNEL_THREE_CLK
+
 #define	  SETClkComThreeLow		*AT91C_PIOA_CODR = CHANNEL_THREE_CLK
+
 #define   GetClkComThreePinLevel	*AT91C_PIOA_PDSR & CHANNEL_THREE_CLK
 
 #define	  SETClkComFourHigh		*AT91C_PIOA_SODR = CHANNEL_FOUR_CLK
+
 #define	  SETClkComFourLow		*AT91C_PIOA_CODR = CHANNEL_FOUR_CLK
+
 #define   GetClkComFourPinLevel		*AT91C_PIOA_PDSR & CHANNEL_FOUR_CLK
 
+
 #define	  SETDataComOneHigh		*AT91C_PIOA_SODR = CHANNEL_ONE_DATA
+
 #define   SETDataComOneLow		*AT91C_PIOA_CODR = CHANNEL_ONE_DATA
+
 #define   GetDataComOnePinLevel		*AT91C_PIOA_PDSR & CHANNEL_ONE_DATA
+
 #define   GETDataComOnePinDirection	*AT91C_PIOA_OSR  & CHANNEL_ONE_DATA
 
 #define	  SETDataComTwoHigh		*AT91C_PIOA_SODR = CHANNEL_TWO_DATA
+
 #define   SETDataComTwoLow		*AT91C_PIOA_CODR = CHANNEL_TWO_DATA
+
 #define   GetDataComTwoPinLevel		*AT91C_PIOA_PDSR & CHANNEL_TWO_DATA
+
 #define   GETDataComTwoPinDirection	*AT91C_PIOA_OSR  & CHANNEL_TWO_DATA
 
 #define	  SETDataComThreeHigh		*AT91C_PIOA_SODR = CHANNEL_THREE_DATA
+
 #define   SETDataComThreeLow		*AT91C_PIOA_CODR = CHANNEL_THREE_DATA
+
 #define   GetDataComThreePinLevel	*AT91C_PIOA_PDSR & CHANNEL_THREE_DATA
+
 #define   GETDataComThreePinDirection	*AT91C_PIOA_OSR  & CHANNEL_THREE_DATA
 
 #define	  SETDataComFourHigh		*AT91C_PIOA_SODR = CHANNEL_FOUR_DATA
+
 #define   SETDataComFourLow		*AT91C_PIOA_CODR = CHANNEL_FOUR_DATA
+
 #define   GetDataComFourPinLevel	*AT91C_PIOA_PDSR & CHANNEL_FOUR_DATA
+
 #define   GETDataComFourPinDirection	*AT91C_PIOA_OSR  & CHANNEL_FOUR_DATA
 
 #define   SETDataComOneToInput          *AT91C_PIOA_ODR  = CHANNEL_ONE_DATA;
+
 #define   SETDataComOneToOutput		*AT91C_PIOA_OER  = CHANNEL_ONE_DATA;
 
 #define   SETDataComTwoToInput          *AT91C_PIOA_ODR  = CHANNEL_TWO_DATA;
+
 #define   SETDataComTwoToOutput		*AT91C_PIOA_OER  = CHANNEL_TWO_DATA;
 
 #define   SETDataComThreeToInput        *AT91C_PIOA_ODR  = CHANNEL_THREE_DATA;
+
 #define   SETDataComThreeToOutput	*AT91C_PIOA_OER  = CHANNEL_THREE_DATA;
 
 #define   SETDataComFourToInput         *AT91C_PIOA_ODR  = CHANNEL_FOUR_DATA;
+
 #define   SETDataComFourToOutput	*AT91C_PIOA_OER  = CHANNEL_FOUR_DATA;
 
 #define   DISABLEPullupDataComOne	*AT91C_PIOA_PPUDR = CHANNEL_ONE_DATA;
+
 #define   DISABLEPullupClkComOne	*AT91C_PIOA_PPUDR = CHANNEL_ONE_CLK;
 
 #define   DISABLEPullupDataComTwo	*AT91C_PIOA_PPUDR = CHANNEL_TWO_DATA;
+
 #define   DISABLEPullupClkComTwo	*AT91C_PIOA_PPUDR = CHANNEL_TWO_CLK;
 
 #define   DISABLEPullupDataComThree	*AT91C_PIOA_PPUDR = CHANNEL_THREE_DATA;
+
 #define   DISABLEPullupClkComThree	*AT91C_PIOA_PPUDR = CHANNEL_THREE_CLK;
 
 #define   DISABLEPullupDataComFour	*AT91C_PIOA_PPUDR = CHANNEL_FOUR_DATA;
+
 #define   DISABLEPullupClkComFour	*AT91C_PIOA_PPUDR = CHANNEL_FOUR_CLK;
 
 #define   ENABLEPullupDataComOne	*AT91C_PIOA_PPUER = CHANNEL_ONE_DATA;
+
 #define   ENABLEPullupClkComOne 	*AT91C_PIOA_PPUER = CHANNEL_ONE_CLK;
 
 #define   ENABLEPullupDataComTwo	*AT91C_PIOA_PPUER = CHANNEL_TWO_DATA;
+
 #define   ENABLEPullupClkComTwo 	*AT91C_PIOA_PPUER = CHANNEL_TWO_CLK;
 
 #define   ENABLEPullupDataComThree	*AT91C_PIOA_PPUER = CHANNEL_THREE_DATA;
+
 #define   ENABLEPullupClkComThree	*AT91C_PIOA_PPUER = CHANNEL_THREE_CLK;
 
 #define   ENABLEPullupDataComFour	*AT91C_PIOA_PPUER = CHANNEL_FOUR_DATA;
+
 #define   ENABLEPullupClkComFour	*AT91C_PIOA_PPUER = CHANNEL_FOUR_CLK;
 
 #define SETClkLow(ChannelNr)  {\
   *AT91C_PIOA_CODR = CLK_PINS[ChannelNr];\
   LowSpeedData[ChannelNr].ClkStatus = 0;\
-}
+                                         }
 
 #define SETClkHigh(ChannelNr)  {\
   *AT91C_PIOA_SODR = CLK_PINS[ChannelNr];\
   LowSpeedData[ChannelNr].ClkStatus = 1;\
-}
+                                         }
 
 #define SETDataLow(ChannelNr)  {\
   *AT91C_PIOA_CODR = DATA_PINS[ChannelNr];\
@@ -248,11 +282,11 @@ const ULONG CLK_OR_DATA_PINS[4] = {CHANNEL_ONE_CLK | CHANNEL_ONE_DATA,
 
 #define   ENABLEPWMTimerForLowCom  {\
   *AT91C_PWMC_ENA = AT91C_PWMC_CHID0;	/* Enable PWM output channel 0 */\
-}
+										}
 
 #define    DISABLEPWMTimerForLowCom  {\
   *AT91C_PWMC_DIS = AT91C_PWMC_CHID0;	/* Disable PWM output channel 0 */\
-}
+										}
 										
 #define    OLD_DISABLEPWMTimerForLowCom	{\
 										  *AT91C_PWMC_DIS	 = AT91C_PWMC_CHID0;			/* Disable PWM output channel 0 */\
@@ -609,7 +643,7 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
   LowSpeedData[ChannelNumber].RxState = RX_DATA_CLK_LOW;\
   LowSpeedData[ChannelNumber].ReStartBit = (1 - (NoRestart & (1<<ChannelNumber)));\
   LowSpeedData[ChannelNumber].RxWaitCnt = 0;\
-}
+											         }
 											
 											
 #define STATUSTxCom(ChannelNumber, Status)     {\

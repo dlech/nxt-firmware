@@ -38,9 +38,14 @@ enum
   BT_ARM_OFF,
   BT_ARM_CMD_MODE,
   BT_ARM_DATA_MODE,
-  BT_ARM_GPS_MODE,
-  BT_ARM_RAW_MODE
 };
+
+// Constants refering to BtDataMode and HsDataMode
+#define DATA_MODE_NXT    0x00
+#define DATA_MODE_GPS    0x01
+#define DATA_MODE_RAW    0x02
+#define DATA_MODE_MASK   0x07
+#define DATA_MODE_UPDATE 0x08
 
 //Constant reffering to BtStateStatus
 #define BT_BRICK_VISIBILITY     0x01
@@ -267,11 +272,12 @@ typedef   struct
   UBYTE          HsState;
 
   UBYTE          UsbState;
+  UBYTE          Spare1; // fill the vacant byte that would otherwise be here
 
   UWORD          HsMode;
   
-  UBYTE          BtState; // off, cmd, data, gps, raw
-  UBYTE          Unused1;
+  UBYTE          BtDataMode; // nxt, gps, raw
+  UBYTE          HsDataMode; // nxt, gps, raw
 
 }IOMAPCOMM;
 

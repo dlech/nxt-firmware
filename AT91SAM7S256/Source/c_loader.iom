@@ -1,11 +1,11 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 16-12-08 12:11                                    $
+// Revision date   $Date:: 19-03-10 12:36                                    $
 //
 // Filename        $Workfile:: c_loader.iom                                  $
 //
-// Version         $Revision:: 14                                            $
+// Version         $Revision:: 17                                            $
 //
 // Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_load $
 //
@@ -21,7 +21,7 @@
 //For example, version 1.5 would be 0x0105
 //If these switch to little-endian, be sure to update
 //definition and usages of VM_OLDEST_COMPATIBLE_VERSION, too!
-#define   FIRMWAREVERSION               0x011C //1.28
+#define   FIRMWAREVERSION               0x011F //1.31
 #define   PROTOCOLVERSION               0x017C //1.124
 
 enum

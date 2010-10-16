@@ -168,17 +168,7 @@ typedef SBYTE PROGRAM_STATUS;
 #define PROG_ERROR   0x03
 #define PROG_ABORT   0x04
 #define PROG_RESET   0x05
-/*
-typedef enum
-{
-  PROG_IDLE,
-  PROG_OK,
-  PROG_RUNNING,
-  PROG_ERROR,
-  PROG_ABORT,
-  PROG_RESET
-} PROGRAM_STATUS;
-*/
+
 //Maximum size of memory pool, in bytes
 //!!! Code assumes this value is evenly divisible by 4!
 #define POOL_MAX_SIZE 32768

@@ -63,7 +63,7 @@ void      cCmdExit(void);
 #define WRITE_IOMAP_OFFSETS 0
 
 #if WRITE_IOMAP_OFFSETS
-void cCmdWriteIOMapOffsetsFile();
+void cCmdWriteIOMapOffsetsFile(); 
 #endif
 
 //
@@ -566,6 +566,10 @@ typedef struct
   UBYTE PauseClump;
   CODE_INDEX PausePC;
   
+  // add a buffer for storing the last response raw content (64 bytes)
+  UBYTE LastResponseBuffer[64];
+  UBYTE LastResponseLength;
+  
 #if VM_BENCHMARK
   ULONG InstrCount;
   ULONG Average;
@@ -575,10 +579,8 @@ typedef struct
   ULONG CompactionCount;
   ULONG LastCompactionTick;
   ULONG MaxCompactionTime;
-  ULONG CmdCtrlOverTimeCnt;
-  ULONG MaxCmdCtrlOverTimeLen;
-  ULONG OpcodeBenchmarks[OPCODE_COUNT][3];
-  ULONG SyscallBenchmarks[SYSCALL_COUNT][3];
+  ULONG OpcodeBenchmarks[OPCODE_COUNT][4];
+  ULONG SyscallBenchmarks[SYSCALL_COUNT][4];
   UBYTE Buffer[256];
 #endif
 
@@ -906,6 +908,7 @@ NXT_STATUS cCmdWrapDrawPolygon(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapDrawEllipse(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapDrawFont(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapMemoryManager(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapReadLastResponse(UBYTE * ArgV[]);
 
 NXT_STATUS cCmdWrapUndefinedSysCall(UBYTE * ArgV[]);
 

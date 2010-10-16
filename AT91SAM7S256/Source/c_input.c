@@ -2,11 +2,11 @@
 //
 // Date init       14.12.2004
 //
-// Revision date   $Date:: 3/21/09 10:31a                                    $
+// Revision date   $Date:: 19-03-10 12:36                                    $
 //
 // Filename        $Workfile:: c_input.c                                     $
 //
-// Version         $Revision:: 39                                            $
+// Version         $Revision:: 40                                            $
 //
 // Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/c_inpu $
 //
@@ -263,9 +263,12 @@ void      cInputCtrl(void)
 
         /* A type change has been carried out earlier - waiting for valid data   */
         /* The color sensor requires special startup sequence with communication */
-        if ((sType == COLORFULL) || (sType == COLORRED)  ||
-            (sType == COLORGREEN)|| (sType == COLORBLUE) ||
-            (sType == COLOREXIT) || (sType == COLORNONE))
+        if ((sType == COLORFULL) || 
+            (sType == COLORRED)  ||
+            (sType == COLORGREEN)|| 
+            (sType == COLORBLUE) ||
+            (sType == COLOREXIT) || 
+            (sType == COLORNONE))
         {
           cInputCalcSensorValues(Tmp);
         }
@@ -359,10 +362,11 @@ void      cInputCalcSensorValues(UBYTE No)
                             &(VarsInput.EdgeCnt[No]),
                             ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
                             ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
+
     }
     break;
 
-    /* Triple case intended */
+    /* Tripple case intended */
     case LOWSPEED:
     case LOWSPEED_9V:
     case HIGHSPEED:
@@ -382,11 +386,6 @@ void      cInputCalcSensorValues(UBYTE No)
       {
         case SENSOROFF:
         {
-
-          /* Make sure that sensor data are invalid while unplugged*/
-          VarsInput.InvalidTimer[No]        = INVALID_RELOAD_COLOR;
-          IOMapInput.Inputs[No].InvalidData = INVALID_DATA;
-
           /* Check if sensor has been attached */
           if (dInputCheckColorStatus(No))
           {
@@ -449,11 +448,6 @@ void      cInputCalcSensorValues(UBYTE No)
       {
         case SENSOROFF:
         {
-
-          /* Make sure that sensor data are invalid while unplugged */
-          VarsInput.InvalidTimer[No]        = INVALID_RELOAD_COLOR;
-          IOMapInput.Inputs[No].InvalidData = INVALID_DATA;
-
           /* Check if sensor has been attached */
           if (dInputCheckColorStatus(No))
           {
@@ -1109,6 +1103,8 @@ void      cInputSetupType(UBYTE Port, UBYTE newType, UBYTE OldType)
       dInputSetDirInDigi1(Port);
       IOMapInput.Colors[Port].CalibrationState = SENSORCAL;
       VarsInput.VarsColor[Port].ColorInitState = 0;
+
+      IOMapInput.Inputs[Port].SensorValue = BLACKCOLOR;
     }
     break;
 

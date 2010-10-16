@@ -4,7 +4,6 @@
 #include  "Test2.txt"
 //#define TESTPRG                     // If defined the test program will be included
 
-
 extern    void BtIo(void);
 
 const     char  BUILD_DATE[] = __DATE__;

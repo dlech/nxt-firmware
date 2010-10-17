@@ -21,6 +21,7 @@
 #define MAXIMUM_SPEED_RW         -100
 
 #define INPUT_SCALE_FACTOR       100
+#define SPEED_TIME               100
 
 #define MAX_COUNT_TO_RUN         10000000
 
@@ -56,6 +57,7 @@ typedef struct
   SWORD MotorRampUpIncrement;                 // Tell the number of count between each speed adjustment during Ramp-up
   SWORD AccError;                             // Accumulated Error, used within the integrator of the PID regulation
   SWORD OldPositionError;                     // Used within position regulation
+  SWORD PositionFracError;                    // Fractionnal position error of last position update
   SLONG DeltaCaptureCount;                    // Counts within last regulation time-periode
   SLONG CurrentCaptureCount;                  // Total counts since motor counts has been reset
   SLONG MotorTachoCountToRun;                 // Holds number of counts to run. 0 = Run forever
@@ -98,6 +100,7 @@ void      dOutputInit(void)
     pMD->MotorTachoCountToRun = 0;
     pMD->MotorRunForever = 1;
     pMD->AccError = 0;
+    pMD->PositionFracError = 0;
     pMD->RegulationTimeCount = 0;
     pMD->RegPParameter = DEFAULT_P_GAIN_FACTOR;
     pMD->RegIParameter = DEFAULT_I_GAIN_FACTOR;
@@ -152,6 +155,7 @@ void dOutputCtrl(void)
       pMD->MotorSetSpeed = 0;
       pMD->MotorActualSpeed = 0;
       pMD->MotorTargetSpeed = 0;
+      pMD->PositionFracError = 0;
       pMD->RegulationTimeCount = 0;
       pMD->DeltaCaptureCount = 0;
       pMD->MotorRunState = MOTOR_RUN_STATE_RUNNING;
@@ -209,6 +213,7 @@ void dOutputEnableRegulation(UBYTE MotorNr, UBYTE RegulationMode)
   {
     pMD->AccError = 0;
     pMD->OldPositionError = 0;
+    pMD->PositionFracError = 0;
   }
 
   if (pMD->RegulationMode & REGSTATE_SYNCHRONE)
@@ -333,6 +338,7 @@ void dOutputSetSpeed (UBYTE MotorNr, UBYTE NewMotorRunState, SBYTE Speed, SBYTE 
     {
       pMD->AccError = 0;
       pMD->OldPositionError = 0;
+      pMD->PositionFracError = 0;
       pMD->RegulationTimeCount = 0;
       pMD->DeltaCaptureCount = 0;
       TACHOCountReset(MotorNr);
@@ -870,10 +876,27 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
   SLONG IValue;
   SLONG DValue;
   SLONG TotalRegValue;
-  SLONG NewSpeedCount = 0;
+  SLONG NewSpeed;
+  SLONG NewSpeedCount;
 
   MOTORDATA * pMD = &(MotorData[MotorNr]);
-  NewSpeedCount = (SWORD)((pMD->MotorTargetSpeed * MAX_CAPTURE_COUNT)/INPUT_SCALE_FACTOR);
+  /* Apply fractional speed in case RegulationTime is different from
+   * SPEED_TIME.  In this case, fractional part is accumulated until it reach
+   * one (with "one" being SPEED_TIME).  This is use the same principle as the
+   * Bresenham algorithm. */
+  NewSpeed = pMD->MotorTargetSpeed * MAX_CAPTURE_COUNT / INPUT_SCALE_FACTOR;
+  NewSpeedCount = NewSpeed * RegulationTime / SPEED_TIME;
+  pMD->PositionFracError += NewSpeed * RegulationTime % SPEED_TIME;
+  if (pMD->PositionFracError > SPEED_TIME)
+  {
+    pMD->PositionFracError -= SPEED_TIME;
+    NewSpeedCount++;
+  }
+  else if (pMD->PositionFracError < -SPEED_TIME)
+  {
+    pMD->PositionFracError += SPEED_TIME;
+    NewSpeedCount--;
+  }
 
   PositionError = (pMD->OldPositionError - pMD->DeltaCaptureCount) + NewSpeedCount;
 

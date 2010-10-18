@@ -673,6 +673,13 @@ void dOutputRampDownFunction(UBYTE MotorNr)
   }
 }
 
+UBYTE dOutputRegModeAtLimit(UBYTE RunStateAtLimit)
+{
+  if (RunStateAtLimit==MOTOR_RUN_STATE_HOLD)
+    return REGSTATE_REGULATED;
+ return REGSTATE_IDLE;
+}
+
 /* Function used to tell whether the wanted position is obtained */
 void dOutputTachoLimitControl(UBYTE MotorNr)
 {
@@ -692,7 +699,7 @@ void dOutputTachoLimitControl(UBYTE MotorNr)
           if ((pMD->CurrentCaptureCount >= pMD->MotorTachoCountToRun))
           {
             pMD->MotorRunState = pMD->RunStateAtLimit;
-            pMD->RegulationMode = REGSTATE_IDLE;
+            pMD->RegulationMode = dOutputRegModeAtLimit(pMD->RunStateAtLimit);
           }
         }
         else
@@ -702,7 +709,7 @@ void dOutputTachoLimitControl(UBYTE MotorNr)
             if (pMD->CurrentCaptureCount <= pMD->MotorTachoCountToRun)
             {
               pMD->MotorRunState = pMD->RunStateAtLimit;
-              pMD->RegulationMode = REGSTATE_IDLE;
+              pMD->RegulationMode = dOutputRegModeAtLimit(pMD->RunStateAtLimit);
             }
           }
         }
@@ -1118,14 +1125,14 @@ void dOutputMotorReachedTachoLimit(UBYTE MotorNr)
     pOne->MotorTargetSpeed = 0;
     pOne->MotorActualSpeed = 0;
     pOne->MotorRunState    = pOne->RunStateAtLimit;
-    pOne->RegulationMode   = REGSTATE_IDLE;
+    pOne->RegulationMode   = dOutputRegModeAtLimit(pOne->RunStateAtLimit);
     if (MotorTwo != 0xFF) {
       MOTORDATA * pTwo = &(MotorData[MotorTwo]);
       pTwo->MotorSetSpeed    = 0;
       pTwo->MotorTargetSpeed = 0;
       pTwo->MotorActualSpeed = 0;
       pTwo->MotorRunState    = pTwo->RunStateAtLimit;
-      pTwo->RegulationMode   = REGSTATE_IDLE;
+      pTwo->RegulationMode   = dOutputRegModeAtLimit(pTwo->RunStateAtLimit);
     }
   }
   else
@@ -1136,7 +1143,7 @@ void dOutputMotorReachedTachoLimit(UBYTE MotorNr)
       pOne->MotorActualSpeed = 0;
     }
     pOne->MotorRunState = pOne->RunStateAtLimit;
-    pOne->RegulationMode = REGSTATE_IDLE;
+    pOne->RegulationMode = dOutputRegModeAtLimit(pOne->RunStateAtLimit);
   }
 }
 

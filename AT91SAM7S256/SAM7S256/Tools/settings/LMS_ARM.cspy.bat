@@ -22,11 +22,11 @@
 @REM but they are listed at the end of this file for reference.
 
 
-"C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0 LEGO\common\bin\cspybat" "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\armproc.dll" "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\armjlink.dll"  %1 --plugin "C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\<libsupport_plugin>" --macro "D:\NXT\lms_nbcnxc_128\AT91SAM7S256\SAM7S256\Tools\SAM7.mac" --backend -B "--endian" "little" "--cpu" "ARM7TDMI" "--fpu" "None" "--proc_device_desc_file" "D:\NXT\lms_nbcnxc_128\AT91SAM7S256\SAM7S256\Tools\ioat91sam7s256.ddf" "--proc_driver" "jlink" "--jlink_connection" "USB:0" "--jlink_initial_speed" "32" 
+"C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\common\bin\cspybat" "C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\armproc.dll" "C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\armjlink.dll"  %1 --plugin "C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\arm\bin\<libsupport_plugin>" --macro "D:\NXT\lms_nbcnxc_131\AT91SAM7S256\SAM7S256\Tools\SAM7.mac" --backend -B "--endian" "little" "--cpu" "ARM7TDMI" "--fpu" "None" "--proc_device_desc_file" "D:\NXT\lms_nbcnxc_131\AT91SAM7S256\SAM7S256\Tools\ioat91sam7s256.ddf" "--proc_driver" "jlink" "--jlink_connection" "USB:0" "--jlink_initial_speed" "32" 
 
 
 @REM Loaded plugins:
 @REM    armlibsupport.dll
-@REM    C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0 LEGO\common\plugins\CodeCoverage\CodeCoverage.dll
-@REM    C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0 LEGO\common\plugins\Profiling\Profiling.dll
-@REM    C:\Program Files (x86)\IAR Systems\Embedded Workbench 4.0 LEGO\common\plugins\stack\stack.dll
+@REM    C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\common\plugins\CodeCoverage\CodeCoverage.dll
+@REM    C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\common\plugins\Profiling\Profiling.dll
+@REM    C:\Program Files\IAR Systems\Embedded Workbench 4.0 LEGO\common\plugins\stack\stack.dll

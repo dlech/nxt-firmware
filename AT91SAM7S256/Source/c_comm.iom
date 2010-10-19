@@ -72,7 +72,8 @@ enum
   HS_INIT_RECEIVER,
   HS_SEND_DATA,
   HS_DISABLE,
-  HS_ENABLE
+  HS_ENABLE,
+  HS_DEFAULT
 };
 
 // Constants reffering to hi-speed control syscall function

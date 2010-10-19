@@ -9423,7 +9423,7 @@ NXT_STATUS cCmdWrapCommHSControl(UBYTE * ArgV[])
   {
     case HS_CTRL_INIT:
     {
-      // hi-speed init
+      // hi-speed enable/init
       pMapComm->HsState = HS_ENABLE;
       pMapComm->HsFlags = HS_UPDATE;
     }
@@ -9433,7 +9433,7 @@ NXT_STATUS cCmdWrapCommHSControl(UBYTE * ArgV[])
     {
       // hi-speed setup uart
       pMapComm->HsSpeed = *(ArgV[2]);
-      pMapComm->HsMode  = *(ArgV[3]);
+      pMapComm->HsMode  = *(UWORD*)(ArgV[3]);
       pMapComm->HsState = HS_INITIALISE;
       pMapComm->HsFlags = HS_UPDATE;
     }
@@ -9448,7 +9448,7 @@ NXT_STATUS cCmdWrapCommHSControl(UBYTE * ArgV[])
     break;
   }
   
-  *((UWORD *)ArgV[0]) = pMapComm->HsState;
+  *(ArgV[0]) = pMapComm->HsState;
   
   return (NO_ERR);
 }

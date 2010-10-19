@@ -271,6 +271,7 @@ void      cCommCtrl(void)
       case HS_SEND_DATA:
       {
         cCommSendHiSpeedData();
+        IOMapComm.HsState = HS_DEFAULT; // do not leave this in HS_SEND_DATA state
       }
       break;
 

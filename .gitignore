@@ -1,0 +1,5 @@
+*.[oad]
+*.lst
+*.sym
+*.elf
+tags

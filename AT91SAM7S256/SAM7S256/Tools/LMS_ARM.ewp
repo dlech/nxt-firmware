@@ -1789,6 +1789,9 @@
           <name>CCDefines</name>
           <state>PROTOTYPE_PCB_4</state>
           <state>NEW_MENU</state>
+          <state>INCLUDE_OBP</state>
+          <state>INCLUDE_INTRO</state>
+          <state>INCLUDE_DATALOG</state>
         </option>
         <option>
           <name>CCPreprocFile</name>

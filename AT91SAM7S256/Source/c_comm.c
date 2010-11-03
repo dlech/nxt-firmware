@@ -440,6 +440,7 @@ UWORD     cCommInterprete(UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pLength, UBYTE C
 
           // in the enhanced firmware all replies (system or direct) go to the RC Handler function
           // since it stores the last response in VarsCmd.LastResponseBuffer field
+
 //        /* If this is a reply to a direct command opcode, pRCHandler will handle it */
 //        if (pInBuf[1] < NUM_RC_OPCODES)
           pMapCmd->pRCHandler(&(pInBuf[0]), NULL, pLength);
@@ -1532,11 +1533,14 @@ void cCommReceivedHiSpeedData(void)
     {
       // receiving hi-speed data in NXT mode
       /* Copy the bytes into the IOMapBuffer */
-      memcpy((IOMapComm.HsInBuf.Buf), (VarsComm.HsModuleInBuf.Buf), NumberOfBytes);
-
+      if (NumberOfBytes > SIZE_OF_HSBUF)
+        NumberOfBytes = SIZE_OF_HSBUF;
+      memcpy((PSZ)IOMapComm.HsInBuf.Buf, (PSZ)VarsComm.HsModuleInBuf.Buf, NumberOfBytes);
+      memset((PSZ)VarsComm.HsModuleInBuf.Buf, 0, 256);
     
       /* Move the inptr ahead */
       IOMapComm.HsInBuf.InPtr = NumberOfBytes;
+      IOMapComm.HsInBuf.OutPtr = 0;
     
       /* using the outbuf inptr in order to get the number of bytes in the return answer at the right place*/
       IOMapComm.HsOutBuf.InPtr = NumberOfBytes;
@@ -1547,8 +1551,10 @@ void cCommReceivedHiSpeedData(void)
       /* if there is a reply to be sent then send it */
       if (IOMapComm.HsOutBuf.InPtr)
       {
-        dHiSpeedSendData(IOMapComm.HsOutBuf.Buf, IOMapComm.HsOutBuf.InPtr);
+        cCommSendHiSpeedData();
+//        dHiSpeedSendData(IOMapComm.HsOutBuf.Buf, IOMapComm.HsOutBuf.InPtr);
         IOMapComm.HsOutBuf.InPtr = 0;
+        IOMapComm.HsOutBuf.OutPtr = 0;
       }
     }
   }

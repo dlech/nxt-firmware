@@ -59,7 +59,9 @@ const     HEADER  cUi =
 #include  "Display.txt"       // Bitmap for frame used in view and datalog
 #include  "LowBattery.txt"    // Bitmap showed when low battery occures
 #include  "Font.txt"          // Font used for all text
+#ifdef INCLUDE_OBP
 #include  "Step.txt"          // Bitmap used in On Brick Programming
+#endif
 #include  "Cursor.txt"        // Bitmap for cursor
 #include  "Running.txt"       // Icon collection used for "running" symbol
 #include  "Port.txt"          // Font used for naming sensor ports in datalog/bluetooth
@@ -69,6 +71,7 @@ const     HEADER  cUi =
 #include  "Info.txt"          // Bitmap for feedback
 #include  "Icons.txt"         // Icon collection used for menues
 
+#ifdef INCLUDE_INTRO
 // ****** INTRO ANIMATION RESOURCES ******************************************
 
 #include  "RCXintro_1.txt"    // Bitmap for picture 1  in the intro animation
@@ -107,6 +110,7 @@ const     BMPMAP *Intro[NO_OF_INTROBITMAPS] = // Picture sequence for the intro 
   (BMPMAP*)RCXintro_15,
   (BMPMAP*)RCXintro_16
 };
+#endif
 
 // ****** STATUS LINE GRAPHIC RESOURCES **************************************
 
@@ -1281,7 +1285,9 @@ void      cUiCtrl(void)
 
   VarsUi.CRPasskey++;
   VarsUi.ButtonTimer++;
+#ifdef INCLUDE_OBP
   VarsUi.OBPTimer++;
+#endif
   switch (IOMapUi.State)
   {
     case INIT_DISPLAY : // Load font and icons
@@ -1301,7 +1307,9 @@ void      cUiCtrl(void)
       pMapDisplay->pFont                              =  (FONT*)Font;
       pMapDisplay->pStatusIcons                       =  (ICON*)Status;
       pMapDisplay->pStatusText                        =  (UBYTE*)VarsUi.StatusText;
+#ifdef INCLUDE_OBP
       pMapDisplay->pStepIcons                         =  (ICON*)Step;
+#endif
 
       VarsUi.State                                    =  0;
       VarsUi.Pointer                                  =  0;
@@ -1320,7 +1328,9 @@ void      cUiCtrl(void)
       IOMapUi.State                                   =  INIT_INTRO;
 
       pMapDisplay->EraseMask                          =  SCREEN_BIT(SCREEN_BACKGROUND);
+#ifdef INCLUDE_INTRO
       pMapDisplay->pBitmaps[BITMAP_1]                 =  (BMPMAP*)Intro[VarsUi.Pointer];
+#endif
       pMapDisplay->UpdateMask                         =  BITMAP_BIT(BITMAP_1);
       pMapDisplay->Flags                             |=  DISPLAY_ON;
 
@@ -1336,7 +1346,9 @@ void      cUiCtrl(void)
       {
         VarsUi.LowBattHasOccured        = 2;
         pMapDisplay->EraseMask          =  SCREEN_BIT(SCREEN_BACKGROUND);
+#ifdef INCLUDE_INTRO
         pMapDisplay->pBitmaps[BITMAP_1] =  (BMPMAP*)Intro[VarsUi.Pointer];
+#endif
         pMapDisplay->UpdateMask         =  BITMAP_BIT(BITMAP_1);
         IOMapUi.Flags                  &= ~UI_ENABLE_STATUS_UPDATE;
         VarsUi.State                    =  0;
@@ -1368,6 +1380,7 @@ void      cUiCtrl(void)
             VarsUi.LowBattHasOccured = 1;
           }
         }
+#ifdef INCLUDE_INTRO
         if (++VarsUi.Timer >= (INTRO_SHIFT_TIME))
         {
           switch (VarsUi.State)
@@ -1420,10 +1433,14 @@ void      cUiCtrl(void)
 
           }
         }
+#else
+        pMapDisplay->EraseMask |=  SCREEN_BIT(SCREEN_BACKGROUND);
+        IOMapUi.State = INIT_MENU;
+#endif
       }
     }
     break;
-
+#ifdef INCLUDE_INTRO
     case INIT_WAIT :
     {
       if (++VarsUi.Timer >= INTRO_STOP_TIME)
@@ -1433,7 +1450,7 @@ void      cUiCtrl(void)
       }
     }
     break;
-
+#endif
     case INIT_MENU :
     {
       // Restart menu system

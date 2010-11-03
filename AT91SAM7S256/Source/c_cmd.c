@@ -409,7 +409,12 @@ UBYTE     cCmdBTGetDeviceType(UBYTE *pCOD)
   return (Result);
 }
 
-UBYTE CMD_RESPONSE_LENGTH[255] = 
+void cCmdSetVMState(VM_STATE newState)
+{
+  VarsCmd.VMState = newState;
+}
+
+UBYTE CMD_RESPONSE_LENGTH[256] = 
 {
    3, // DCStartProgram (x00)
    3, // DCStopProgram (x01)
@@ -500,7 +505,8 @@ UBYTE CMD_RESPONSE_LENGTH[255] =
    0, //   SEEKFROMCURRENT = 0xD2,
    0, //   SEEKFROMEND     = 0xD3
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (xD4-xDF)
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 // (xF0-xFF)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (xE0-xEF)
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // (xF0-xFF)
 };
 
 //cCmdHandleRemoteCommands is the registered handler for "direct" command protocol packets
@@ -1204,7 +1210,7 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
         // don't change the VM state if the state is currently idle or resetting
         if (VarsCmd.VMState > VM_IDLE && VarsCmd.VMState < VM_RESET1) 
         {
-          VarsCmd.VMState = (VM_STATE)pInBuf[1];
+          cCmdSetVMState((VM_STATE)pInBuf[1]);
           // setting the VM state turns on debugging
           VarsCmd.Debugging = TRUE;
           if (VarsCmd.VMState == VM_RESET1)
@@ -1328,7 +1334,12 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
         //Unhandled reply telegram.  Do nothing.
         //!!! Could/should stash unhandled/all replies somewhere so a syscall could read them
         VarsCmd.LastResponseLength = CMD_RESPONSE_LENGTH[pInBuf[0]];
-        memcpy((PSZ)VarsCmd.LastResponseBuffer, (PSZ)(&pInBuf[0]), VarsCmd.LastResponseLength-1);
+        memset((PSZ)VarsCmd.LastResponseBuffer, 0, 64);
+        UBYTE len = VarsCmd.LastResponseLength - 1;
+        if (*pLen < len)
+          len = *pLen;
+        if (VarsCmd.LastResponseLength > 1)
+          memcpy((PSZ)VarsCmd.LastResponseBuffer, (PSZ)(&pInBuf[0]), len);
       }
       break;
     };
@@ -1413,7 +1424,7 @@ void      cCmdInit(void* pHeader)
   VarsCmd.DirtyComm = FALSE;
   VarsCmd.DirtyDisplay = FALSE;
 
-  VarsCmd.VMState = VM_IDLE;
+  cCmdSetVMState(VM_IDLE);
 
 #if defined (ARM_NXT)
   //Make sure Pool is long-aligned
@@ -1480,7 +1491,7 @@ void cCmdCtrl(void)
         pMapButton->State[BTN1] &= ~(pMapUi->AbortFlag);
 
         //Go to VM_RESET1 state and report abort
-        VarsCmd.VMState = VM_RESET1;
+        cCmdSetVMState(VM_RESET1);
         IOMapCmd.ProgStatus = PROG_ABORT;
         break;
       }
@@ -1505,13 +1516,13 @@ void cCmdCtrl(void)
 #endif
         // automatically switch from RUN_SINGLE to RUN_PAUSE after a single step  
         if (VarsCmd.VMState == VM_RUN_SINGLE)
-          VarsCmd.VMState = VM_RUN_PAUSE;
+          cCmdSetVMState(VM_RUN_PAUSE);
 
         //If RunQ and RestQ are empty, program is done, or wacko
         if (!cCmdIsClumpIDSane(VarsCmd.RunQ.Head)) {
           Continue = FALSE;
           if(!cCmdIsClumpIDSane(VarsCmd.RestQ.Head)) {
-            VarsCmd.VMState = VM_RESET1;
+            cCmdSetVMState(VM_RESET1);
             IOMapCmd.ProgStatus = PROG_OK;
           }
         }
@@ -1529,13 +1540,13 @@ void cCmdCtrl(void)
         else if (IS_ERR(Status)) // mem error is handled in InterpFromClump if possible
         {
           Continue = FALSE;
-          VarsCmd.VMState = VM_RESET1;
+          cCmdSetVMState(VM_RESET1);
           IOMapCmd.ProgStatus = Status;
         }
         else if (Status == STOP_REQ)
         {
           Continue = FALSE;
-          VarsCmd.VMState = VM_RESET1;
+          cCmdSetVMState(VM_RESET1);
           IOMapCmd.ProgStatus = PROG_OK;
         }
         else if (Status == BREAKOUT_REQ)
@@ -1572,12 +1583,12 @@ void cCmdCtrl(void)
         if (IS_ERR(Status))
         {
           IOMapCmd.ProgStatus = Status;
-          VarsCmd.VMState = VM_RESET1;
+          cCmdSetVMState(VM_RESET1);
         }
         //Else start running program
         else
         {
-          VarsCmd.VMState = VM_RUN_FREE;
+          cCmdSetVMState(VM_RUN_FREE);
           IOMapCmd.ProgStatus = PROG_RUNNING;
           VarsCmd.StartTick = IOMapCmd.Tick;
 
@@ -1642,7 +1653,7 @@ void cCmdCtrl(void)
       //Artificially set CommStatReset to BTBUSY to force at least one SETCMDMODE call (see VM_RESET2 case)
       VarsCmd.CommStatReset = (SWORD)BTBUSY;
 
-      VarsCmd.VMState = VM_RESET2;
+      cCmdSetVMState(VM_RESET2);
       while (IOMapCmd.Tick == dTimerRead()); // delay until scheduled time
     }
     break;
@@ -1668,7 +1679,7 @@ void cCmdCtrl(void)
         VarsCmd.DirtyComm = FALSE;
 
         //Go to VM_IDLE state
-        VarsCmd.VMState = VM_IDLE;
+        cCmdSetVMState(VM_IDLE);
         IOMapCmd.ProgStatus = PROG_IDLE;
       }
     while (IOMapCmd.Tick == dTimerRead()); // delay until scheduled time
@@ -4581,7 +4592,7 @@ NXT_STATUS cCmdInterpFromClump()
         if (pBreakpoints[j].Enabled && 
             (pBreakpoints[j].Location == (CODE_INDEX)(pClumpRec->PC-pClumpRec->CodeStart)))
         {
-          VarsCmd.VMState = VM_RUN_PAUSE;
+          cCmdSetVMState(VM_RUN_PAUSE);
           return BREAKOUT_REQ;
         }
       }
@@ -4590,7 +4601,7 @@ NXT_STATUS cCmdInterpFromClump()
           ((CODE_INDEX)(pClumpRec->PC-pClumpRec->CodeStart) == VarsCmd.PausePC))
       {
         // pause the VM
-        VarsCmd.VMState    = VM_RUN_PAUSE;
+        cCmdSetVMState(VM_RUN_PAUSE);
         // and turn off the auto pause flags
         VarsCmd.PauseClump = NOT_A_CLUMP;
         VarsCmd.PausePC    = 0xFFFF;

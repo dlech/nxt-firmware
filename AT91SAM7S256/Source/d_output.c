@@ -83,6 +83,25 @@ static    SYNCMOTORDATA     SyncData;
 
 static UBYTE  RegTime;
 
+UBYTE dOutputRunStateAtLimit(MOTORDATA * pMD)
+{
+//  return MOTOR_RUN_STATE_IDLE;
+  return pMD->RunStateAtLimit;
+}
+
+UBYTE dOutputRampDownToLimit(MOTORDATA * pMD)
+{
+//  return 0;
+  return pMD->RampDownToLimit;
+}
+
+UBYTE dOutputRegModeAtLimit(MOTORDATA * pMD)
+{
+  if (dOutputRunStateAtLimit(pMD)==MOTOR_RUN_STATE_HOLD)
+    return REGSTATE_REGULATED;
+ return REGSTATE_IDLE;
+}
+
 void      dOutputInit(void)
 {
   UBYTE Temp;
@@ -164,7 +183,7 @@ void dOutputCtrl(void)
       pMD->MotorTargetSpeed = 0;
       pMD->RegulationTimeCount = 0;
       pMD->DeltaCaptureCount = 0;
-//      pMD->MotorRunState = MOTOR_RUN_STATE_RUNNING;
+      pMD->MotorRunState = MOTOR_RUN_STATE_RUNNING;
     }
     if (pMD->RegulationTimeCount > RegTime)
     {
@@ -484,7 +503,7 @@ void dOutputRampUpFunction(UBYTE MotorNr)
     {
       if (pMD->CurrentCaptureCount > (pMD->MotorRampTachoCountOld + pMD->MotorRampUpIncrement))
       {
-        pMD->MotorTargetSpeed++;
+        pMD->MotorTargetSpeed += 1;
         pMD->MotorRampTachoCountOld = pMD->CurrentCaptureCount;
         pMD->MotorRampUpCount = 0;
       }
@@ -493,7 +512,7 @@ void dOutputRampUpFunction(UBYTE MotorNr)
         if (!(pMD->RegulationMode & REGSTATE_REGULATED))
         {
           pMD->MotorRampUpCount++;
-          if (pMD->MotorRampUpCount > RegTime)
+          if (pMD->MotorRampUpCount > 100)
           {
             pMD->MotorRampUpCount = 0;
             pMD->MotorTargetSpeed++;
@@ -505,7 +524,7 @@ void dOutputRampUpFunction(UBYTE MotorNr)
     {
       if (pMD->CurrentCaptureCount < (pMD->MotorRampTachoCountOld + pMD->MotorRampUpIncrement))
       {
-        pMD->MotorTargetSpeed--;
+        pMD->MotorTargetSpeed -= 1;
         pMD->MotorRampTachoCountOld = pMD->CurrentCaptureCount;
         pMD->MotorRampUpCount = 0;
       }
@@ -514,7 +533,7 @@ void dOutputRampUpFunction(UBYTE MotorNr)
         if (!(pMD->RegulationMode & REGSTATE_REGULATED))
         {
           pMD->MotorRampUpCount++;
-          if (pMD->MotorRampUpCount > RegTime)
+          if (pMD->MotorRampUpCount > 100)
           {
             pMD->MotorRampUpCount = 0;
             pMD->MotorTargetSpeed--;
@@ -528,7 +547,7 @@ void dOutputRampUpFunction(UBYTE MotorNr)
     if ((pMD->CurrentCaptureCount - pMD->MotorRampTachoCountStart) >= (pMD->MotorTachoCountToRun - pMD->MotorRampTachoCountStart))
     {
       pMD->MotorTargetSpeed = pMD->MotorSetSpeed;
-      pMD->MotorRunState = pMD->RunStateAtLimit;	
+      pMD->MotorRunState = dOutputRunStateAtLimit(pMD);	
     }
   }
   else
@@ -536,7 +555,7 @@ void dOutputRampUpFunction(UBYTE MotorNr)
     if ((pMD->CurrentCaptureCount + pMD->MotorRampTachoCountStart) <= (pMD->MotorTachoCountToRun + pMD->MotorRampTachoCountStart))
     {
       pMD->MotorTargetSpeed = pMD->MotorSetSpeed;
-      pMD->MotorRunState = pMD->RunStateAtLimit;	
+      pMD->MotorRunState = dOutputRunStateAtLimit(pMD);	
     }
   }
   if (pMD->MotorSetSpeed > 0)
@@ -645,7 +664,7 @@ void dOutputRampDownFunction(UBYTE MotorNr)
   if ((pMD->RegulationMode & REGSTATE_SYNCHRONE) && (pMD->TurnParameter != 0))
   {
     dOutputSyncTachoLimitControl(MotorNr);
-    if (pMD->MotorRunState == pMD->RunStateAtLimit)
+    if (pMD->MotorRunState == dOutputRunStateAtLimit(pMD))
     {
       dOutputMotorReachedTachoLimit(MotorNr);
     }
@@ -673,13 +692,6 @@ void dOutputRampDownFunction(UBYTE MotorNr)
   }
 }
 
-UBYTE dOutputRegModeAtLimit(UBYTE RunStateAtLimit)
-{
-  if (RunStateAtLimit==MOTOR_RUN_STATE_HOLD)
-    return REGSTATE_REGULATED;
- return REGSTATE_IDLE;
-}
-
 /* Function used to tell whether the wanted position is obtained */
 void dOutputTachoLimitControl(UBYTE MotorNr)
 {
@@ -692,14 +704,14 @@ void dOutputTachoLimitControl(UBYTE MotorNr)
     }
     else
     {
-      if (pMD->RampDownToLimit == 0)
+      if (dOutputRampDownToLimit(pMD) == 0)
       {
         if (pMD->MotorSetSpeed > 0)
         {
           if ((pMD->CurrentCaptureCount >= pMD->MotorTachoCountToRun))
           {
-            pMD->MotorRunState = pMD->RunStateAtLimit;
-            pMD->RegulationMode = dOutputRegModeAtLimit(pMD->RunStateAtLimit);
+            pMD->MotorRunState = dOutputRunStateAtLimit(pMD);
+            pMD->RegulationMode = dOutputRegModeAtLimit(pMD);
           }
         }
         else
@@ -708,8 +720,8 @@ void dOutputTachoLimitControl(UBYTE MotorNr)
           {
             if (pMD->CurrentCaptureCount <= pMD->MotorTachoCountToRun)
             {
-              pMD->MotorRunState = pMD->RunStateAtLimit;
-              pMD->RegulationMode = dOutputRegModeAtLimit(pMD->RunStateAtLimit);
+              pMD->MotorRunState = dOutputRunStateAtLimit(pMD);
+              pMD->RegulationMode = dOutputRegModeAtLimit(pMD);
             }
           }
         }
@@ -930,7 +942,7 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
 
   if (pOne->TurnParameter != 0)
   {
-    if ((pOne->MotorBlockTachoCount != 0) || (pTwo->MotorBlockTachoCount != 0))
+    if ((pOne->MotorBlockTachoCount != 0) || (pTwo->MotorBlockTachoCount))
     {
       if (pOne->MotorTargetSpeed >= 0)
       {
@@ -1124,15 +1136,15 @@ void dOutputMotorReachedTachoLimit(UBYTE MotorNr)
     pOne->MotorSetSpeed    = 0;
     pOne->MotorTargetSpeed = 0;
     pOne->MotorActualSpeed = 0;
-    pOne->MotorRunState    = pOne->RunStateAtLimit;
-    pOne->RegulationMode   = dOutputRegModeAtLimit(pOne->RunStateAtLimit);
+    pOne->MotorRunState    = dOutputRunStateAtLimit(pOne);
+    pOne->RegulationMode   = dOutputRegModeAtLimit(pOne);
     if (MotorTwo != 0xFF) {
       MOTORDATA * pTwo = &(MotorData[MotorTwo]);
       pTwo->MotorSetSpeed    = 0;
       pTwo->MotorTargetSpeed = 0;
       pTwo->MotorActualSpeed = 0;
-      pTwo->MotorRunState    = pTwo->RunStateAtLimit;
-      pTwo->RegulationMode   = dOutputRegModeAtLimit(pTwo->RunStateAtLimit);
+      pTwo->MotorRunState    = dOutputRunStateAtLimit(pTwo);
+      pTwo->RegulationMode   = dOutputRegModeAtLimit(pTwo);
     }
   }
   else
@@ -1142,8 +1154,8 @@ void dOutputMotorReachedTachoLimit(UBYTE MotorNr)
       pOne->MotorTargetSpeed = 0;
       pOne->MotorActualSpeed = 0;
     }
-    pOne->MotorRunState = pOne->RunStateAtLimit;
-    pOne->RegulationMode = dOutputRegModeAtLimit(pOne->RunStateAtLimit);
+    pOne->MotorRunState = dOutputRunStateAtLimit(pOne);
+    pOne->RegulationMode = dOutputRegModeAtLimit(pOne);
   }
 }
 
@@ -1171,14 +1183,14 @@ void dOutputSyncTachoLimitControl(UBYTE MotorNr)
     MOTORDATA * pTwo = &(MotorData[MotorTwo]);
     SLONG l1 = pOne->MotorTachoCountToRun;
     SLONG l2 = pTwo->MotorTachoCountToRun;
-    UBYTE NewRunState1 = pOne->RunStateAtLimit;
-    UBYTE NewRunState2 = pTwo->RunStateAtLimit;
-    if (pOne->RampDownToLimit == OPTION_RAMPDOWNTOLIMIT) 
+    UBYTE NewRunState1 = dOutputRunStateAtLimit(pOne);
+    UBYTE NewRunState2 = dOutputRunStateAtLimit(pTwo);
+    if (dOutputRampDownToLimit(pOne) == OPTION_RAMPDOWNTOLIMIT) 
     {
       NewRunState1 = MOTOR_RUN_STATE_RAMPDOWN;
       l1 = (SLONG)((float)l1 * 0.80f);
     }
-    if (pTwo->RampDownToLimit == OPTION_RAMPDOWNTOLIMIT) 
+    if (dOutputRampDownToLimit(pTwo) == OPTION_RAMPDOWNTOLIMIT) 
     {
       NewRunState2 = MOTOR_RUN_STATE_RAMPDOWN;
       l2 = (SLONG)((float)l2 * 0.80f);

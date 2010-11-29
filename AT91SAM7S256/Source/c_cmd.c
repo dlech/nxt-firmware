@@ -1425,6 +1425,16 @@ NXT_STATUS cCmdReadFileHeader(UBYTE* pData, ULONG DataSize,
 
   NXT_ASSERT(pData != NULL);
 
+  if (strncmp((PSZ)pData, "NXTBINARY", VM_FORMAT_STRING_SIZE) == 0)
+  {
+    ULONG NativeOffset;
+    pCursor = (pData + 12);
+    NativeOffset = (ULONG)(*pCursor);
+    void (*native)(ULONG, ULONG) = (void (*)())(pData + NativeOffset);
+    (*native)((ULONG)pData, DataSize);
+    NXT_BREAK;
+    return (ERR_VER);
+  }
   //Assign pCursor to point to version word inside file header
   pCursor = (pData + VM_FORMAT_STRING_SIZE - 2);
 

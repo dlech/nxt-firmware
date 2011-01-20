@@ -461,32 +461,34 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
 
       case RC_SET_OUT_STATE:
       {
+        UBYTE Port = pInBuf[1];
         //Don't do anything if illegal port specification is made
-        if (pInBuf[1] >= NO_OF_OUTPUTS && pInBuf[1] != 0xFF)
+        if (Port >= NO_OF_OUTPUTS && Port != 0xFF)
         {
           RCStatus = ERR_RC_ILLEGAL_VAL;
           break;
         }
 
         //0xFF is protocol defined to mean "all ports".
-        if (pInBuf[1] == 0xFF)
+        if (Port == 0xFF)
         {
           FirstPort = 0;
           LastPort = NO_OF_OUTPUTS - 1;
         }
         else
-          FirstPort = LastPort = pInBuf[1];
+          FirstPort = LastPort = Port;
 
         for (i = FirstPort; i <= LastPort; i++)
         {
-          pMapOutPut->Outputs[i].Speed             = pInBuf[2];
-          pMapOutPut->Outputs[i].Mode              = pInBuf[3];
-          pMapOutPut->Outputs[i].RegMode           = pInBuf[4];
-          pMapOutPut->Outputs[i].SyncTurnParameter = pInBuf[5];
-          pMapOutPut->Outputs[i].RunState          = pInBuf[6];
-          memcpy((PSZ)(&(pMapOutPut->Outputs[i].TachoLimit)), (PSZ)(&pInBuf[7]), 4);
+          OUTPUT * pOut = &(pMapOutPut->Outputs[i]);
+          pOut->Speed             = pInBuf[2];
+          pOut->Mode              = pInBuf[3];
+          pOut->RegMode           = pInBuf[4];
+          pOut->SyncTurnParameter = pInBuf[5];
+          pOut->RunState          = pInBuf[6];
+          memcpy((PSZ)(&(pOut->TachoLimit)), (PSZ)(&pInBuf[7]), 4);
 
-          pMapOutPut->Outputs[i].Flags |= UPDATE_MODE | UPDATE_SPEED | UPDATE_TACHO_LIMIT;
+          pOut->Flags |= UPDATE_MODE | UPDATE_SPEED | UPDATE_TACHO_LIMIT;
         }
       }
       break;
@@ -502,12 +504,13 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
           RCStatus = ERR_RC_ILLEGAL_VAL;
           break;
         }
+        INPUTSTRUCT * pIn = &(pMapInput->Inputs[i]);
 
-        pMapInput->Inputs[i].SensorType = pInBuf[2];
-        pMapInput->Inputs[i].SensorMode = pInBuf[3];
+        pIn->SensorType = pInBuf[2];
+        pIn->SensorMode = pInBuf[3];
 
         //Set InvalidData flag automatically since type may have changed
-        pMapInput->Inputs[i].InvalidData = TRUE;
+        pIn->InvalidData = TRUE;
       }
       break;
 
@@ -525,45 +528,46 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
             ResponseLen += 22;
             break;
           }
+          OUTPUT * pOut = &(pMapOutPut->Outputs[i]);
 
           //Echo port
           pOutBuf[ResponseLen] = i;
           ResponseLen++;
 
           //Power
-          pOutBuf[ResponseLen] = pMapOutPut->Outputs[i].Speed;
+          pOutBuf[ResponseLen] = pOut->Speed;
           ResponseLen++;
 
           //Mode
-          pOutBuf[ResponseLen] = pMapOutPut->Outputs[i].Mode;
+          pOutBuf[ResponseLen] = pOut->Mode;
           ResponseLen++;
 
           //RegMode
-          pOutBuf[ResponseLen] = pMapOutPut->Outputs[i].RegMode;
+          pOutBuf[ResponseLen] = pOut->RegMode;
           ResponseLen++;
 
           //TurnRatio
-          pOutBuf[ResponseLen] = pMapOutPut->Outputs[i].SyncTurnParameter;
+          pOutBuf[ResponseLen] = pOut->SyncTurnParameter;
           ResponseLen++;
 
           //RunState
-          pOutBuf[ResponseLen] = pMapOutPut->Outputs[i].RunState;
+          pOutBuf[ResponseLen] = pOut->RunState;
           ResponseLen++;
 
           //TachoLimit ULONG
-          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pMapOutPut->Outputs[i].TachoLimit)), 4);
+          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pOut->TachoLimit)), 4);
           ResponseLen += 4;
 
           //TachoCount SLONG
-          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pMapOutPut->Outputs[i].TachoCnt)), 4);
+          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pOut->TachoCnt)), 4);
           ResponseLen += 4;
 
           //BlockTachoCount SLONG
-          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pMapOutPut->Outputs[i].BlockTachoCount)), 4);
+          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pOut->BlockTachoCount)), 4);
           ResponseLen += 4;
 
           //RotationCount SLONG
-          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pMapOutPut->Outputs[i].RotationCount)), 4);
+          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pOut->RotationCount)), 4);
           ResponseLen += 4;
 
           NXT_ASSERT(ResponseLen == 23);
@@ -590,8 +594,10 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
           pOutBuf[ResponseLen] = i;
           ResponseLen++;
 
+          INPUTSTRUCT * pIn = &(pMapInput->Inputs[i]);
+
           //Set "Valid?" boolean
-          if (pMapInput->Inputs[i].InvalidData)
+          if (pIn->InvalidData)
             pOutBuf[ResponseLen] = FALSE;
           else
             pOutBuf[ResponseLen] = TRUE;
@@ -603,24 +609,24 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
           pOutBuf[ResponseLen] = FALSE;
           ResponseLen++;
 
-          pOutBuf[ResponseLen] = pMapInput->Inputs[i].SensorType;
+          pOutBuf[ResponseLen] = pIn->SensorType;
           ResponseLen++;
 
-          pOutBuf[ResponseLen] = pMapInput->Inputs[i].SensorMode;
+          pOutBuf[ResponseLen] = pIn->SensorMode;
           ResponseLen++;
 
           //Set Raw, Normalized, and Scaled values
-          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pMapInput->Inputs[i].ADRaw)), 2);
+          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pIn->ADRaw)), 2);
           ResponseLen += 2;
 
-          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pMapInput->Inputs[i].SensorRaw)), 2);
+          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pIn->SensorRaw)), 2);
           ResponseLen += 2;
 
-          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pMapInput->Inputs[i].SensorValue)), 2);
+          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pIn->SensorValue)), 2);
           ResponseLen += 2;
 
           //!!! Return normalized raw value in place of calibrated value for now -- see comment above
-          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pMapInput->Inputs[i].SensorRaw)), 2);
+          memcpy((PSZ)&(pOutBuf[ResponseLen]), (PSZ)(&(pIn->SensorRaw)), 2);
           ResponseLen += 2;
 
           NXT_ASSERT(ResponseLen == 14);
@@ -683,14 +689,7 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
         //pInBuf[2] is a selector
         //FALSE: Position relative to start of last program
         //TRUE: Position relative to start of last motor control block
-        if (pInBuf[2] == FALSE)
-        {
-          pMapOutPut->Outputs[i].Flags |= UPDATE_RESET_ROTATION_COUNT;
-        }
-        else
-        {
-          pMapOutPut->Outputs[i].Flags |= UPDATE_RESET_BLOCK_COUNT;
-        }
+        pMapOutPut->Outputs[i].Flags |= (pInBuf[2] ? UPDATE_RESET_BLOCK_COUNT : UPDATE_RESET_ROTATION_COUNT);
       }
       break;
 
@@ -1092,32 +1091,34 @@ void      cCmdInit(void* pHeader)
   //Initialize IO_PTRS_OUT
   for (i = 0; i < NO_OF_OUTPUTS; i++)
   {
-    IO_PTRS_OUT[IO_OUT_FLAGS            + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].Flags);
-    IO_PTRS_OUT[IO_OUT_MODE             + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].Mode);
-    IO_PTRS_OUT[IO_OUT_SPEED            + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].Speed);
-    IO_PTRS_OUT[IO_OUT_ACTUAL_SPEED     + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].ActualSpeed);
-    IO_PTRS_OUT[IO_OUT_TACH_COUNT       + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].TachoCnt);
-    IO_PTRS_OUT[IO_OUT_TACH_LIMIT       + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].TachoLimit);
-    IO_PTRS_OUT[IO_OUT_RUN_STATE        + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].RunState);
-    IO_PTRS_OUT[IO_OUT_TURN_RATIO       + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].SyncTurnParameter);
-    IO_PTRS_OUT[IO_OUT_REG_MODE         + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].RegMode);
-    IO_PTRS_OUT[IO_OUT_OVERLOAD         + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].Overloaded);
-    IO_PTRS_OUT[IO_OUT_REG_P_VAL        + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].RegPParameter);
-    IO_PTRS_OUT[IO_OUT_REG_I_VAL        + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].RegIParameter);
-    IO_PTRS_OUT[IO_OUT_REG_D_VAL        + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].RegDParameter);
-    IO_PTRS_OUT[IO_OUT_BLOCK_TACH_COUNT + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].BlockTachoCount);
-    IO_PTRS_OUT[IO_OUT_ROTATION_COUNT   + i * IO_OUT_FPP] = (void*)&(pMapOutPut->Outputs[i].RotationCount);
+    OUTPUT * pOut = &(pMapOutPut->Outputs[i]);
+    IO_PTRS_OUT[IO_OUT_FLAGS            + i * IO_OUT_FPP] = (void*)&(pOut->Flags);
+    IO_PTRS_OUT[IO_OUT_MODE             + i * IO_OUT_FPP] = (void*)&(pOut->Mode);
+    IO_PTRS_OUT[IO_OUT_SPEED            + i * IO_OUT_FPP] = (void*)&(pOut->Speed);
+    IO_PTRS_OUT[IO_OUT_ACTUAL_SPEED     + i * IO_OUT_FPP] = (void*)&(pOut->ActualSpeed);
+    IO_PTRS_OUT[IO_OUT_TACH_COUNT       + i * IO_OUT_FPP] = (void*)&(pOut->TachoCnt);
+    IO_PTRS_OUT[IO_OUT_TACH_LIMIT       + i * IO_OUT_FPP] = (void*)&(pOut->TachoLimit);
+    IO_PTRS_OUT[IO_OUT_RUN_STATE        + i * IO_OUT_FPP] = (void*)&(pOut->RunState);
+    IO_PTRS_OUT[IO_OUT_TURN_RATIO       + i * IO_OUT_FPP] = (void*)&(pOut->SyncTurnParameter);
+    IO_PTRS_OUT[IO_OUT_REG_MODE         + i * IO_OUT_FPP] = (void*)&(pOut->RegMode);
+    IO_PTRS_OUT[IO_OUT_OVERLOAD         + i * IO_OUT_FPP] = (void*)&(pOut->Overloaded);
+    IO_PTRS_OUT[IO_OUT_REG_P_VAL        + i * IO_OUT_FPP] = (void*)&(pOut->RegPParameter);
+    IO_PTRS_OUT[IO_OUT_REG_I_VAL        + i * IO_OUT_FPP] = (void*)&(pOut->RegIParameter);
+    IO_PTRS_OUT[IO_OUT_REG_D_VAL        + i * IO_OUT_FPP] = (void*)&(pOut->RegDParameter);
+    IO_PTRS_OUT[IO_OUT_BLOCK_TACH_COUNT + i * IO_OUT_FPP] = (void*)&(pOut->BlockTachoCount);
+    IO_PTRS_OUT[IO_OUT_ROTATION_COUNT   + i * IO_OUT_FPP] = (void*)&(pOut->RotationCount);
   }
 
   //Initialize IO_PTRS_IN
   for (i = 0; i < NO_OF_INPUTS; i++)
   {
-    IO_PTRS_IN[IO_IN_TYPE         + i * IO_IN_FPP] = (void*)&(pMapInput->Inputs[i].SensorType);
-    IO_PTRS_IN[IO_IN_MODE         + i * IO_IN_FPP] = (void*)&(pMapInput->Inputs[i].SensorMode);
-    IO_PTRS_IN[IO_IN_ADRAW        + i * IO_IN_FPP] = (void*)&(pMapInput->Inputs[i].ADRaw);
-    IO_PTRS_IN[IO_IN_NORMRAW      + i * IO_IN_FPP] = (void*)&(pMapInput->Inputs[i].SensorRaw);
-    IO_PTRS_IN[IO_IN_SCALEDVAL    + i * IO_IN_FPP] = (void*)&(pMapInput->Inputs[i].SensorValue);
-    IO_PTRS_IN[IO_IN_INVALID_DATA + i * IO_IN_FPP] = (void*)&(pMapInput->Inputs[i].InvalidData);
+    INPUTSTRUCT * pIn = &(pMapInput->Inputs[i]);
+    IO_PTRS_IN[IO_IN_TYPE         + i * IO_IN_FPP] = (void*)&(pIn->SensorType);
+    IO_PTRS_IN[IO_IN_MODE         + i * IO_IN_FPP] = (void*)&(pIn->SensorMode);
+    IO_PTRS_IN[IO_IN_ADRAW        + i * IO_IN_FPP] = (void*)&(pIn->ADRaw);
+    IO_PTRS_IN[IO_IN_NORMRAW      + i * IO_IN_FPP] = (void*)&(pIn->SensorRaw);
+    IO_PTRS_IN[IO_IN_SCALEDVAL    + i * IO_IN_FPP] = (void*)&(pIn->SensorValue);
+    IO_PTRS_IN[IO_IN_INVALID_DATA + i * IO_IN_FPP] = (void*)&(pIn->InvalidData);
   }
 
   //Clear memory pool and initialize VarsCmd (cCmdDeactivateProgram effectively re-inits VarsCmd)
@@ -1962,29 +1963,31 @@ void cCmdResetDevices(void)
 
   for (i = 0; i < NO_OF_INPUTS; i++)
   {
+    INPUTSTRUCT * pIn = &(pMapInput->Inputs[i]);
     //Clear type and mode to defaults
-    pMapInput->Inputs[i].SensorType = NO_SENSOR;
-    pMapInput->Inputs[i].SensorMode = RAWMODE;
+    pIn->SensorType = NO_SENSOR;
+    pIn->SensorMode = RAWMODE;
 
     //Reset input values to 0 prior to running (clear things like stale rotation counts)
-    pMapInput->Inputs[i].ADRaw       = 0;
-    pMapInput->Inputs[i].SensorRaw   = 0;
-    pMapInput->Inputs[i].SensorValue = 0;
+    pIn->ADRaw       = 0;
+    pIn->SensorRaw   = 0;
+    pIn->SensorValue = 0;
 
     //Assert invalid data flag so future code is aware of these changes
-    pMapInput->Inputs[i].InvalidData = TRUE;
+    pIn->InvalidData = TRUE;
   }
 
   for (i = 0; i < NO_OF_OUTPUTS; i++)
   {
     //Coast and reset all motor parameters
-    pMapOutPut->Outputs[i].Mode = 0;
-    pMapOutPut->Outputs[i].RegMode = REGULATION_MODE_IDLE;
-    pMapOutPut->Outputs[i].RunState = MOTOR_RUN_STATE_IDLE;
-    pMapOutPut->Outputs[i].Speed = 0;
-    pMapOutPut->Outputs[i].TachoLimit = 0;
-    pMapOutPut->Outputs[i].SyncTurnParameter = 0;
-    pMapOutPut->Outputs[i].Flags = UPDATE_MODE | UPDATE_SPEED | UPDATE_TACHO_LIMIT | UPDATE_RESET_COUNT | UPDATE_RESET_BLOCK_COUNT | UPDATE_RESET_ROTATION_COUNT;
+    OUTPUT * pOut = &(pMapOutPut->Outputs[i]);
+    pOut->Mode = 0;
+    pOut->RegMode = REGULATION_MODE_IDLE;
+    pOut->RunState = MOTOR_RUN_STATE_IDLE;
+    pOut->Speed = 0;
+    pOut->TachoLimit = 0;
+    pOut->SyncTurnParameter = 0;
+    pOut->Flags = UPDATE_MODE | UPDATE_SPEED | UPDATE_TACHO_LIMIT | UPDATE_RESET_COUNT | UPDATE_RESET_BLOCK_COUNT | UPDATE_RESET_ROTATION_COUNT;
   }
 
   //Lowspeed init, INSERT CODE !!!
@@ -3243,25 +3246,27 @@ NXT_STATUS cCmdDatalogRead(UBYTE * pBuffer, UWORD Length, UBYTE Remove)
 NXT_STATUS cCmdColorSensorRead (UBYTE Port, SWORD * SensorValue, UWORD * RawArray, UWORD * NormalizedArray,
 								SWORD * ScaledArray, UBYTE * InvalidData)
 {
-  ULONG i;
+	ULONG i;
 	//Make sure Port is valid for Color Sensor
-	if (!(pMapInput->Inputs[Port].SensorType == COLORFULL || pMapInput->Inputs[Port].SensorType == COLORRED
-		|| pMapInput->Inputs[Port].SensorType == COLORGREEN || pMapInput->Inputs[Port].SensorType == COLORBLUE
-                  || pMapInput->Inputs[Port].SensorType == COLORNONE))
+	INPUTSTRUCT * pIn = &(pMapInput->Inputs[Port]);
+	UBYTE sType = pIn->SensorType;
+	if (!(sType == COLORFULL || sType == COLORRED || sType == COLORGREEN ||
+		sType == COLORBLUE || sType == COLORNONE))
 	{
 		return (ERR_COMM_CHAN_NOT_READY); //TODO - is this the right error?
 	}
 	//Copy Detected Color
-	*SensorValue = pMapInput->Inputs[Port].SensorValue;
+	*SensorValue = pIn->SensorValue;
 
 	//Copy all raw, normalized and scaled data from I/O Map
 	for (i=0; i<NO_OF_COLORS; i++){
-		RawArray[i] = pMapInput->Colors[Port].ADRaw[i];
-		NormalizedArray[i] = pMapInput->Colors[Port].SensorRaw[i];
-		ScaledArray[i] = pMapInput->Colors[Port].SensorValue[i];
+		COLORSTRUCT * pColor = &(pMapInput->Colors[Port]);
+		RawArray[i] = pColor->ADRaw[i];
+		NormalizedArray[i] = pColor->SensorRaw[i];
+		ScaledArray[i] = pColor->SensorValue[i];
 	}
 	//Copy the Invalid Data Flag
-	*InvalidData = pMapInput->Inputs[Port].InvalidData;
+	*InvalidData = pIn->InvalidData;
 
 	return NO_ERR;
 
@@ -6326,10 +6331,12 @@ NXT_STATUS cCmdLSCheckStatus(UBYTE Port)
     return (ERR_COMM_CHAN_INVALID);
   }
 
+  INPUTSTRUCT * pInput = &(pMapInput->Inputs[Port]);
+
   //If port is not configured properly ahead of time, report that error
   //!!! This seems like the right policy, but may restrict otherwise valid read operations...
-  if (!(pMapInput->Inputs[Port].SensorType == LOWSPEED_9V || pMapInput->Inputs[Port].SensorType == LOWSPEED)
-   || !(pMapInput->Inputs[Port].InvalidData == FALSE))
+  if (!(pInput->SensorType == LOWSPEED_9V || pInput->SensorType == LOWSPEED)
+   || !(pInput->InvalidData == FALSE))
   {
     return (ERR_COMM_CHAN_NOT_READY);
   }
@@ -6346,13 +6353,15 @@ UBYTE cCmdLSCalcBytesReady(UBYTE Port)
   //Expect callers to validate Port, but short circuit here to be safe.
   if (Port >= NO_OF_LOWSPEED_COM_CHANNEL)
     return 0;
+  
+  LSBUF * pInBuf = &(pMapLowSpeed->InBuf[Port]);
 
   //Normally, bytes available is a simple difference.
-  Tmp = pMapLowSpeed->InBuf[Port].InPtr - pMapLowSpeed->InBuf[Port].OutPtr;
+  Tmp = pInBuf->InPtr - pInBuf->OutPtr;
 
   //If InPtr is actually behind OutPtr, circular buffer has wrapped.  Account for wrappage...
   if (Tmp < 0)
-    Tmp = (pMapLowSpeed->InBuf[Port].InPtr + (SIZE_OF_LSBUF - pMapLowSpeed->InBuf[Port].OutPtr));
+    Tmp = (pInBuf->InPtr + (SIZE_OF_LSBUF - pInBuf->OutPtr));
 
   return (UBYTE)(Tmp);
 }
@@ -6371,20 +6380,24 @@ NXT_STATUS cCmdLSWrite(UBYTE Port, UBYTE BufLength, UBYTE *pBuf, UBYTE ResponseL
     return (ERR_INVALID_SIZE);
   }
 
-  //Only start writing process if port is properly configured and c_lowspeed module is ready
-  if ((pMapInput->Inputs[Port].SensorType == LOWSPEED_9V || pMapInput->Inputs[Port].SensorType == LOWSPEED)
-   && (pMapInput->Inputs[Port].InvalidData == FALSE)
-   && (pMapLowSpeed->ChannelState[Port] == LOWSPEED_IDLE) || (pMapLowSpeed->ChannelState[Port] == LOWSPEED_ERROR))
-  {
-    pMapLowSpeed->OutBuf[Port].InPtr = 0;
-    pMapLowSpeed->OutBuf[Port].OutPtr = 0;
+  INPUTSTRUCT * pInput = &(pMapInput->Inputs[Port]);
+  UBYTE * pChState = &(pMapLowSpeed->ChannelState[Port]);
+  LSBUF * pOutBuf = &(pMapLowSpeed->OutBuf[Port]);
 
-    memcpy(pMapLowSpeed->OutBuf[Port].Buf, pBuf, BufLength);
-    pMapLowSpeed->OutBuf[Port].InPtr = (UBYTE)BufLength;
+  //Only start writing process if port is properly configured and c_lowspeed module is ready
+  if ((pInput->SensorType == LOWSPEED_9V || pInput->SensorType == LOWSPEED)
+   && (pInput->InvalidData == FALSE)
+   && (*pChState == LOWSPEED_IDLE) || (*pChState == LOWSPEED_ERROR))
+  {
+    pOutBuf->InPtr = 0;
+    pOutBuf->OutPtr = 0;
+
+    memcpy(pOutBuf->Buf, pBuf, BufLength);
+    pOutBuf->InPtr = (UBYTE)BufLength;
 
     pMapLowSpeed->InBuf[Port].BytesToRx = ResponseLength;
 
-    pMapLowSpeed->ChannelState[Port] = LOWSPEED_INIT;
+    *pChState = LOWSPEED_INIT;
     pMapLowSpeed->State |= (COM_CHANNEL_ONE_ACTIVE << Port);
 
     return (NO_ERR);
@@ -6422,18 +6435,20 @@ NXT_STATUS cCmdLSRead(UBYTE Port, UBYTE BufLength, UBYTE * pBuf)
 
   BytesToRead = BufLength;
 
+  LSBUF * pInBuf = &(pMapLowSpeed->InBuf[Port]);
+
   //If the bytes we want to read wrap around the end, we must first read the end, then reset back to the beginning
-  if (pMapLowSpeed->InBuf[Port].OutPtr + BytesToRead >= SIZE_OF_LSBUF)
+  if (pInBuf->OutPtr + BytesToRead >= SIZE_OF_LSBUF)
   {
-    BytesToRead = SIZE_OF_LSBUF - pMapLowSpeed->InBuf[Port].OutPtr;
-    memcpy(pBuf, pMapLowSpeed->InBuf[Port].Buf + pMapLowSpeed->InBuf[Port].OutPtr, BytesToRead);
-    pMapLowSpeed->InBuf[Port].OutPtr = 0;
+    BytesToRead = SIZE_OF_LSBUF - pInBuf->OutPtr;
+    memcpy(pBuf, pInBuf->Buf + pInBuf->OutPtr, BytesToRead);
+    pInBuf->OutPtr = 0;
     pBuf += BytesToRead;
     BytesToRead = BufLength - BytesToRead;
   }
 
-  memcpy(pBuf, pMapLowSpeed->InBuf[Port].Buf + pMapLowSpeed->InBuf[Port].OutPtr, BytesToRead);
-  pMapLowSpeed->InBuf[Port].OutPtr += BytesToRead;
+  memcpy(pBuf, pInBuf->Buf + pInBuf->OutPtr, BytesToRead);
+  pInBuf->OutPtr += BytesToRead;
 
   return (NO_ERR);
 }

@@ -226,8 +226,11 @@ void      cInputCtrl(void)
 
   for (Tmp = 0; Tmp < NO_OF_INPUTS; Tmp++)
   {
+    UBYTE sType = IOMapInput.Inputs[Tmp].SensorType;
+    UBYTE *pType = &IOMapInput.Inputs[Tmp].SensorType;
+    UBYTE oldType = VarsInput.OldSensorType[Tmp];
 
-    if ((IOMapInput.Inputs[Tmp].SensorType) != (VarsInput.OldSensorType[Tmp]))
+    if (sType != oldType)
     {
 
       /* Clear all variables for this sensor */
@@ -239,9 +242,10 @@ void      cInputCtrl(void)
       memset(&(VarsInput.VarsColor[Tmp]),0 ,sizeof(VarsInput.VarsColor[Tmp]));
 
       /* Setup the pins for the new sensortype */
-      cInputSetupType(Tmp, &(IOMapInput.Inputs[Tmp].SensorType), VarsInput.OldSensorType[Tmp]);
+      cInputSetupType(Tmp, pType, oldType);
+      sType = *pType;
       IOMapInput.Inputs[Tmp].InvalidData = INVALID_DATA;
-      VarsInput.OldSensorType[Tmp]       = IOMapInput.Inputs[Tmp].SensorType;
+      VarsInput.OldSensorType[Tmp]       = sType;
     }
     else
     {
@@ -250,12 +254,9 @@ void      cInputCtrl(void)
 
         /* A type change has been carried out earlier - waiting for valid data   */
         /* The color sensor requires special startup sequence with communication */
-        if (((IOMapInput.Inputs[Tmp].SensorType) == COLORFULL) ||
-            ((IOMapInput.Inputs[Tmp].SensorType) == COLORRED)  ||
-            ((IOMapInput.Inputs[Tmp].SensorType) == COLORGREEN)||
-            ((IOMapInput.Inputs[Tmp].SensorType) == COLORBLUE) ||
-            ((IOMapInput.Inputs[Tmp].SensorType) == COLOREXIT) ||
-            ((IOMapInput.Inputs[Tmp].SensorType) == COLORNONE))
+        if ((sType == COLORFULL) || (sType == COLORRED)  ||
+            (sType == COLORGREEN)|| (sType == COLORBLUE) ||
+            (sType == COLOREXIT) || (sType == COLORNONE))
         {
           cInputCalcSensorValues(Tmp);
         }

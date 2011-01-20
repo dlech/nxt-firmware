@@ -3436,11 +3436,11 @@ ULONG cCmdGetSByte(void * pVal) {
 
 ULONG cCmdGetFloat(void * pVal) {
   float tempVal = *(float*)pVal;
-  if (tempVal >= 0) {
-    tempVal += 0.5;
+  if (tempVal >= 0.0f) {
+    tempVal += 0.5f;
   }
   else {
-    tempVal -= 0.5;
+    tempVal -= 0.5f;
   }
   return (ULONG)tempVal;
 }
@@ -4613,7 +4613,7 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
         pArg2 = cCmdResolveDataArg(Arg2, 0, NULL);
         FltArgVal2 = cCmdGetValFlt(pArg2, TypeCode2);
        // is number too big for display? then format differently and don't bother with trailing zeros
-        if ((FltArgVal2 > 9999999999999.99)||(FltArgVal2 < -999999999999.99)){ // these are the widest %.2f numbers that will fit on display
+        if ((FltArgVal2 > 9999999999999.99f)||(FltArgVal2 < -999999999999.99f)){ // these are the widest %.2f numbers that will fit on display
           strcpy (FormatString, "%.6g");
         }
         else{
@@ -4951,20 +4951,20 @@ float cCmdUnop2Flt(CODE_WORD const Code, float Operand, TYPE_CODE TypeCode)
   else if(opCode == OP_ABS)
     return fabsf(Operand);
   else if(opCode == OP_SQRT)
-    return sqrt(Operand);
+    return sqrtf(Operand);
 #if 0
   else if(opCode == OP_SIN)
-    return sin(Operand);
+    return sinf(Operand);
   else if(opCode == OP_COS)
-    return cos(Operand);
+    return cosf(Operand);
   else if(opCode == OP_TAN)
-    return tan(Operand);
+    return tanf(Operand);
   else if(opCode == OP_ASIN)
-    return asin(Operand);
+    return asinf(Operand);
   else if(opCode == OP_ACOS)
-    return acos(Operand);
+    return acosf(Operand);
   else if(opCode == OP_ATAN)
-    return atan(Operand);
+    return atanf(Operand);
 #endif
   else
   {

@@ -83,19 +83,19 @@ const     UBYTE SENSORFORMAT[SENSORS][9] =
 
 const     float SENSORDIVIDER[SENSORS] =
 {
-  1.0,                      //  MENU_SENSOR_EMPTY
-  1.0,                      //  MENU_SENSOR_SOUND_DB
-  1.0,                      //  MENU_SENSOR_SOUND_DBA
-  1.0,                      //  MENU_SENSOR_LIGHT
-  1.0,                      //  MENU_SENSOR_LIGHT_AMB
-  1.0,                      //  MENU_SENSOR_TOUCH
-  1.0,                      //  MENU_SENSOR_MOTOR_DEG
-  360.0,                    //  MENU_SENSOR_MOTOR_ROT
-  2.54,                     //  MENU_SENSOR_ULTRASONIC_IN
-  1.0,                      //  MENU_SENSOR_ULTRASONIC_CM
-  10.0,                     //  MENU_SENSOR_IIC_TEMP_C
-  10.0,                     //  MENU_SENSOR_IIC_TEMP_F
-  1.0                       //  MENU_SENSOR_COLOR
+  1.0f,                     //  MENU_SENSOR_EMPTY
+  1.0f,                     //  MENU_SENSOR_SOUND_DB
+  1.0f,                     //  MENU_SENSOR_SOUND_DBA
+  1.0f,                     //  MENU_SENSOR_LIGHT
+  1.0f,                     //  MENU_SENSOR_LIGHT_AMB
+  1.0f,                     //  MENU_SENSOR_TOUCH
+  1.0f,                     //  MENU_SENSOR_MOTOR_DEG
+  360.0f,                   //  MENU_SENSOR_MOTOR_ROT
+  2.54f,                    //  MENU_SENSOR_ULTRASONIC_IN
+  1.0f,                     //  MENU_SENSOR_ULTRASONIC_CM
+  10.0f,                    //  MENU_SENSOR_IIC_TEMP_C
+  10.0f,                    //  MENU_SENSOR_IIC_TEMP_F
+  1.0f                      //  MENU_SENSOR_COLOR
 };
 
 
@@ -322,11 +322,11 @@ void      cUiUpdateSensor(SWORD Time)
                   {
                     if (Sensor == MENU_SENSOR_IIC_TEMP_F)
                     {
-                      VarsUi.DatalogSampleValue[Port - MENU_PORT_1] = (SLONG)((float)(Tmp + 4544) / 14.2);
+                      VarsUi.DatalogSampleValue[Port - MENU_PORT_1] = (SLONG)((float)(Tmp + 4544) / 14.2f);
                     }
                     else
                     {
-                      VarsUi.DatalogSampleValue[Port - MENU_PORT_1] = (SLONG)((float)Tmp / 25.6);
+                      VarsUi.DatalogSampleValue[Port - MENU_PORT_1] = (SLONG)((float)Tmp / 25.6f);
                     }
                     VarsUi.DatalogSampleValid[Port - MENU_PORT_1] = TRUE;
                   }

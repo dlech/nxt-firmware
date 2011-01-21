@@ -143,282 +143,35 @@ ULONG CLK_PINS[4] = {CHANNEL_ONE_CLK, CHANNEL_TWO_CLK, CHANNEL_THREE_CLK, CHANNE
 #define   SETDebugOutputLow				*AT91C_PIOA_CODR	= 0x20000000
 
 
-#define	  SETClkComOneHigh				*AT91C_PIOA_SODR	= CHANNEL_ONE_CLK
+#define SETClkLow(ChannelNr)  {\
+  *AT91C_PIOA_CODR	= CLK_PINS[ChannelNr];\
+  LowSpeedData[ChannelNr].ClkStatus = 0;\
+}
 
-#define	  SETClkComOneLow				*AT91C_PIOA_CODR	= CHANNEL_ONE_CLK
+#define SETClkHigh(ChannelNr)  {\
+  *AT91C_PIOA_SODR = CLK_PINS[ChannelNr];\
+  LowSpeedData[ChannelNr].ClkStatus = 1;\
+}
 
-#define   GetClkComOnePinLevel			*AT91C_PIOA_PDSR	& CHANNEL_ONE_CLK
+#define SETDataLow(ChannelNr)  {\
+  *AT91C_PIOA_CODR = DATA_PINS[ChannelNr];\
+}
 
-#define	  SETClkComTwoHigh				*AT91C_PIOA_SODR	= CHANNEL_TWO_CLK
+#define SETDataHigh(ChannelNr)  {\
+  *AT91C_PIOA_SODR = DATA_PINS[ChannelNr];\
+}
 
-#define	  SETClkComTwoLow				*AT91C_PIOA_CODR	= CHANNEL_TWO_CLK
-
-#define   GetClkComTwoPinLevel			*AT91C_PIOA_PDSR	& CHANNEL_TWO_CLK
-
-#define	  SETClkComThreeHigh			*AT91C_PIOA_SODR	= CHANNEL_THREE_CLK
-
-#define	  SETClkComThreeLow				*AT91C_PIOA_CODR	= CHANNEL_THREE_CLK
-
-#define   GetClkComThreePinLevel		*AT91C_PIOA_PDSR	& CHANNEL_THREE_CLK
-
-#define	  SETClkComFourHigh				*AT91C_PIOA_SODR	= CHANNEL_FOUR_CLK
-
-#define	  SETClkComFourLow				*AT91C_PIOA_CODR	= CHANNEL_FOUR_CLK
-
-#define   GetClkComFourPinLevel			*AT91C_PIOA_PDSR	& CHANNEL_FOUR_CLK
+#define SETDataToInput(ChannelNr)  {\
+  *AT91C_PIOA_ODR  = DATA_PINS[ChannelNr];\
+}
 
 
-#define	  SETDataComOneHigh				*AT91C_PIOA_SODR	= CHANNEL_ONE_DATA
+#define SETDataToOutput(ChannelNr)  {\
+  *AT91C_PIOA_OER  = DATA_PINS[ChannelNr];\
+}
 
-#define   SETDataComOneLow				*AT91C_PIOA_CODR	= CHANNEL_ONE_DATA
-
-#define   GetDataComOnePinLevel			*AT91C_PIOA_PDSR	& CHANNEL_ONE_DATA
-
-#define   GETDataComOnePinDirection		*AT91C_PIOA_OSR     & CHANNEL_ONE_DATA
-
-#define	  SETDataComTwoHigh				*AT91C_PIOA_SODR	= CHANNEL_TWO_DATA
-
-#define   SETDataComTwoLow				*AT91C_PIOA_CODR	= CHANNEL_TWO_DATA
-
-#define   GetDataComTwoPinLevel			*AT91C_PIOA_PDSR	& CHANNEL_TWO_DATA
-
-#define   GETDataComTwoPinDirection		*AT91C_PIOA_OSR     & CHANNEL_TWO_DATA
-
-#define	  SETDataComThreeHigh			*AT91C_PIOA_SODR	= CHANNEL_THREE_DATA
-
-#define   SETDataComThreeLow			*AT91C_PIOA_CODR	= CHANNEL_THREE_DATA
-
-#define   GetDataComThreePinLevel		*AT91C_PIOA_PDSR	& CHANNEL_THREE_DATA
-
-#define   GETDataComThreePinDirection	*AT91C_PIOA_OSR     & CHANNEL_THREE_DATA
-
-#define	  SETDataComFourHigh			*AT91C_PIOA_SODR	= CHANNEL_FOUR_DATA
-
-#define   SETDataComFourLow				*AT91C_PIOA_CODR	= CHANNEL_FOUR_DATA
-
-#define   GetDataComFourPinLevel		*AT91C_PIOA_PDSR	& CHANNEL_FOUR_DATA
-
-#define   GETDataComFourPinDirection	*AT91C_PIOA_OSR     & CHANNEL_FOUR_DATA
-
-#define   SETDataComOneToInput          *AT91C_PIOA_ODR     = CHANNEL_ONE_DATA;
-
-#define   SETDataComOneToOutput			*AT91C_PIOA_OER     = CHANNEL_ONE_DATA;
-
-#define   SETDataComTwoToInput          *AT91C_PIOA_ODR     = CHANNEL_TWO_DATA;
-
-#define   SETDataComTwoToOutput			*AT91C_PIOA_OER     = CHANNEL_TWO_DATA;
-
-#define   SETDataComThreeToInput        *AT91C_PIOA_ODR     = CHANNEL_THREE_DATA;
-
-#define   SETDataComThreeToOutput		*AT91C_PIOA_OER     = CHANNEL_THREE_DATA;
-
-#define   SETDataComFourToInput         *AT91C_PIOA_ODR     = CHANNEL_FOUR_DATA;
-
-#define   SETDataComFourToOutput		*AT91C_PIOA_OER     = CHANNEL_FOUR_DATA;
-
-#define   DISABLEPullupDataComOne		*AT91C_PIOA_PPUDR   = CHANNEL_ONE_DATA;
-
-#define   DISABLEPullupClkComOne		*AT91C_PIOA_PPUDR   = CHANNEL_ONE_CLK;
-
-#define   DISABLEPullupDataComTwo		*AT91C_PIOA_PPUDR   = CHANNEL_TWO_DATA;
-
-#define   DISABLEPullupClkComTwo		*AT91C_PIOA_PPUDR   = CHANNEL_TWO_CLK;
-
-#define   DISABLEPullupDataComThree		*AT91C_PIOA_PPUDR   = CHANNEL_THREE_DATA;
-
-#define   DISABLEPullupClkComThree		*AT91C_PIOA_PPUDR   = CHANNEL_THREE_CLK;
-
-#define   DISABLEPullupDataComFour		*AT91C_PIOA_PPUDR   = CHANNEL_FOUR_DATA;
-
-#define   DISABLEPullupClkComFour		*AT91C_PIOA_PPUDR   = CHANNEL_FOUR_CLK;
-
-#define   ENABLEPullupDataComOne		*AT91C_PIOA_PPUER   = CHANNEL_ONE_DATA;
-
-#define   ENABLEPullupClkComOne 		*AT91C_PIOA_PPUER   = CHANNEL_ONE_CLK;
-
-#define   ENABLEPullupDataComTwo		*AT91C_PIOA_PPUER   = CHANNEL_TWO_DATA;
-
-#define   ENABLEPullupClkComTwo 		*AT91C_PIOA_PPUER   = CHANNEL_TWO_CLK;
-
-#define   ENABLEPullupDataComThree		*AT91C_PIOA_PPUER   = CHANNEL_THREE_DATA;
-
-#define   ENABLEPullupClkComThree		*AT91C_PIOA_PPUER   = CHANNEL_THREE_CLK;
-
-#define   ENABLEPullupDataComFour		*AT91C_PIOA_PPUER   = CHANNEL_FOUR_DATA;
-
-#define   ENABLEPullupClkComFour		*AT91C_PIOA_PPUER   = CHANNEL_FOUR_CLK;
-
-#define SETClkLow(ChannelNr)             {\
-										   if (ChannelNr == 0)\
-										   {\
-										     SETClkComOneLow;\
-										   }\
-										   else\
-										   {\
-										     if (ChannelNr == 1)\
-										     {\
-										       SETClkComTwoLow;\
-										     }\
-										     else\
-										     {\
-										       if (ChannelNr == 2)\
-										       {\
-										         SETClkComThreeLow;\
-										       }\
-										       else\
-										       {\
-										         if (ChannelNr == 3)\
-										         {\
-										           SETClkComFourLow;\
-										         }\
-										       }\
-										     }\
-										   }\
-                                                                                   LowSpeedData[ChannelNr].ClkStatus = 0;\
-                                         }
-
-#define SETClkHigh(ChannelNr)            {\
-										   if (ChannelNr == 0)\
-										   {\
-										     SETClkComOneHigh;\
-										   }\
-										   else\
-										   {\
-										     if (ChannelNr == 1)\
-										     {\
-										       SETClkComTwoHigh;\
-										     }\
-										     else\
-										     {\
-										       if (ChannelNr == 2)\
-										       {\
-										         SETClkComThreeHigh;\
-										       }\
-										       else\
-										       {\
-										         if (ChannelNr == 3)\
-										         {\
-										           SETClkComFourHigh;\
-										         }\
-										       }\
-										     }\
-										   }\
-                                                                                   LowSpeedData[ChannelNr].ClkStatus = 1;\
-                                         }
-
-#define SETDataLow(ChannelNr)            {\
-										   if (ChannelNr == 0)\
-										   {\
-										     SETDataComOneLow;\
-										   }\
-										   else\
-										   {\
-										     if (ChannelNr == 1)\
-										     {\
-										       SETDataComTwoLow;\
-										     }\
-										     else\
-										     {\
-										       if (ChannelNr == 2)\
-										       {\
-										         SETDataComThreeLow;\
-										       }\
-										       else\
-										       {\
-										         if (ChannelNr == 3)\
-										         {\
-										           SETDataComFourLow;\
-										         }\
-										       }\
-										     }\
-										   }\
-                                         }
-
-#define SETDataHigh(ChannelNr)           {\
-										   if (ChannelNr == 0)\
-										   {\
-										     SETDataComOneHigh;\
-										   }\
-										   else\
-										   {\
-										     if (ChannelNr == 1)\
-										     {\
-										       SETDataComTwoHigh;\
-										     }\
-										     else\
-										     {\
-										       if (ChannelNr == 2)\
-										       {\
-										         SETDataComThreeHigh;\
-										       }\
-										       else\
-										       {\
-										         if (ChannelNr == 3)\
-										         {\
-										           SETDataComFourHigh;\
-										         }\
-										       }\
-										     }\
-										   }\
-                                         }
-
-#define SETDataToInput(ChannelNr)		 {\
-										   if (ChannelNr == 0)\
-										   {\
-										     SETDataComOneToInput;\
-										   }\
-										   else\
-										   {\
-										     if (ChannelNr == 1)\
-										     {\
-										       SETDataComTwoToInput;\
-										     }\
-										     else\
-										     {\
-										       if (ChannelNr == 2)\
-										       {\
-										         SETDataComThreeToInput;\
-										       }\
-										       else\
-										       {\
-										         if (ChannelNr == 3)\
-										         {\
-										           SETDataComFourToInput;\
-										         }\
-										       }\
-										     }\
-										   }\
-                                         }
-
-
-#define SETDataToOutput(ChannelNr)		 {\
-										   if (ChannelNr == 0)\
-										   {\
-										     SETDataComOneToOutput;\
-										   }\
-										   else\
-										   {\
-										     if (ChannelNr == 1)\
-										     {\
-										       SETDataComTwoToOutput;\
-										     }\
-										     else\
-										     {\
-										       if (ChannelNr == 2)\
-										       {\
-										         SETDataComThreeToOutput;\
-										       }\
-										       else\
-										       {\
-										         if (ChannelNr == 3)\
-										         {\
-										           SETDataComFourToOutput;\
-										         }\
-										       }\
-										     }\
-										   }\
-                                         }
-
+#define GetClkPinLevel(ChannelNr) (*AT91C_PIOA_PDSR & CLK_PINS[ChannelNr])
+#define GetDataPinLevel(ChannelNr)	(*AT91C_PIOA_PDSR & DATA_PINS[ChannelNr])
 
 #define   ENABLEPWMTimerForLowCom       {\
                                           *AT91C_PWMC_ENA		= AT91C_PWMC_CHID0;			/* Enable PWM output channel 0 */\
@@ -745,132 +498,37 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
   }
 }
 
-
-#define ENABLETxPins(ChannelNumber)			   {\
-											     if (ChannelNumber == LOWSPEED_CHANNEL1)\
-											     {\
-											       *AT91C_PIOA_PER   = CHANNEL_ONE_CLK | CHANNEL_ONE_DATA; /* Enable PIO on PA20 & PA28 */\
-												   *AT91C_PIOA_PPUDR = CHANNEL_ONE_CLK | CHANNEL_ONE_DATA; /* Disable Pull-up resistor  */\
-												   *AT91C_PIOA_ODR   = CHANNEL_ONE_CLK | CHANNEL_ONE_DATA; /* PA20 & PA28 set to Input  */\
-												 }\
-											     if (ChannelNumber == LOWSPEED_CHANNEL2)\
-											     {\
-												   *AT91C_PIOA_PER   = CHANNEL_TWO_CLK | CHANNEL_TWO_DATA; /* Enable PIO on PA20 & PA28 */\
-												   *AT91C_PIOA_PPUDR = CHANNEL_TWO_CLK | CHANNEL_TWO_DATA; /* Disable Pull-up resistor */\
-												   *AT91C_PIOA_ODR   = CHANNEL_TWO_CLK | CHANNEL_TWO_DATA; /* PA20 & PA28 set to Input */\
-											     }\
-											     if (ChannelNumber == LOWSPEED_CHANNEL3)\
-											     {\
-											       *AT91C_PIOA_PER   = CHANNEL_THREE_CLK | CHANNEL_THREE_DATA; /* */\
-												   *AT91C_PIOA_PPUDR = CHANNEL_THREE_CLK | CHANNEL_THREE_DATA; /* */\
-												   *AT91C_PIOA_ODR   = CHANNEL_THREE_CLK | CHANNEL_THREE_DATA; /* */\
-											     }\
-											     if (ChannelNumber == LOWSPEED_CHANNEL4)\
-											     {\
-											       *AT91C_PIOA_PER   = CHANNEL_FOUR_CLK | CHANNEL_FOUR_DATA; /* */\
-												   *AT91C_PIOA_PPUDR = CHANNEL_FOUR_CLK | CHANNEL_FOUR_DATA; /* */\
-												   *AT91C_PIOA_ODR   = CHANNEL_FOUR_CLK | CHANNEL_FOUR_DATA; /* */\
-											     }\
-                                               }
+#define ENABLETxPins(ChannelNumber)  {\
+  ULONG Tmp = CLK_PINS[ChannelNumber] | DATA_PINS[ChannelNumber];\
+  *AT91C_PIOA_PER   = Tmp; /* Enable PIO */\
+  *AT91C_PIOA_PPUDR = Tmp; /* Disable Pull-up resistor  */\
+  *AT91C_PIOA_ODR   = Tmp; /* PIO set to Input  */\
+}
 
 #define TxData(ChannelNumber, Status, DataOutBuffer, NumberOfByte) {\
-											     if (ChannelNumber == LOWSPEED_CHANNEL1)\
-											     {\
-											       if ((GetDataComOnePinLevel && GetClkComOnePinLevel) && (LowSpeedData[LOWSPEED_CHANNEL1].ChannelState == LOWSPEED_IDLE))\
-										           {\
-									                 *AT91C_PIOA_PER   = CHANNEL_ONE_CLK | CHANNEL_ONE_DATA; /* Enable PIO on PA20 & PA28 */\
-												     *AT91C_PIOA_OER   = CHANNEL_ONE_CLK | CHANNEL_ONE_DATA; /* PA20 & PA28 set to Output  */\
-												     *AT91C_PIOA_PPUDR = CHANNEL_ONE_CLK | CHANNEL_ONE_DATA; /* Disable Pull-up resistor  */\
-												     SETClkComOneHigh;\
-                                                                                                      SETDataComOneLow;\
-                                                                                                     LowSpeedData[LOWSPEED_CHANNEL1].ClkStatus = 1;\
-                                                                                                     LowSpeedData[LOWSPEED_CHANNEL1].pComOutBuffer = DataOutBuffer;\
-									                 LowSpeedData[LOWSPEED_CHANNEL1].ComDeviceAddress = *LowSpeedData[LOWSPEED_CHANNEL1].pComOutBuffer;\
-									                 LowSpeedData[LOWSPEED_CHANNEL1].MaskBit = MASK_BIT_8;\
-										             LowSpeedData[LOWSPEED_CHANNEL1].TxByteCnt = NumberOfByte;\
-									                 LowSpeedData[LOWSPEED_CHANNEL1].TxState = TX_DATA_CLK_HIGH;\
-										             LowSpeedData[LOWSPEED_CHANNEL1].AckStatus = 0;\
-                                                                                             LowSpeedData[LOWSPEED_CHANNEL1].ChannelState = LOWSPEED_TRANSMITTING;\
-									                 Status = 1;\
-									               }\
-									               else\
-									               {\
-									                 Status = 0;\
-									               }\
-											     }\
-											     if (ChannelNumber == LOWSPEED_CHANNEL2)\
-											     {\
-											       if ((GetDataComTwoPinLevel && GetClkComTwoPinLevel) && (LowSpeedData[LOWSPEED_CHANNEL2].ChannelState == LOWSPEED_IDLE))\
-										           {\
-									                 *AT91C_PIOA_PER   = CHANNEL_TWO_CLK | CHANNEL_TWO_DATA; /* Enable PIO on PA20 & PA28 */\
-												     *AT91C_PIOA_OER   = CHANNEL_TWO_CLK | CHANNEL_TWO_DATA; /* PA20 & PA28 set to Output  */\
-												     *AT91C_PIOA_PPUDR = CHANNEL_TWO_CLK | CHANNEL_TWO_DATA; /* Disable Pull-up resistor  */\
-												     SETClkComTwoHigh;\
-										             SETDataComTwoLow;\
-                                                                                             LowSpeedData[LOWSPEED_CHANNEL2].ClkStatus = 1;\
-									                 LowSpeedData[LOWSPEED_CHANNEL2].pComOutBuffer = DataOutBuffer;\
-									                 LowSpeedData[LOWSPEED_CHANNEL2].ComDeviceAddress = *LowSpeedData[LOWSPEED_CHANNEL2].pComOutBuffer;\
-									                 LowSpeedData[LOWSPEED_CHANNEL2].MaskBit = MASK_BIT_8;\
-										             LowSpeedData[LOWSPEED_CHANNEL2].TxByteCnt = NumberOfByte;\
-									                 LowSpeedData[LOWSPEED_CHANNEL2].TxState = TX_DATA_CLK_HIGH;\
-										             LowSpeedData[LOWSPEED_CHANNEL2].AckStatus = 0;\
-   										             LowSpeedData[LOWSPEED_CHANNEL2].ChannelState = LOWSPEED_TRANSMITTING;\
-									                 Status = 1;\
-									               }\
-									               else\
-									               {\
-									                 Status = 0;\
-									               }\
-											     }\
-											     if (ChannelNumber == LOWSPEED_CHANNEL3)\
-											     {\
-											       if ((GetDataComThreePinLevel && GetClkComThreePinLevel) && (LowSpeedData[LOWSPEED_CHANNEL3].ChannelState == LOWSPEED_IDLE))\
-										           {\
-									                 *AT91C_PIOA_PER   = CHANNEL_THREE_CLK | CHANNEL_THREE_DATA; /* */\
-												     *AT91C_PIOA_OER   = CHANNEL_THREE_CLK | CHANNEL_THREE_DATA; /* */\
-												     *AT91C_PIOA_PPUDR = CHANNEL_THREE_CLK | CHANNEL_THREE_DATA; /* */\
-												     SETClkComThreeHigh;\
-                                                                                                      SETDataComThreeLow;\
-                                                                                                      LowSpeedData[LOWSPEED_CHANNEL3].ClkStatus = 1;\
-									                 LowSpeedData[LOWSPEED_CHANNEL3].pComOutBuffer = DataOutBuffer;\
-									                 LowSpeedData[LOWSPEED_CHANNEL3].ComDeviceAddress = *LowSpeedData[LOWSPEED_CHANNEL3].pComOutBuffer;\
-									                 LowSpeedData[LOWSPEED_CHANNEL3].MaskBit = MASK_BIT_8;\
-										             LowSpeedData[LOWSPEED_CHANNEL3].TxByteCnt = NumberOfByte;\
-									                 LowSpeedData[LOWSPEED_CHANNEL3].TxState = TX_DATA_CLK_HIGH;\
-										             LowSpeedData[LOWSPEED_CHANNEL3].AckStatus = 0;\
- 										             LowSpeedData[LOWSPEED_CHANNEL3].ChannelState = LOWSPEED_TRANSMITTING;\
-									                 Status = 1;\
-									               }\
-									               else\
-									               {\
-									                 Status = 0;\
-									               }\
-											     }\
-											     if (ChannelNumber == LOWSPEED_CHANNEL4)\
-											     {\
-											       if ((GetDataComFourPinLevel && GetClkComFourPinLevel) && (LowSpeedData[LOWSPEED_CHANNEL4].ChannelState == LOWSPEED_IDLE))\
-										           {\
-									                 *AT91C_PIOA_PER   = CHANNEL_FOUR_CLK | CHANNEL_FOUR_DATA; /* */\
-												     *AT91C_PIOA_OER   = CHANNEL_FOUR_CLK | CHANNEL_FOUR_DATA; /* */\
-												     *AT91C_PIOA_PPUDR = CHANNEL_FOUR_CLK | CHANNEL_FOUR_DATA; /* */\
-												     SETClkComFourHigh;\
-                                                                                                     SETDataComFourLow;\
-                                                                                                     LowSpeedData[LOWSPEED_CHANNEL4].ClkStatus = 1;\
-									                 LowSpeedData[LOWSPEED_CHANNEL4].pComOutBuffer = DataOutBuffer;\
-									                 LowSpeedData[LOWSPEED_CHANNEL4].ComDeviceAddress = *LowSpeedData[LOWSPEED_CHANNEL4].pComOutBuffer;\
-									                 LowSpeedData[LOWSPEED_CHANNEL4].MaskBit = MASK_BIT_8;\
-										             LowSpeedData[LOWSPEED_CHANNEL4].TxByteCnt = NumberOfByte;\
-									                 LowSpeedData[LOWSPEED_CHANNEL4].TxState = TX_DATA_CLK_HIGH;\
-										             LowSpeedData[LOWSPEED_CHANNEL4].AckStatus = 0;\
-   										             LowSpeedData[LOWSPEED_CHANNEL4].ChannelState = LOWSPEED_TRANSMITTING;\
-									                 Status = 1;\
-									               }\
-									               else\
-									               {\
-									                 Status = 0;\
-									               }\
-											     }\
-											   }
+  if ((GetDataPinLevel(ChannelNumber) && GetClkPinLevel(ChannelNumber)) && (LowSpeedData[ChannelNumber].ChannelState == LOWSPEED_IDLE))\
+  {\
+    ULONG Tmp = CLK_PINS[ChannelNumber] | DATA_PINS[ChannelNumber];\
+    *AT91C_PIOA_PER   = Tmp; /* Enable PIO */\
+    *AT91C_PIOA_OER   = Tmp; /* POI set to Output  */\
+    *AT91C_PIOA_PPUDR = Tmp; /* Disable Pull-up resistor  */\
+    SETClkHigh(ChannelNumber);\
+    SETDataLow(ChannelNumber);\
+    LowSpeedData[ChannelNumber].ClkStatus = 1;\
+    LowSpeedData[ChannelNumber].pComOutBuffer = DataOutBuffer;\
+    LowSpeedData[ChannelNumber].ComDeviceAddress = *LowSpeedData[ChannelNumber].pComOutBuffer;\
+    LowSpeedData[ChannelNumber].MaskBit = MASK_BIT_8;\
+    LowSpeedData[ChannelNumber].TxByteCnt = NumberOfByte;\
+    LowSpeedData[ChannelNumber].TxState = TX_DATA_CLK_HIGH;\
+    LowSpeedData[ChannelNumber].AckStatus = 0;\
+    LowSpeedData[ChannelNumber].ChannelState = LOWSPEED_TRANSMITTING;\
+    Status = 1;\
+  }\
+  else\
+  {\
+    Status = 0;\
+  }\
+}
 
 #define RxData(ChannelNumber, DataInBuffer, RxBytes) {\
 											           LowSpeedData[ChannelNumber].pComInBuffer = DataInBuffer;\

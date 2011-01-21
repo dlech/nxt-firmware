@@ -1128,6 +1128,10 @@ void      cInputSetupCustomSensor(UBYTE Port)
       dInputClearDigi0(Port);
     }
   }
+  else
+  {
+    dInputSetDirInDigi0(Port);
+  }
   if ((IOMapInput.Inputs[Port].DigiPinsDir) & 0x02)
   {
     if ((IOMapInput.Inputs[Port].DigiPinsOut) & 0x02)

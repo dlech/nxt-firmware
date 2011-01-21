@@ -88,23 +88,24 @@ void      dOutputInit(void)
 
   for (Temp = 0; Temp < 3; Temp++)
   {
-    MotorData[Temp].MotorSetSpeed = 0;
-    MotorData[Temp].MotorTargetSpeed = 0;
-    MotorData[Temp].MotorActualSpeed = 0;
-    MotorData[Temp].MotorRampUpCount = 0;
-    MotorData[Temp].MotorRampDownCount = 0;
-    MotorData[Temp].MotorRunState = 0;
-    MotorData[Temp].MotorTachoCountToRun = 0;
-    MotorData[Temp].MotorRunForever = 1;
-    MotorData[Temp].AccError = 0;
-    MotorData[Temp].RegulationTimeCount = 0;
-    MotorData[Temp].RegPParameter = DEFAULT_P_GAIN_FACTOR;
-    MotorData[Temp].RegIParameter = DEFAULT_I_GAIN_FACTOR;
-    MotorData[Temp].RegDParameter = DEFAULT_D_GAIN_FACTOR;
-    MotorData[Temp].RegulationMode = 0; 	
-    MotorData[Temp].MotorOverloaded = 0;
+    MOTORDATA * pMD = &(MotorData[Temp]);
+    pMD->MotorSetSpeed = 0;
+    pMD->MotorTargetSpeed = 0;
+    pMD->MotorActualSpeed = 0;
+    pMD->MotorRampUpCount = 0;
+    pMD->MotorRampDownCount = 0;
+    pMD->MotorRunState = 0;
+    pMD->MotorTachoCountToRun = 0;
+    pMD->MotorRunForever = 1;
+    pMD->AccError = 0;
+    pMD->RegulationTimeCount = 0;
+    pMD->RegPParameter = DEFAULT_P_GAIN_FACTOR;
+    pMD->RegIParameter = DEFAULT_I_GAIN_FACTOR;
+    pMD->RegDParameter = DEFAULT_D_GAIN_FACTOR;
+    pMD->RegulationMode = 0;
+    pMD->MotorOverloaded = 0;
     INSERTMode(Temp, COAST_MOTOR_MODE);
-    INSERTSpeed(Temp, MotorData[Temp].MotorSetSpeed);
+    INSERTSpeed(Temp, pMD->MotorSetSpeed);
   }
 }
 
@@ -123,43 +124,44 @@ void dOutputCtrl(void)
 
   for (MotorNr = 0; MotorNr < 3; MotorNr++)
   {
-    MotorData[MotorNr].DeltaCaptureCount += NewTachoCount[MotorNr];
-    MotorData[MotorNr].CurrentCaptureCount += NewTachoCount[MotorNr];
-    MotorData[MotorNr].MotorBlockTachoCount += NewTachoCount[MotorNr];
-    MotorData[MotorNr].RotationCaptureCount += NewTachoCount[MotorNr];
-    MotorData[MotorNr].RegulationTimeCount++;
+    MOTORDATA * pMD = &(MotorData[MotorNr]);
+    pMD->DeltaCaptureCount += NewTachoCount[MotorNr];
+    pMD->CurrentCaptureCount += NewTachoCount[MotorNr];
+    pMD->MotorBlockTachoCount += NewTachoCount[MotorNr];
+    pMD->RotationCaptureCount += NewTachoCount[MotorNr];
+    pMD->RegulationTimeCount++;
 
-    if (MotorData[MotorNr].MotorRunState == MOTOR_RUN_STATE_RAMPUP)
+    if (pMD->MotorRunState == MOTOR_RUN_STATE_RAMPUP)
     {
       dOutputRampUpFunction(MotorNr);
     }
-    if (MotorData[MotorNr].MotorRunState == MOTOR_RUN_STATE_RAMPDOWN)
+    if (pMD->MotorRunState == MOTOR_RUN_STATE_RAMPDOWN)
     {
       dOutputRampDownFunction(MotorNr);
     }
-    if (MotorData[MotorNr].MotorRunState == MOTOR_RUN_STATE_RUNNING)
+    if (pMD->MotorRunState == MOTOR_RUN_STATE_RUNNING)
     {
       dOutputTachoLimitControl(MotorNr);
     }
-    if (MotorData[MotorNr].MotorRunState == MOTOR_RUN_STATE_IDLE)
+    if (pMD->MotorRunState == MOTOR_RUN_STATE_IDLE)
     {
       dOutputMotorIdleControl(MotorNr);
     }
-    if (MotorData[MotorNr].MotorRunState == MOTOR_RUN_STATE_HOLD)
+    if (pMD->MotorRunState == MOTOR_RUN_STATE_HOLD)
     {
-      MotorData[MotorNr].MotorSetSpeed = 0;
-      MotorData[MotorNr].MotorActualSpeed = 0;
-      MotorData[MotorNr].MotorTargetSpeed = 0;
-      MotorData[MotorNr].RegulationTimeCount = 0;
-      MotorData[MotorNr].DeltaCaptureCount = 0;
-      MotorData[MotorNr].MotorRunState = MOTOR_RUN_STATE_RUNNING;
+      pMD->MotorSetSpeed = 0;
+      pMD->MotorActualSpeed = 0;
+      pMD->MotorTargetSpeed = 0;
+      pMD->RegulationTimeCount = 0;
+      pMD->DeltaCaptureCount = 0;
+      pMD->MotorRunState = MOTOR_RUN_STATE_RUNNING;
 
     }
-    if (MotorData[MotorNr].RegulationTimeCount > REGULATION_TIME)
+    if (pMD->RegulationTimeCount > REGULATION_TIME)
     {
-      MotorData[MotorNr].RegulationTimeCount = 0;
+      pMD->RegulationTimeCount = 0;
       dOutputRegulateMotor(MotorNr);
-      MotorData[MotorNr].DeltaCaptureCount = 0;
+      pMD->DeltaCaptureCount = 0;
     }
   }
   INSERTSpeed(MOTOR_A, MotorData[MOTOR_A].MotorActualSpeed);
@@ -180,18 +182,19 @@ void dOutputGetMotorParameters(UBYTE *CurrentMotorSpeed, SLONG *TachoCount, SLON
 
   for (Tmp = 0; Tmp < 3; Tmp++)
   {
-    CurrentMotorSpeed[Tmp] = MotorData[Tmp].MotorActualSpeed;
-    TachoCount[Tmp] = MotorData[Tmp].CurrentCaptureCount;
-    BlockTachoCount[Tmp] = MotorData[Tmp].MotorBlockTachoCount;
-	  RotationCount[Tmp] = MotorData[Tmp].RotationCaptureCount;
-    RunState[Tmp] = MotorData[Tmp].MotorRunState;
-    MotorOverloaded[Tmp] = MotorData[Tmp].MotorOverloaded;
+    MOTORDATA * pMD = &(MotorData[Tmp]);
+    CurrentMotorSpeed[Tmp] = pMD->MotorActualSpeed;
+    TachoCount[Tmp] = pMD->CurrentCaptureCount;
+    BlockTachoCount[Tmp] = pMD->MotorBlockTachoCount;
+    RotationCount[Tmp] = pMD->RotationCaptureCount;
+    RunState[Tmp] = pMD->MotorRunState;
+    MotorOverloaded[Tmp] = pMD->MotorOverloaded;
   }
 }
 
-void dOutputSetMode(UBYTE Motor, UBYTE Mode)     //Set motor mode (break, Float)
+void dOutputSetMode(UBYTE MotorNr, UBYTE Mode)     //Set motor mode (break, Float)
 {
-  INSERTMode(Motor, Mode);
+  INSERTMode(MotorNr, Mode);
 }
 
 /* Update the regulation state for the motor */
@@ -199,17 +202,18 @@ void dOutputSetMode(UBYTE Motor, UBYTE Mode)     //Set motor mode (break, Float)
 /* AccError & OldPositionError used for position regulation and Sync Parameter are used for synchronization regulation */
 void dOutputEnableRegulation(UBYTE MotorNr, UBYTE RegulationMode)
 {
-  MotorData[MotorNr].RegulationMode = RegulationMode;
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+  pMD->RegulationMode = RegulationMode;
 
-  if ((MotorData[MotorNr].RegulationMode & REGSTATE_REGULATED) && (MotorData[MotorNr].MotorSetSpeed == 0) && (MotorData[MotorNr].MotorRunState != MOTOR_RUN_STATE_RAMPDOWN))
+  if ((pMD->RegulationMode & REGSTATE_REGULATED) && (pMD->MotorSetSpeed == 0) && (pMD->MotorRunState != MOTOR_RUN_STATE_RAMPDOWN))
   {
-    MotorData[MotorNr].AccError = 0;
-    MotorData[MotorNr].OldPositionError = 0;
+    pMD->AccError = 0;
+    pMD->OldPositionError = 0;
   }
 
-  if (MotorData[MotorNr].RegulationMode & REGSTATE_SYNCHRONE)
+  if (pMD->RegulationMode & REGSTATE_SYNCHRONE)
   {
-    if (((MotorData[MotorNr].MotorActualSpeed == 0) || (MotorData[MotorNr].TurnParameter != 0) || (MotorData[MotorNr].TurnParameter == 0)) && (MotorData[MotorNr].MotorRunState != MOTOR_RUN_STATE_RAMPDOWN))
+    if (((pMD->MotorActualSpeed == 0) || (pMD->TurnParameter != 0) || (pMD->TurnParameter == 0)) && (pMD->MotorRunState != MOTOR_RUN_STATE_RAMPDOWN))
     {
       SyncData.SyncTachoDif = 0;
 
@@ -230,17 +234,18 @@ void dOutputDisableRegulation(UBYTE MotorNr)
 /* Calling this function will reset current movement of the motor if it is running */
 void dOutputResetTachoLimit(UBYTE MotorNr)
 {
-  MotorData[MotorNr].CurrentCaptureCount = 0;
-  MotorData[MotorNr].MotorTachoCountToRun = 0;
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+  pMD->CurrentCaptureCount = 0;
+  pMD->MotorTachoCountToRun = 0;
 
-  if (MotorData[MotorNr].RegulationMode & REGSTATE_SYNCHRONE)
+  if (pMD->RegulationMode & REGSTATE_SYNCHRONE)
   {
     dOutputResetSyncMotors(MotorNr);
   }
 
-  if (MotorData[MotorNr].MotorRunForever == 1)
+  if (pMD->MotorRunForever == 1)
   {
-    MotorData[MotorNr].MotorRunForever = 0;                   // To ensure that we get the same functionality for all combination on motor durations
+    pMD->MotorRunForever = 0;                   // To ensure that we get the same functionality for all combination on motor durations
   }
 }
 
@@ -259,11 +264,12 @@ void dOutputResetRotationCaptureCount(UBYTE MotorNr)
 }
 
 /* Can be used to set new PID values */
-void dOutputSetPIDParameters(UBYTE Motor, UBYTE NewRegPParameter, UBYTE NewRegIParameter, UBYTE NewRegDParameter)
+void dOutputSetPIDParameters(UBYTE MotorNr, UBYTE NewRegPParameter, UBYTE NewRegIParameter, UBYTE NewRegDParameter)
 {
-  MotorData[Motor].RegPParameter = NewRegPParameter;
-  MotorData[Motor].RegIParameter = NewRegIParameter;
-  MotorData[Motor].RegDParameter = NewRegDParameter;
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+  pMD->RegPParameter = NewRegPParameter;
+  pMD->RegIParameter = NewRegIParameter;
+  pMD->RegDParameter = NewRegDParameter;
 }
 
 /* Called to set TachoCountToRun which is used for position control for the model */
@@ -271,34 +277,35 @@ void dOutputSetPIDParameters(UBYTE Motor, UBYTE NewRegPParameter, UBYTE NewRegIP
 /* TachoCountToRun is calculated as a signed value */
 void dOutputSetTachoLimit(UBYTE MotorNr, ULONG BlockTachoCntToTravel)
 {
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
   if (BlockTachoCntToTravel == 0)
   {
-    MotorData[MotorNr].MotorRunForever = 1;
+    pMD->MotorRunForever = 1;
   }
   else
   {
-    MotorData[MotorNr].MotorRunForever = 0;
+    pMD->MotorRunForever = 0;
 
-    if (MotorData[MotorNr].MotorSetSpeed == 0)
+    if (pMD->MotorSetSpeed == 0)
     {
-      if (MotorData[MotorNr].MotorTargetSpeed > 0)
+      if (pMD->MotorTargetSpeed > 0)
       {
-        MotorData[MotorNr].MotorTachoCountToRun += BlockTachoCntToTravel;
+        pMD->MotorTachoCountToRun += BlockTachoCntToTravel;
       }
       else
       {
-        MotorData[MotorNr].MotorTachoCountToRun -= BlockTachoCntToTravel;
+        pMD->MotorTachoCountToRun -= BlockTachoCntToTravel;
       }
     }
     else
     {
-      if (MotorData[MotorNr].MotorSetSpeed > 0)
+      if (pMD->MotorSetSpeed > 0)
       {
-        MotorData[MotorNr].MotorTachoCountToRun += BlockTachoCntToTravel;
+        pMD->MotorTachoCountToRun += BlockTachoCntToTravel;
       }
       else
       {
-        MotorData[MotorNr].MotorTachoCountToRun -= BlockTachoCntToTravel;
+        pMD->MotorTachoCountToRun -= BlockTachoCntToTravel;
       }
     }
   }
@@ -307,67 +314,69 @@ void dOutputSetTachoLimit(UBYTE MotorNr, ULONG BlockTachoCntToTravel)
 /* This function is used for setting up the motor mode and motor speed */
 void dOutputSetSpeed (UBYTE MotorNr, UBYTE NewMotorRunState, SBYTE Speed, SBYTE NewTurnParameter)
 {
-  if ((MotorData[MotorNr].MotorSetSpeed != Speed) || (MotorData[MotorNr].MotorRunState != NewMotorRunState) || (NewMotorRunState == MOTOR_RUN_STATE_IDLE) || (MotorData[MotorNr].TurnParameter != NewTurnParameter))
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+  if ((pMD->MotorSetSpeed != Speed) || (pMD->MotorRunState != NewMotorRunState) ||
+      (NewMotorRunState == MOTOR_RUN_STATE_IDLE) || (pMD->TurnParameter != NewTurnParameter))
   {
-    if (MotorData[MotorNr].MotorTargetSpeed == 0)
+    if (pMD->MotorTargetSpeed == 0)
     {
-      MotorData[MotorNr].AccError = 0;
-      MotorData[MotorNr].OldPositionError = 0;
-      MotorData[MotorNr].RegulationTimeCount = 0;
-      MotorData[MotorNr].DeltaCaptureCount = 0;
+      pMD->AccError = 0;
+      pMD->OldPositionError = 0;
+      pMD->RegulationTimeCount = 0;
+      pMD->DeltaCaptureCount = 0;
       TACHOCountReset(MotorNr);
     }
     switch (NewMotorRunState)
     {
       case MOTOR_RUN_STATE_IDLE:
       {
-        //MotorData[MotorNr].MotorSetSpeed = 0;
-        //MotorData[MotorNr].MotorTargetSpeed = 0;
-        //MotorData[MotorNr].TurnParameter = 0;
-        MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
+        //pMD->MotorSetSpeed = 0;
+        //pMD->MotorTargetSpeed = 0;
+        //pMD->TurnParameter = 0;
+        pMD->RegulationMode = REGSTATE_IDLE;
       }
       break;
 
       case MOTOR_RUN_STATE_RAMPUP:
       {
-        if (MotorData[MotorNr].MotorSetSpeed == 0)
+        if (pMD->MotorSetSpeed == 0)
         {
-          MotorData[MotorNr].MotorSetSpeed = Speed;
-          MotorData[MotorNr].TurnParameter = NewTurnParameter;
-          MotorData[MotorNr].MotorRampUpIncrement = 0;
-          MotorData[MotorNr].MotorRampTachoCountStart = MotorData[MotorNr].CurrentCaptureCount;
-          MotorData[MotorNr].MotorRampUpCount = 0;
+          pMD->MotorSetSpeed = Speed;
+          pMD->TurnParameter = NewTurnParameter;
+          pMD->MotorRampUpIncrement = 0;
+          pMD->MotorRampTachoCountStart = pMD->CurrentCaptureCount;
+          pMD->MotorRampUpCount = 0;
         }
         else
         {
           if (Speed > 0)
           {
-            if (MotorData[MotorNr].MotorSetSpeed >= Speed)
+            if (pMD->MotorSetSpeed >= Speed)
             {
               NewMotorRunState = MOTOR_RUN_STATE_RUNNING;
             }
             else
             {
-              MotorData[MotorNr].MotorSetSpeed = Speed;
-              MotorData[MotorNr].TurnParameter = NewTurnParameter;
-              MotorData[MotorNr].MotorRampUpIncrement = 0;
-              MotorData[MotorNr].MotorRampTachoCountStart = MotorData[MotorNr].CurrentCaptureCount;
-              MotorData[MotorNr].MotorRampUpCount = 0;
+              pMD->MotorSetSpeed = Speed;
+              pMD->TurnParameter = NewTurnParameter;
+              pMD->MotorRampUpIncrement = 0;
+              pMD->MotorRampTachoCountStart = pMD->CurrentCaptureCount;
+              pMD->MotorRampUpCount = 0;
             }
           }
           else
           {
-            if (MotorData[MotorNr].MotorSetSpeed <= Speed)
+            if (pMD->MotorSetSpeed <= Speed)
             {
               NewMotorRunState = MOTOR_RUN_STATE_RUNNING;
             }
             else
             {
-              MotorData[MotorNr].MotorSetSpeed = Speed;
-              MotorData[MotorNr].TurnParameter = NewTurnParameter;
-              MotorData[MotorNr].MotorRampUpIncrement = 0;
-              MotorData[MotorNr].MotorRampTachoCountStart = MotorData[MotorNr].CurrentCaptureCount;
-              MotorData[MotorNr].MotorRampUpCount = 0;
+              pMD->MotorSetSpeed = Speed;
+              pMD->TurnParameter = NewTurnParameter;
+              pMD->MotorRampUpIncrement = 0;
+              pMD->MotorRampTachoCountStart = pMD->CurrentCaptureCount;
+              pMD->MotorRampUpCount = 0;
             }
           }
         }
@@ -376,11 +385,11 @@ void dOutputSetSpeed (UBYTE MotorNr, UBYTE NewMotorRunState, SBYTE Speed, SBYTE 
 
       case MOTOR_RUN_STATE_RUNNING:
       {
-        MotorData[MotorNr].MotorSetSpeed = Speed;
-        MotorData[MotorNr].MotorTargetSpeed = Speed;
-        MotorData[MotorNr].TurnParameter = NewTurnParameter;
+        pMD->MotorSetSpeed = Speed;
+        pMD->MotorTargetSpeed = Speed;
+        pMD->TurnParameter = NewTurnParameter;
 
-        if (MotorData[MotorNr].MotorSetSpeed == 0)
+        if (pMD->MotorSetSpeed == 0)
         {
           NewMotorRunState = MOTOR_RUN_STATE_HOLD;
         }
@@ -389,41 +398,41 @@ void dOutputSetSpeed (UBYTE MotorNr, UBYTE NewMotorRunState, SBYTE Speed, SBYTE 
 
       case MOTOR_RUN_STATE_RAMPDOWN:
       {
-        if (MotorData[MotorNr].MotorTargetSpeed >= 0)
+        if (pMD->MotorTargetSpeed >= 0)
         {
-          if (MotorData[MotorNr].MotorSetSpeed <= Speed)
+          if (pMD->MotorSetSpeed <= Speed)
           {
             NewMotorRunState = MOTOR_RUN_STATE_RUNNING;
           }
           else
           {
-            MotorData[MotorNr].MotorSetSpeed = Speed;
-            MotorData[MotorNr].TurnParameter = NewTurnParameter;
-            MotorData[MotorNr].MotorRampDownIncrement = 0;
-            MotorData[MotorNr].MotorRampTachoCountStart = MotorData[MotorNr].CurrentCaptureCount;
-            MotorData[MotorNr].MotorRampDownCount = 0;
+            pMD->MotorSetSpeed = Speed;
+            pMD->TurnParameter = NewTurnParameter;
+            pMD->MotorRampDownIncrement = 0;
+            pMD->MotorRampTachoCountStart = pMD->CurrentCaptureCount;
+            pMD->MotorRampDownCount = 0;
           }
         }
         else
         {
-          if (MotorData[MotorNr].MotorSetSpeed >= Speed)
+          if (pMD->MotorSetSpeed >= Speed)
           {
             NewMotorRunState = MOTOR_RUN_STATE_RUNNING;
           }
           else
           {
-            MotorData[MotorNr].MotorSetSpeed = Speed;
-            MotorData[MotorNr].TurnParameter = NewTurnParameter;
-            MotorData[MotorNr].MotorRampDownIncrement = 0;
-            MotorData[MotorNr].MotorRampTachoCountStart = MotorData[MotorNr].CurrentCaptureCount;
-            MotorData[MotorNr].MotorRampDownCount = 0;
+            pMD->MotorSetSpeed = Speed;
+            pMD->TurnParameter = NewTurnParameter;
+            pMD->MotorRampDownIncrement = 0;
+            pMD->MotorRampTachoCountStart = pMD->CurrentCaptureCount;
+            pMD->MotorRampDownCount = 0;
           }
         }
       }
       break;
     }
-    MotorData[MotorNr].MotorRunState = NewMotorRunState;
-    MotorData[MotorNr].MotorOverloaded = 0;
+    pMD->MotorRunState = NewMotorRunState;
+    pMD->MotorOverloaded = 0;
   }
 }
 
@@ -431,107 +440,109 @@ void dOutputSetSpeed (UBYTE MotorNr, UBYTE NewMotorRunState, SBYTE Speed, SBYTE 
 /* Ramp-up is done with 1 increment in speed every X number of TachoCount, where X depend on duration of the periode and the wanted speed */
 void dOutputRampUpFunction(UBYTE MotorNr)
 {
-  if (MotorData[MotorNr].MotorTargetSpeed == 0)
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+  if (pMD->MotorTargetSpeed == 0)
   {
-    if (MotorData[MotorNr].MotorSetSpeed > 0)
+    if (pMD->MotorSetSpeed > 0)
     {
-      MotorData[MotorNr].MotorTargetSpeed = MIN_MOVEMENT_POWER;
+      pMD->MotorTargetSpeed = MIN_MOVEMENT_POWER;
     }
     else
     {
-      MotorData[MotorNr].MotorTargetSpeed = -MIN_MOVEMENT_POWER;
+      pMD->MotorTargetSpeed = -MIN_MOVEMENT_POWER;
     }
   }
   else
   {
-    if (MotorData[MotorNr].MotorRampUpIncrement == 0)
+    if (pMD->MotorRampUpIncrement == 0)
     {
-      if (MotorData[MotorNr].MotorSetSpeed > 0)
+      SWORD delta = (SWORD)((pMD->MotorTachoCountToRun - pMD->MotorRampTachoCountStart) / (pMD->MotorSetSpeed - pMD->MotorTargetSpeed));
+      if (pMD->MotorSetSpeed > 0)
       {
-        MotorData[MotorNr].MotorRampUpIncrement = (SWORD)((MotorData[MotorNr].MotorTachoCountToRun - MotorData[MotorNr].MotorRampTachoCountStart) / (MotorData[MotorNr].MotorSetSpeed - MotorData[MotorNr].MotorTargetSpeed));
+        pMD->MotorRampUpIncrement = delta;
       }
       else
       {
-        MotorData[MotorNr].MotorRampUpIncrement = (SWORD)(-((MotorData[MotorNr].MotorTachoCountToRun - MotorData[MotorNr].MotorRampTachoCountStart) / (MotorData[MotorNr].MotorSetSpeed - MotorData[MotorNr].MotorTargetSpeed)));
+        pMD->MotorRampUpIncrement = -delta;
       }
-      MotorData[MotorNr].MotorRampTachoCountOld = MotorData[MotorNr].CurrentCaptureCount;
+      pMD->MotorRampTachoCountOld = pMD->CurrentCaptureCount;
     }
-    if (MotorData[MotorNr].MotorSetSpeed > 0)
+    if (pMD->MotorSetSpeed > 0)
     {
-      if (MotorData[MotorNr].CurrentCaptureCount > (MotorData[MotorNr].MotorRampTachoCountOld + MotorData[MotorNr].MotorRampUpIncrement))
+      if (pMD->CurrentCaptureCount > (pMD->MotorRampTachoCountOld + pMD->MotorRampUpIncrement))
       {
-        MotorData[MotorNr].MotorTargetSpeed += 1;
-        MotorData[MotorNr].MotorRampTachoCountOld = MotorData[MotorNr].CurrentCaptureCount;
-        MotorData[MotorNr].MotorRampUpCount = 0;
+        pMD->MotorTargetSpeed += 1;
+        pMD->MotorRampTachoCountOld = pMD->CurrentCaptureCount;
+        pMD->MotorRampUpCount = 0;
       }
       else
       {
-        if (!(MotorData[MotorNr].RegulationMode & REGSTATE_REGULATED))
+        if (!(pMD->RegulationMode & REGSTATE_REGULATED))
         {
-          MotorData[MotorNr].MotorRampUpCount++;
-          if (MotorData[MotorNr].MotorRampUpCount > 100)
+          pMD->MotorRampUpCount++;
+          if (pMD->MotorRampUpCount > 100)
           {
-            MotorData[MotorNr].MotorRampUpCount = 0;
-            MotorData[MotorNr].MotorTargetSpeed++;
+            pMD->MotorRampUpCount = 0;
+            pMD->MotorTargetSpeed++;
           }
         }
       }
     }
     else
     {
-      if (MotorData[MotorNr].CurrentCaptureCount < (MotorData[MotorNr].MotorRampTachoCountOld + MotorData[MotorNr].MotorRampUpIncrement))
+      if (pMD->CurrentCaptureCount < (pMD->MotorRampTachoCountOld + pMD->MotorRampUpIncrement))
       {
-        MotorData[MotorNr].MotorTargetSpeed -= 1;
-        MotorData[MotorNr].MotorRampTachoCountOld = MotorData[MotorNr].CurrentCaptureCount;
-        MotorData[MotorNr].MotorRampUpCount = 0;
+        pMD->MotorTargetSpeed -= 1;
+        pMD->MotorRampTachoCountOld = pMD->CurrentCaptureCount;
+        pMD->MotorRampUpCount = 0;
       }
       else
       {
-        if (!(MotorData[MotorNr].RegulationMode & REGSTATE_REGULATED))
+        if (!(pMD->RegulationMode & REGSTATE_REGULATED))
         {
-          MotorData[MotorNr].MotorRampUpCount++;
-          if (MotorData[MotorNr].MotorRampUpCount > 100)
+          pMD->MotorRampUpCount++;
+          if (pMD->MotorRampUpCount > 100)
           {
-            MotorData[MotorNr].MotorRampUpCount = 0;
-            MotorData[MotorNr].MotorTargetSpeed--;
+            pMD->MotorRampUpCount = 0;
+            pMD->MotorTargetSpeed--;
           }
         }
       }
     }
   }
-  if (MotorData[MotorNr].MotorSetSpeed > 0)
+  if (pMD->MotorSetSpeed > 0)
   {
-    if ((MotorData[MotorNr].CurrentCaptureCount - MotorData[MotorNr].MotorRampTachoCountStart) >= (MotorData[MotorNr].MotorTachoCountToRun - MotorData[MotorNr].MotorRampTachoCountStart))
+    if ((pMD->CurrentCaptureCount - pMD->MotorRampTachoCountStart) >= (pMD->MotorTachoCountToRun - pMD->MotorRampTachoCountStart))
     {
-      MotorData[MotorNr].MotorTargetSpeed = MotorData[MotorNr].MotorSetSpeed;
-      MotorData[MotorNr].MotorRunState = MOTOR_RUN_STATE_IDLE;	
+      pMD->MotorTargetSpeed = pMD->MotorSetSpeed;
+      pMD->MotorRunState = MOTOR_RUN_STATE_IDLE;
     }
   }
   else
   {
-    if ((MotorData[MotorNr].CurrentCaptureCount + MotorData[MotorNr].MotorRampTachoCountStart) <= (MotorData[MotorNr].MotorTachoCountToRun + MotorData[MotorNr].MotorRampTachoCountStart))
+    if ((pMD->CurrentCaptureCount + pMD->MotorRampTachoCountStart) <= (pMD->MotorTachoCountToRun + pMD->MotorRampTachoCountStart))
     {
-      MotorData[MotorNr].MotorTargetSpeed = MotorData[MotorNr].MotorSetSpeed;
-      MotorData[MotorNr].MotorRunState = MOTOR_RUN_STATE_IDLE;	
+      pMD->MotorTargetSpeed = pMD->MotorSetSpeed;
+      pMD->MotorRunState = MOTOR_RUN_STATE_IDLE;
     }
   }
-  if (MotorData[MotorNr].MotorSetSpeed > 0)
+  if (pMD->MotorSetSpeed > 0)
   {
-    if (MotorData[MotorNr].MotorTargetSpeed > MotorData[MotorNr].MotorSetSpeed)
+    if (pMD->MotorTargetSpeed > pMD->MotorSetSpeed)
     {
-      MotorData[MotorNr].MotorTargetSpeed = MotorData[MotorNr].MotorSetSpeed;
+      pMD->MotorTargetSpeed = pMD->MotorSetSpeed;
     }
   }
   else
   {
-    if (MotorData[MotorNr].MotorTargetSpeed < MotorData[MotorNr].MotorSetSpeed)
+    if (pMD->MotorTargetSpeed < pMD->MotorSetSpeed)
     {
-      MotorData[MotorNr].MotorTargetSpeed = MotorData[MotorNr].MotorSetSpeed;
+      pMD->MotorTargetSpeed = pMD->MotorSetSpeed;
     }
   }
-  if (MotorData[MotorNr].RegulationMode == REGSTATE_IDLE)
+  if (pMD->RegulationMode == REGSTATE_IDLE)
   {
-    MotorData[MotorNr].MotorActualSpeed = MotorData[MotorNr].MotorTargetSpeed;
+    pMD->MotorActualSpeed = pMD->MotorTargetSpeed;
   }
 }
 
@@ -539,142 +550,144 @@ void dOutputRampUpFunction(UBYTE MotorNr)
 /* Ramp-down is done with 1 decrement in speed every X number of TachoCount, where X depend on duration of the periode and the wanted speed */
 void dOutputRampDownFunction(UBYTE MotorNr)
 {
-  if (MotorData[MotorNr].MotorRampDownIncrement == 0)
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+  if (pMD->MotorRampDownIncrement == 0)
   {
-    if (MotorData[MotorNr].MotorTargetSpeed > 0)
+    if (pMD->MotorTargetSpeed > 0)
     {
-      if ((MotorData[MotorNr].MotorTargetSpeed > MIN_MOVEMENT_POWER) && (MotorData[MotorNr].MotorSetSpeed == 0))
+      if ((pMD->MotorTargetSpeed > MIN_MOVEMENT_POWER) && (pMD->MotorSetSpeed == 0))
       {
-        MotorData[MotorNr].MotorRampDownIncrement = ((MotorData[MotorNr].MotorTachoCountToRun - MotorData[MotorNr].CurrentCaptureCount) / ((MotorData[MotorNr].MotorTargetSpeed - MotorData[MotorNr].MotorSetSpeed) - MIN_MOVEMENT_POWER));
+        pMD->MotorRampDownIncrement = ((pMD->MotorTachoCountToRun - pMD->CurrentCaptureCount) / ((pMD->MotorTargetSpeed - pMD->MotorSetSpeed) - MIN_MOVEMENT_POWER));
       }
       else
       {
-        MotorData[MotorNr].MotorRampDownIncrement = ((MotorData[MotorNr].MotorTachoCountToRun - MotorData[MotorNr].CurrentCaptureCount) / (MotorData[MotorNr].MotorTargetSpeed - MotorData[MotorNr].MotorSetSpeed));
+        pMD->MotorRampDownIncrement = ((pMD->MotorTachoCountToRun - pMD->CurrentCaptureCount) / (pMD->MotorTargetSpeed - pMD->MotorSetSpeed));
       }
     }
     else
     {
-      if ((MotorData[MotorNr].MotorTargetSpeed < -MIN_MOVEMENT_POWER) && (MotorData[MotorNr].MotorSetSpeed == 0))
+      if ((pMD->MotorTargetSpeed < -MIN_MOVEMENT_POWER) && (pMD->MotorSetSpeed == 0))
       {
-        MotorData[MotorNr].MotorRampDownIncrement = (-((MotorData[MotorNr].MotorTachoCountToRun - MotorData[MotorNr].CurrentCaptureCount) / ((MotorData[MotorNr].MotorTargetSpeed - MotorData[MotorNr].MotorSetSpeed) + MIN_MOVEMENT_POWER)));
+        pMD->MotorRampDownIncrement = (-((pMD->MotorTachoCountToRun - pMD->CurrentCaptureCount) / ((pMD->MotorTargetSpeed - pMD->MotorSetSpeed) + MIN_MOVEMENT_POWER)));
       }
       else
       {
-        MotorData[MotorNr].MotorRampDownIncrement = (-((MotorData[MotorNr].MotorTachoCountToRun - MotorData[MotorNr].CurrentCaptureCount) / (MotorData[MotorNr].MotorTargetSpeed - MotorData[MotorNr].MotorSetSpeed)));
+        pMD->MotorRampDownIncrement = (-((pMD->MotorTachoCountToRun - pMD->CurrentCaptureCount) / (pMD->MotorTargetSpeed - pMD->MotorSetSpeed)));
       }
     }
-    MotorData[MotorNr].MotorRampTachoCountOld = MotorData[MotorNr].CurrentCaptureCount;
+    pMD->MotorRampTachoCountOld = pMD->CurrentCaptureCount;
   }
-  if (MotorData[MotorNr].MotorTargetSpeed > 0)
+  if (pMD->MotorTargetSpeed > 0)
   {
-    if (MotorData[MotorNr].CurrentCaptureCount > (MotorData[MotorNr].MotorRampTachoCountOld + (SLONG)MotorData[MotorNr].MotorRampDownIncrement))
+    if (pMD->CurrentCaptureCount > (pMD->MotorRampTachoCountOld + (SLONG)pMD->MotorRampDownIncrement))
     {
-      MotorData[MotorNr].MotorTargetSpeed--;
-      if (MotorData[MotorNr].MotorTargetSpeed < MIN_MOVEMENT_POWER)
+      pMD->MotorTargetSpeed--;
+      if (pMD->MotorTargetSpeed < MIN_MOVEMENT_POWER)
       {
-        MotorData[MotorNr].MotorTargetSpeed = MIN_MOVEMENT_POWER;
+        pMD->MotorTargetSpeed = MIN_MOVEMENT_POWER;
       }
-      MotorData[MotorNr].MotorRampTachoCountOld = MotorData[MotorNr].CurrentCaptureCount;
-      MotorData[MotorNr].MotorRampDownCount = 0;
+      pMD->MotorRampTachoCountOld = pMD->CurrentCaptureCount;
+      pMD->MotorRampDownCount = 0;
       dOutputRampDownSynch(MotorNr);
     }
     else
     {
-      if (!(MotorData[MotorNr].RegulationMode & REGSTATE_REGULATED))
+      if (!(pMD->RegulationMode & REGSTATE_REGULATED))
       {
-        MotorData[MotorNr].MotorRampDownCount++;
-        if (MotorData[MotorNr].MotorRampDownCount > (UWORD)(30 * MotorData[MotorNr].MotorRampDownIncrement))
+        pMD->MotorRampDownCount++;
+        if (pMD->MotorRampDownCount > (UWORD)(30 * pMD->MotorRampDownIncrement))
         {
-          MotorData[MotorNr].MotorRampDownCount = (UWORD)(20 * MotorData[MotorNr].MotorRampDownIncrement);
-          MotorData[MotorNr].MotorTargetSpeed++;
+          pMD->MotorRampDownCount = (UWORD)(20 * pMD->MotorRampDownIncrement);
+          pMD->MotorTargetSpeed++;
         }
       }
     }
   }
   else
   {
-    if (MotorData[MotorNr].CurrentCaptureCount < (MotorData[MotorNr].MotorRampTachoCountOld + (SLONG)MotorData[MotorNr].MotorRampDownIncrement))
+    if (pMD->CurrentCaptureCount < (pMD->MotorRampTachoCountOld + (SLONG)pMD->MotorRampDownIncrement))
     {
-      MotorData[MotorNr].MotorTargetSpeed++;
-      if (MotorData[MotorNr].MotorTargetSpeed > -MIN_MOVEMENT_POWER)
+      pMD->MotorTargetSpeed++;
+      if (pMD->MotorTargetSpeed > -MIN_MOVEMENT_POWER)
       {
-        MotorData[MotorNr].MotorTargetSpeed = -MIN_MOVEMENT_POWER;
+        pMD->MotorTargetSpeed = -MIN_MOVEMENT_POWER;
       }
-      MotorData[MotorNr].MotorRampTachoCountOld = MotorData[MotorNr].CurrentCaptureCount;
-      MotorData[MotorNr].MotorRampDownCount = 0;
+      pMD->MotorRampTachoCountOld = pMD->CurrentCaptureCount;
+      pMD->MotorRampDownCount = 0;
       dOutputRampDownSynch(MotorNr);
     }
     else
     {
-      if (!(MotorData[MotorNr].RegulationMode & REGSTATE_REGULATED))
+      if (!(pMD->RegulationMode & REGSTATE_REGULATED))
       {
-        MotorData[MotorNr].MotorRampDownCount++;
-        if (MotorData[MotorNr].MotorRampDownCount > (UWORD)(30 * (-MotorData[MotorNr].MotorRampDownIncrement)))
+        pMD->MotorRampDownCount++;
+        if (pMD->MotorRampDownCount > (UWORD)(30 * (-pMD->MotorRampDownIncrement)))
         {
-          MotorData[MotorNr].MotorRampDownCount = (UWORD)(20 * (-MotorData[MotorNr].MotorRampDownIncrement));
-          MotorData[MotorNr].MotorTargetSpeed--;
+          pMD->MotorRampDownCount = (UWORD)(20 * (-pMD->MotorRampDownIncrement));
+          pMD->MotorTargetSpeed--;
         }
       }
     }
   }
-  if ((MotorData[MotorNr].RegulationMode & REGSTATE_SYNCHRONE) && (MotorData[MotorNr].TurnParameter != 0))
+  if ((pMD->RegulationMode & REGSTATE_SYNCHRONE) && (pMD->TurnParameter != 0))
   {
     dOutputSyncTachoLimitControl(MotorNr);
-    if (MotorData[MotorNr].MotorRunState == MOTOR_RUN_STATE_IDLE)
+    if (pMD->MotorRunState == MOTOR_RUN_STATE_IDLE)
     {
       dOutputMotorReachedTachoLimit(MotorNr);
     }
   }
   else
   {
-    if (MotorData[MotorNr].MotorTargetSpeed > 0)
+    if (pMD->MotorTargetSpeed > 0)
     {
-      if (MotorData[MotorNr].CurrentCaptureCount >= MotorData[MotorNr].MotorTachoCountToRun)
+      if (pMD->CurrentCaptureCount >= pMD->MotorTachoCountToRun)
       {
         dOutputMotorReachedTachoLimit(MotorNr);
       }
     }
     else
     {
-      if (MotorData[MotorNr].CurrentCaptureCount <= MotorData[MotorNr].MotorTachoCountToRun)
+      if (pMD->CurrentCaptureCount <= pMD->MotorTachoCountToRun)
       {
         dOutputMotorReachedTachoLimit(MotorNr);
       }
     }
   }
-  if (MotorData[MotorNr].RegulationMode == REGSTATE_IDLE)
+  if (pMD->RegulationMode == REGSTATE_IDLE)
   {
-    MotorData[MotorNr].MotorActualSpeed = MotorData[MotorNr].MotorTargetSpeed;
+    pMD->MotorActualSpeed = pMD->MotorTargetSpeed;
   }
 }
 
 /* Function used to tell whether the wanted position is obtained */
 void dOutputTachoLimitControl(UBYTE MotorNr)
 {
-  if (MotorData[MotorNr].MotorRunForever == 0)
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+  if (pMD->MotorRunForever == 0)
   {
-    if (MotorData[MotorNr].RegulationMode & REGSTATE_SYNCHRONE)
+    if (pMD->RegulationMode & REGSTATE_SYNCHRONE)
     {
       dOutputSyncTachoLimitControl(MotorNr);
     }
     else
     {
-      if (MotorData[MotorNr].MotorSetSpeed > 0)
+      if (pMD->MotorSetSpeed > 0)
       {
-        if ((MotorData[MotorNr].CurrentCaptureCount >= MotorData[MotorNr].MotorTachoCountToRun))
+        if ((pMD->CurrentCaptureCount >= pMD->MotorTachoCountToRun))
         {
-          MotorData[MotorNr].MotorRunState = MOTOR_RUN_STATE_IDLE;
-          MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
+          pMD->MotorRunState = MOTOR_RUN_STATE_IDLE;
+          pMD->RegulationMode = REGSTATE_IDLE;
         }
       }
       else
       {
-        if (MotorData[MotorNr].MotorSetSpeed < 0)
+        if (pMD->MotorSetSpeed < 0)
         {
-          if (MotorData[MotorNr].CurrentCaptureCount <= MotorData[MotorNr].MotorTachoCountToRun)
+          if (pMD->CurrentCaptureCount <= pMD->MotorTachoCountToRun)
           {
-            MotorData[MotorNr].MotorRunState = MOTOR_RUN_STATE_IDLE;
-            MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
+            pMD->MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pMD->RegulationMode = REGSTATE_IDLE;
           }
         }
       }
@@ -682,18 +695,18 @@ void dOutputTachoLimitControl(UBYTE MotorNr)
   }
   else
   {
-    if (MotorData[MotorNr].CurrentCaptureCount > MAX_COUNT_TO_RUN)
+    if (pMD->CurrentCaptureCount > MAX_COUNT_TO_RUN)
     {
-      MotorData[MotorNr].CurrentCaptureCount = 0;
+      pMD->CurrentCaptureCount = 0;
     }
-    if (MotorData[MotorNr].MotorTargetSpeed != 0)
+    if (pMD->MotorTargetSpeed != 0)
     {
-      MotorData[MotorNr].MotorTachoCountToRun = MotorData[MotorNr].CurrentCaptureCount;
+      pMD->MotorTachoCountToRun = pMD->CurrentCaptureCount;
     }
   }
-  if (MotorData[MotorNr].RegulationMode == REGSTATE_IDLE)
+  if (pMD->RegulationMode == REGSTATE_IDLE)
   {
-    MotorData[MotorNr].MotorActualSpeed = MotorData[MotorNr].MotorTargetSpeed;
+    pMD->MotorActualSpeed = pMD->MotorTargetSpeed;
   }
 }
 
@@ -702,39 +715,41 @@ void dOutputMotorIdleControl(UBYTE MotorNr)
 {
   INSERTMode(MotorNr, COAST_MOTOR_MODE);
 
-  if (MotorData[MotorNr].MotorActualSpeed != 0)
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+
+  if (pMD->MotorActualSpeed != 0)
   {
-    if (MotorData[MotorNr].MotorActualSpeed > 0)
+    if (pMD->MotorActualSpeed > 0)
     {
-      MotorData[MotorNr].MotorActualSpeed--;
+      pMD->MotorActualSpeed--;
     }
     else
     {
-      MotorData[MotorNr].MotorActualSpeed++;
+      pMD->MotorActualSpeed++;
     }
   }
 
-  if (MotorData[MotorNr].MotorTargetSpeed != 0)
+  if (pMD->MotorTargetSpeed != 0)
   {
-    if (MotorData[MotorNr].MotorTargetSpeed > 0)
+    if (pMD->MotorTargetSpeed > 0)
     {
-      MotorData[MotorNr].MotorTargetSpeed--;
+      pMD->MotorTargetSpeed--;
     }
     else
     {
-      MotorData[MotorNr].MotorTargetSpeed++;
+      pMD->MotorTargetSpeed++;
     }
   }
 
-  if (MotorData[MotorNr].MotorSetSpeed != 0)
+  if (pMD->MotorSetSpeed != 0)
   {
-    if (MotorData[MotorNr].MotorSetSpeed > 0)
+    if (pMD->MotorSetSpeed > 0)
     {
-      MotorData[MotorNr].MotorSetSpeed--;
+      pMD->MotorSetSpeed--;
     }
     else
     {
-      MotorData[MotorNr].MotorSetSpeed++;
+      pMD->MotorSetSpeed++;
     }
   }
 }
@@ -745,13 +760,14 @@ void dOutputRegulateMotor(UBYTE MotorNr)
   UBYTE SyncMotorOne;
   UBYTE SyncMotorTwo;
 
-  if (MotorData[MotorNr].RegulationMode & REGSTATE_REGULATED)
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+  if (pMD->RegulationMode & REGSTATE_REGULATED)
   {
     dOutputCalculateMotorPosition(MotorNr);
   }
   else
   {
-    if (MotorData[MotorNr].RegulationMode & REGSTATE_SYNCHRONE)
+    if (pMD->RegulationMode & REGSTATE_SYNCHRONE)
     {
       dOutputMotorSyncStatus(MotorNr, &SyncMotorOne, &SyncMotorTwo);
 
@@ -774,20 +790,21 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
   SWORD TotalRegValue;
   SWORD NewSpeedCount = 0;
 
-  NewSpeedCount = (SWORD)((MotorData[MotorNr].MotorTargetSpeed * MAX_CAPTURE_COUNT)/INPUT_SCALE_FACTOR);
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+  NewSpeedCount = (SWORD)((pMD->MotorTargetSpeed * MAX_CAPTURE_COUNT)/INPUT_SCALE_FACTOR);
 
-  PositionError = (SWORD)(MotorData[MotorNr].OldPositionError - MotorData[MotorNr].DeltaCaptureCount) + NewSpeedCount;
+  PositionError = (SWORD)(pMD->OldPositionError - pMD->DeltaCaptureCount) + NewSpeedCount;
 
   //Overflow control on PositionError
-  if (MotorData[MotorNr].RegPParameter != 0)
+  if (pMD->RegPParameter != 0)
   {
-    if (PositionError > (SWORD)(32000 / MotorData[MotorNr].RegPParameter))
+    if (PositionError > (SWORD)(32000 / pMD->RegPParameter))
     {
-      PositionError = (SWORD)(32000 / MotorData[MotorNr].RegPParameter);
+      PositionError = (SWORD)(32000 / pMD->RegPParameter);
     }
-    if (PositionError < (SWORD)(-(32000 / MotorData[MotorNr].RegPParameter)))
+    if (PositionError < (SWORD)(-(32000 / pMD->RegPParameter)))
     {
-      PositionError = (SWORD)(-(32000 / MotorData[MotorNr].RegPParameter));
+      PositionError = (SWORD)(-(32000 / pMD->RegPParameter));
     }
   }
   else
@@ -802,7 +819,7 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
     }
   }
 
-  PValue = PositionError * (SWORD)(MotorData[MotorNr].RegPParameter/REG_CONST_DIV);
+  PValue = PositionError * (SWORD)(pMD->RegPParameter/REG_CONST_DIV);
   if (PValue > (SWORD)REG_MAX_VALUE)
   {
     PValue = REG_MAX_VALUE;
@@ -812,21 +829,21 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
     PValue = REG_MIN_VALUE;
   }
 
-  DValue = (PositionError - MotorData[MotorNr].OldPositionError) * (SWORD)(MotorData[MotorNr].RegDParameter/REG_CONST_DIV);
-  MotorData[MotorNr].OldPositionError = PositionError;
+  DValue = (PositionError - pMD->OldPositionError) * (SWORD)(pMD->RegDParameter/REG_CONST_DIV);
+  pMD->OldPositionError = PositionError;
 
-  MotorData[MotorNr].AccError = (MotorData[MotorNr].AccError * 3) + PositionError;
-  MotorData[MotorNr].AccError = MotorData[MotorNr].AccError / 4;
+  pMD->AccError = (pMD->AccError * 3) + PositionError;
+  pMD->AccError = pMD->AccError / 4;
 
-  if (MotorData[MotorNr].AccError > (SWORD)800)
+  if (pMD->AccError > (SWORD)800)
   {
-    MotorData[MotorNr].AccError = 800;
+    pMD->AccError = 800;
   }
-  if (MotorData[MotorNr].AccError <= (SWORD)-800)
+  if (pMD->AccError <= (SWORD)-800)
   {
-    MotorData[MotorNr].AccError = -800;
+    pMD->AccError = -800;
   }
-  IValue = MotorData[MotorNr].AccError * (SWORD)(MotorData[MotorNr].RegIParameter/REG_CONST_DIV);
+  IValue = pMD->AccError * (SWORD)(pMD->RegIParameter/REG_CONST_DIV);
 
   if (IValue > (SWORD)REG_MAX_VALUE)
   {
@@ -841,14 +858,14 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
   if (TotalRegValue > MAXIMUM_SPEED_FW)
   {
     TotalRegValue = MAXIMUM_SPEED_FW;
-    MotorData[MotorNr].MotorOverloaded = 1;
+    pMD->MotorOverloaded = 1;
   }
   if (TotalRegValue < MAXIMUM_SPEED_RW)
   {
     TotalRegValue = MAXIMUM_SPEED_RW;
-    MotorData[MotorNr].MotorOverloaded = 1;
+    pMD->MotorOverloaded = 1;
   }
-  MotorData[MotorNr].MotorActualSpeed = (SBYTE)TotalRegValue;
+  pMD->MotorActualSpeed = (SBYTE)TotalRegValue;
 }
 
 /* Regulation function used when syncrhonization regulation is enabled */
@@ -862,38 +879,40 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
   SWORD CorrectionValue;
   SWORD MotorSpeed;
 
-  SyncData.SyncTachoDif = (SLONG)((MotorData[MotorOne].MotorBlockTachoCount) - (MotorData[MotorTwo].MotorBlockTachoCount));
+  MOTORDATA * pOne = &(MotorData[MotorOne]);
+  MOTORDATA * pTwo = &(MotorData[MotorTwo]);
+  SyncData.SyncTachoDif = (SLONG)((pOne->MotorBlockTachoCount) - (pTwo->MotorBlockTachoCount));
 
-  if (MotorData[MotorOne].TurnParameter != 0)
+  if (pOne->TurnParameter != 0)
   {
-    if ((MotorData[MotorOne].MotorBlockTachoCount != 0) || (MotorData[MotorTwo].MotorBlockTachoCount))
+    if ((pOne->MotorBlockTachoCount != 0) || (pTwo->MotorBlockTachoCount != 0))
     {
-      if (MotorData[MotorOne].MotorTargetSpeed >= 0)
+      if (pOne->MotorTargetSpeed >= 0)
       {
-        if (MotorData[MotorOne].TurnParameter > 0)
+        if (pOne->TurnParameter > 0)
         {
-          TempTurnParameter = (SLONG)(((SLONG)MotorData[MotorTwo].TurnParameter * (SLONG)MotorData[MotorTwo].MotorTargetSpeed)/100);
+          TempTurnParameter = (SLONG)(((SLONG)pTwo->TurnParameter * (SLONG)pTwo->MotorTargetSpeed)/100);
         }
         else
         {
-          TempTurnParameter = (SLONG)(((SLONG)MotorData[MotorOne].TurnParameter * (SLONG)MotorData[MotorOne].MotorTargetSpeed)/100);
+          TempTurnParameter = (SLONG)(((SLONG)pOne->TurnParameter * (SLONG)pOne->MotorTargetSpeed)/100);
         }
       }
       else
       {
-        if (MotorData[MotorOne].TurnParameter > 0)
+        if (pOne->TurnParameter > 0)
         {
-          TempTurnParameter = (SLONG)(((SLONG)MotorData[MotorOne].TurnParameter * (-(SLONG)MotorData[MotorOne].MotorTargetSpeed))/100);
+          TempTurnParameter = (SLONG)(((SLONG)pOne->TurnParameter * (-(SLONG)pOne->MotorTargetSpeed))/100);
         }
         else
         {
-          TempTurnParameter = (SLONG)(((SLONG)MotorData[MotorTwo].TurnParameter * (-(SLONG)MotorData[MotorTwo].MotorTargetSpeed))/100);
+          TempTurnParameter = (SLONG)(((SLONG)pTwo->TurnParameter * (-(SLONG)pTwo->MotorTargetSpeed))/100);
         }
       }
     }
     else
     {
-      TempTurnParameter = MotorData[MotorOne].TurnParameter;
+      TempTurnParameter = pOne->TurnParameter;
     }
   }
   else
@@ -926,9 +945,9 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
   }
   */
 
-  PValue = (SWORD)SyncData.SyncTachoDif * (SWORD)(MotorData[MotorOne].RegPParameter/REG_CONST_DIV);
+  PValue = (SWORD)SyncData.SyncTachoDif * (SWORD)(pOne->RegPParameter/REG_CONST_DIV);
 
-  DValue = ((SWORD)SyncData.SyncTachoDif - SyncData.SyncOldError) * (SWORD)(MotorData[MotorOne].RegDParameter/REG_CONST_DIV);
+  DValue = ((SWORD)SyncData.SyncTachoDif - SyncData.SyncOldError) * (SWORD)(pOne->RegDParameter/REG_CONST_DIV);
   SyncData.SyncOldError = (SWORD)SyncData.SyncTachoDif;
 
   SyncData.SyncAccError += (SWORD)SyncData.SyncTachoDif;
@@ -941,11 +960,11 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
   {
     SyncData.SyncAccError = -900;
   }
-  IValue = SyncData.SyncAccError * (SWORD)(MotorData[MotorOne].RegIParameter/REG_CONST_DIV);
+  IValue = SyncData.SyncAccError * (SWORD)(pOne->RegIParameter/REG_CONST_DIV);
 
   CorrectionValue = (SWORD)((PValue + IValue + DValue)/4);
 
-  MotorSpeed = (SWORD)MotorData[MotorOne].MotorTargetSpeed - CorrectionValue;
+  MotorSpeed = (SWORD)pOne->MotorTargetSpeed - CorrectionValue;
 
   if (MotorSpeed > (SWORD)MAXIMUM_SPEED_FW)
   {
@@ -959,40 +978,40 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
     }
   }
 
-  if (MotorData[MotorOne].TurnParameter != 0)
+  if (pOne->TurnParameter != 0)
   {
-    if (MotorData[MotorOne].MotorTargetSpeed > 0)
+    if (pOne->MotorTargetSpeed > 0)
     {
-      if (MotorSpeed > (SWORD)MotorData[MotorOne].MotorTargetSpeed)
+      if (MotorSpeed > (SWORD)pOne->MotorTargetSpeed)
       {
-        MotorSpeed = (SWORD)MotorData[MotorOne].MotorTargetSpeed;
+        MotorSpeed = (SWORD)pOne->MotorTargetSpeed;
       }
       else
       {
-        if (MotorSpeed < (SWORD)-MotorData[MotorOne].MotorTargetSpeed)
+        if (MotorSpeed < (SWORD)-pOne->MotorTargetSpeed)
         {
-          MotorSpeed = -MotorData[MotorOne].MotorTargetSpeed;
+          MotorSpeed = -pOne->MotorTargetSpeed;
         }
       }
     }
     else
     {
-      if (MotorSpeed < (SWORD)MotorData[MotorOne].MotorTargetSpeed)
+      if (MotorSpeed < (SWORD)pOne->MotorTargetSpeed)
       {
-        MotorSpeed = (SWORD)MotorData[MotorOne].MotorTargetSpeed;
+        MotorSpeed = (SWORD)pOne->MotorTargetSpeed;
       }
       else
       {
-        if (MotorSpeed > (SWORD)-MotorData[MotorOne].MotorTargetSpeed)
+        if (MotorSpeed > (SWORD)-pOne->MotorTargetSpeed)
         {
-          MotorSpeed = -MotorData[MotorOne].MotorTargetSpeed;
+          MotorSpeed = -pOne->MotorTargetSpeed;
         }
       }
     }
   }
-  MotorData[MotorOne].MotorActualSpeed = (SBYTE)MotorSpeed;
+  pOne->MotorActualSpeed = (SBYTE)MotorSpeed;
 
-  MotorSpeed = (SWORD)MotorData[MotorTwo].MotorTargetSpeed + CorrectionValue;
+  MotorSpeed = (SWORD)pTwo->MotorTargetSpeed + CorrectionValue;
 
   if (MotorSpeed > (SWORD)MAXIMUM_SPEED_FW)
   {
@@ -1006,190 +1025,81 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
     }
   }
 
-  if (MotorData[MotorOne].TurnParameter != 0)
+  if (pOne->TurnParameter != 0)
   {
-    if (MotorData[MotorTwo].MotorTargetSpeed > 0)
+    if (pTwo->MotorTargetSpeed > 0)
     {
-      if (MotorSpeed > (SWORD)MotorData[MotorTwo].MotorTargetSpeed)
+      if (MotorSpeed > (SWORD)pTwo->MotorTargetSpeed)
       {
-        MotorSpeed = (SWORD)MotorData[MotorTwo].MotorTargetSpeed;
+        MotorSpeed = (SWORD)pTwo->MotorTargetSpeed;
       }
       else
       {
-        if (MotorSpeed < (SWORD)-MotorData[MotorTwo].MotorTargetSpeed)
+        if (MotorSpeed < (SWORD)-pTwo->MotorTargetSpeed)
         {
-          MotorSpeed = -MotorData[MotorTwo].MotorTargetSpeed;
+          MotorSpeed = -pTwo->MotorTargetSpeed;
         }
       }
     }
     else
     {
-      if (MotorSpeed < (SWORD)MotorData[MotorTwo].MotorTargetSpeed)
+      if (MotorSpeed < (SWORD)pTwo->MotorTargetSpeed)
       {
-        MotorSpeed = (SWORD)MotorData[MotorTwo].MotorTargetSpeed;
+        MotorSpeed = (SWORD)pTwo->MotorTargetSpeed;
       }
       else
       {
-        if (MotorSpeed > (SWORD)-MotorData[MotorTwo].MotorTargetSpeed)
+        if (MotorSpeed > (SWORD)-pTwo->MotorTargetSpeed)
         {
-          MotorSpeed = -MotorData[MotorTwo].MotorTargetSpeed;
+          MotorSpeed = -pTwo->MotorTargetSpeed;
         }
       }
     }
   }
-  MotorData[MotorTwo].MotorActualSpeed = (SBYTE)MotorSpeed;
+  pTwo->MotorActualSpeed = (SBYTE)MotorSpeed;
 }
 
 //Called when the motor is ramping down
 void dOutputMotorReachedTachoLimit(UBYTE MotorNr)
 {
-  UBYTE MotorOne, MotorTwo;
-
-  if (MotorData[MotorNr].RegulationMode & REGSTATE_SYNCHRONE)
+  MOTORDATA * pOne = &(MotorData[MotorNr]);
+  if (pOne->RegulationMode & REGSTATE_SYNCHRONE)
   {
-    if (MotorNr == MOTOR_A)
-    {
-      MotorOne = MotorNr;
-      MotorTwo = MotorOne + 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & B
-        MotorData[MotorOne].MotorSetSpeed = 0;
-	      MotorData[MotorOne].MotorTargetSpeed = 0;
-        MotorData[MotorOne].MotorActualSpeed = 0;
-        MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        MotorData[MotorTwo].MotorSetSpeed = 0;
-	      MotorData[MotorTwo].MotorTargetSpeed = 0;
-        MotorData[MotorTwo].MotorActualSpeed = 0;
-        MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-      }
-      else
-      {
-        MotorTwo = MotorOne + 2;
-        if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-        {
-          //Synchronise motor A & C
-          MotorData[MotorOne].MotorSetSpeed = 0;
-	        MotorData[MotorOne].MotorTargetSpeed = 0;
-          MotorData[MotorOne].MotorActualSpeed = 0;
-          MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-          MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-          MotorData[MotorTwo].MotorSetSpeed = 0;
-	        MotorData[MotorTwo].MotorTargetSpeed = 0;
-          MotorData[MotorTwo].MotorActualSpeed = 0;
-          MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
-          MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-        }
-        else
-        {
-          //Only Motor A has Sync setting => Stop normal
-          MotorData[MotorNr].MotorSetSpeed = 0;
-	        MotorData[MotorNr].MotorTargetSpeed = 0;
-          MotorData[MotorNr].MotorActualSpeed = 0;
-          MotorData[MotorNr].MotorRunState = MOTOR_RUN_STATE_IDLE;
-          MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
-        }
+    UBYTE MotorOne, MotorTwo;
+    MotorOne = MotorNr;
+    MotorTwo = 0xFF;
+    UBYTE i;
+    for(i = MOTOR_A; i <= MOTOR_C; i++) {
+      if (i == MotorOne)
+        continue;
+      if (MotorData[i].RegulationMode & REGSTATE_SYNCHRONE) {
+        MotorTwo = i;
+        break;
       }
     }
-    if (MotorNr == MOTOR_B)
-    {
-      MotorOne = MotorNr;
-      MotorTwo = MotorOne - 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & B
-        MotorData[MotorOne].MotorSetSpeed = 0;
-	      MotorData[MotorOne].MotorTargetSpeed = 0;
-        MotorData[MotorOne].MotorActualSpeed = 0;
-        MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        MotorData[MotorTwo].MotorSetSpeed = 0;
-	      MotorData[MotorTwo].MotorTargetSpeed = 0;
-        MotorData[MotorTwo].MotorActualSpeed = 0;
-        MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-      }
-      MotorTwo = MotorOne + 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-        MotorData[MotorOne].MotorSetSpeed = 0;
-	      MotorData[MotorOne].MotorTargetSpeed = 0;
-        MotorData[MotorOne].MotorActualSpeed = 0;
-        MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        MotorData[MotorTwo].MotorSetSpeed = 0;
-	      MotorData[MotorTwo].MotorTargetSpeed = 0;
-        MotorData[MotorTwo].MotorActualSpeed = 0;
-        MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-      }
-      else
-      {
-        //Only Motor B has Sync settings => Stop normal
-        MotorData[MotorNr].MotorSetSpeed = 0;
-	      MotorData[MotorNr].MotorTargetSpeed = 0;
-        MotorData[MotorNr].MotorActualSpeed = 0;
-        MotorData[MotorNr].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
-      }
-    }
-    if (MotorNr == MOTOR_C)
-    {
-      MotorOne = MotorNr;
-      MotorTwo = MotorOne - 2;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & C
-        MotorData[MotorOne].MotorSetSpeed = 0;
-	      MotorData[MotorOne].MotorTargetSpeed = 0;
-        MotorData[MotorOne].MotorActualSpeed = 0;
-        MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        MotorData[MotorTwo].MotorSetSpeed = 0;
-	      MotorData[MotorTwo].MotorTargetSpeed = 0;
-        MotorData[MotorTwo].MotorActualSpeed = 0;
-        MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-      }
-      MotorTwo = MotorOne - 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-        MotorData[MotorOne].MotorSetSpeed = 0;
-	      MotorData[MotorOne].MotorTargetSpeed = 0;
-        MotorData[MotorOne].MotorActualSpeed = 0;
-        MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorOne].RegulationMode = REGSTATE_IDLE;
-        MotorData[MotorTwo].MotorSetSpeed = 0;
-	      MotorData[MotorTwo].MotorTargetSpeed = 0;
-        MotorData[MotorTwo].MotorActualSpeed = 0;
-        MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorTwo].RegulationMode = REGSTATE_IDLE;
-      }
-      else
-      {
-        //Only Motor C has Sync settings => Stop normal
-        MotorData[MotorNr].MotorSetSpeed = 0;
-	      MotorData[MotorNr].MotorTargetSpeed = 0;
-        MotorData[MotorNr].MotorActualSpeed = 0;
-        MotorData[MotorNr].MotorRunState = MOTOR_RUN_STATE_IDLE;
-        MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
-      }
+    pOne->MotorSetSpeed = 0;
+    pOne->MotorTargetSpeed = 0;
+    pOne->MotorActualSpeed = 0;
+    pOne->MotorRunState = MOTOR_RUN_STATE_IDLE;
+    pOne->RegulationMode  = REGSTATE_IDLE;
+    if (MotorTwo != 0xFF) {
+      MOTORDATA * pTwo = &(MotorData[MotorTwo]);
+      pTwo->MotorSetSpeed = 0;
+      pTwo->MotorTargetSpeed = 0;
+      pTwo->MotorActualSpeed = 0;
+      pTwo->MotorRunState = MOTOR_RUN_STATE_IDLE;
+      pTwo->RegulationMode = REGSTATE_IDLE;
     }
   }
   else
   {
-    if (MotorData[MotorNr].MotorSetSpeed == 0)
+    if (pOne->MotorSetSpeed == 0)
     {
-      MotorData[MotorNr].MotorSetSpeed = 0;
-	    MotorData[MotorNr].MotorTargetSpeed = 0;
-      MotorData[MotorNr].MotorActualSpeed = 0;
+      pOne->MotorTargetSpeed = 0;
+      pOne->MotorActualSpeed = 0;
     }
-    MotorData[MotorNr].MotorRunState = MOTOR_RUN_STATE_IDLE;
-    MotorData[MotorNr].RegulationMode = REGSTATE_IDLE;
+    pOne->MotorRunState = MOTOR_RUN_STATE_IDLE;
+    pOne->RegulationMode = REGSTATE_IDLE;
   }
 }
 
@@ -1199,155 +1109,97 @@ void dOutputSyncTachoLimitControl(UBYTE MotorNr)
 {
   UBYTE MotorOne, MotorTwo;
 
-  if (MotorNr == MOTOR_A)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne + 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B
-    }
-    else
-    {
-      MotorTwo = MotorOne + 2;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & C
-      }
-      else
-      {
-        //Only Motor A has Sync setting => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
+  MotorOne = MotorNr;
+  MotorTwo = 0xFF;
+  // Synchronisation is done two times, as this function is called for each
+  // motor.  This is the same behaviour as previous code.
+  UBYTE i;
+  for(i = MOTOR_A; i <= MOTOR_C; i++) {
+    if (i == MotorOne)
+      continue;
+    if (MotorData[i].RegulationMode & REGSTATE_SYNCHRONE) {
+      MotorTwo = i;
+      break;
     }
   }
-  if (MotorNr == MOTOR_B)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B, which has already been called when running throught motor A
-      //MotorOne = 0xFF;
-      //MotorTwo = 0xFF;
-    }
-    else
-    {
-      MotorTwo = MotorOne + 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-      }
-      else
-      {
-        //Only Motor B has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-  if (MotorNr == MOTOR_C)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 2;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & C, which has already been called when running throught motor A
-      //MotorOne = 0xFF;
-      //MotorTwo = 0xFF;
-    }
-    else
-    {
-      MotorTwo = MotorOne - 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C, which has already been called when running throught motor B
-        //MotorOne = 0xFF;
-        //MotorTwo = 0xFF;
-      }
-      else
-      {
-        //Only Motor C has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
+  if (MotorTwo == 0xFF)
+    MotorOne = 0xFF;
 
   if ((MotorOne != 0xFF) && (MotorTwo != 0xFF))
   {
-    if (MotorData[MotorOne].TurnParameter != 0)
+    MOTORDATA * pOne = &(MotorData[MotorOne]);
+    MOTORDATA * pTwo = &(MotorData[MotorTwo]);
+    if (pOne->TurnParameter != 0)
     {
-      if (MotorData[MotorOne].TurnParameter > 0)
+      if (pOne->TurnParameter > 0)
       {
-        if (MotorData[MotorTwo].MotorTargetSpeed >= 0)
+        if (pTwo->MotorTargetSpeed >= 0)
         {
-          if ((SLONG)(MotorData[MotorTwo].CurrentCaptureCount >= MotorData[MotorTwo].MotorTachoCountToRun))
+          if ((SLONG)(pTwo->CurrentCaptureCount >= pTwo->MotorTachoCountToRun))
           {
-            MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-            MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pOne->MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pTwo->MotorRunState = MOTOR_RUN_STATE_IDLE;
 
-            MotorData[MotorOne].CurrentCaptureCount = MotorData[MotorTwo].CurrentCaptureCount;
-            MotorData[MotorOne].MotorTachoCountToRun = MotorData[MotorTwo].MotorTachoCountToRun;
+            pOne->CurrentCaptureCount = pTwo->CurrentCaptureCount;
+            pOne->MotorTachoCountToRun = pTwo->MotorTachoCountToRun;
           }
         }
         else
         {
-          if ((SLONG)(MotorData[MotorOne].CurrentCaptureCount <= MotorData[MotorOne].MotorTachoCountToRun))
+          if ((SLONG)(pOne->CurrentCaptureCount <= pOne->MotorTachoCountToRun))
           {
-            MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-            MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pOne->MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pTwo->MotorRunState = MOTOR_RUN_STATE_IDLE;
 
-            MotorData[MotorTwo].CurrentCaptureCount = MotorData[MotorOne].CurrentCaptureCount;
-            MotorData[MotorTwo].MotorTachoCountToRun = MotorData[MotorOne].MotorTachoCountToRun;
+            pTwo->CurrentCaptureCount = pOne->CurrentCaptureCount;
+            pTwo->MotorTachoCountToRun = pOne->MotorTachoCountToRun;
           }
         }
       }
       else
       {
-        if (MotorData[MotorOne].MotorTargetSpeed >= 0)
+        if (pOne->MotorTargetSpeed >= 0)
         {
-          if ((SLONG)(MotorData[MotorOne].CurrentCaptureCount >= MotorData[MotorOne].MotorTachoCountToRun))
+          if ((SLONG)(pOne->CurrentCaptureCount >= pOne->MotorTachoCountToRun))
           {
-            MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-            MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pOne->MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pTwo->MotorRunState = MOTOR_RUN_STATE_IDLE;
 
-            MotorData[MotorTwo].CurrentCaptureCount = MotorData[MotorOne].CurrentCaptureCount;
-            MotorData[MotorTwo].MotorTachoCountToRun = MotorData[MotorOne].MotorTachoCountToRun;
+            pTwo->CurrentCaptureCount = pOne->CurrentCaptureCount;
+            pTwo->MotorTachoCountToRun = pOne->MotorTachoCountToRun;
           }
         }
         else
         {
-          if ((SLONG)(MotorData[MotorTwo].CurrentCaptureCount <= MotorData[MotorTwo].MotorTachoCountToRun))
+          if ((SLONG)(pTwo->CurrentCaptureCount <= pTwo->MotorTachoCountToRun))
           {
-            MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-            MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pOne->MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pTwo->MotorRunState = MOTOR_RUN_STATE_IDLE;
 
-            MotorData[MotorOne].CurrentCaptureCount = MotorData[MotorTwo].CurrentCaptureCount;
-            MotorData[MotorOne].MotorTachoCountToRun = MotorData[MotorTwo].MotorTachoCountToRun;
+            pOne->CurrentCaptureCount = pTwo->CurrentCaptureCount;
+            pOne->MotorTachoCountToRun = pTwo->MotorTachoCountToRun;
           }
         }
       }
     }
     else
     {
-      if (MotorData[MotorOne].MotorSetSpeed > 0)
+      if (pOne->MotorSetSpeed > 0)
       {
-        if ((MotorData[MotorOne].CurrentCaptureCount >= MotorData[MotorOne].MotorTachoCountToRun) || (MotorData[MotorTwo].CurrentCaptureCount >= MotorData[MotorTwo].MotorTachoCountToRun))
+        if ((pOne->CurrentCaptureCount >= pOne->MotorTachoCountToRun) || (pTwo->CurrentCaptureCount >= pTwo->MotorTachoCountToRun))
         {
-          MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-          MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
+          pOne->MotorRunState = MOTOR_RUN_STATE_IDLE;
+          pTwo->MotorRunState = MOTOR_RUN_STATE_IDLE;
         }
       }
       else
       {
-        if (MotorData[MotorOne].MotorSetSpeed < 0)
+        if (pOne->MotorSetSpeed < 0)
         {
-          if ((MotorData[MotorOne].CurrentCaptureCount <= MotorData[MotorOne].MotorTachoCountToRun) || (MotorData[MotorTwo].CurrentCaptureCount <= MotorData[MotorTwo].MotorTachoCountToRun))
+          if ((pOne->CurrentCaptureCount <= pOne->MotorTachoCountToRun) || (pTwo->CurrentCaptureCount <= pTwo->MotorTachoCountToRun))
           {
-            MotorData[MotorOne].MotorRunState = MOTOR_RUN_STATE_IDLE;
-            MotorData[MotorTwo].MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pOne->MotorRunState = MOTOR_RUN_STATE_IDLE;
+            pTwo->MotorRunState = MOTOR_RUN_STATE_IDLE;
           }
         }
       }
@@ -1411,87 +1263,33 @@ void dOutputResetSyncMotors(UBYTE MotorNr)
 {
   UBYTE MotorOne, MotorTwo;
 
-  if (MotorNr == MOTOR_A)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne + 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B
-    }
-    else
-    {
-      MotorTwo = MotorOne + 2;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & C
-      }
-      else
-      {
-        //Only Motor A has Sync setting => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
+  MotorOne = MotorNr;
+  MotorTwo = 0xFF;
+  UBYTE i;
+  for(i = MOTOR_A; i <= MOTOR_C; i++) {
+    if (i == MotorOne)
+      continue;
+    if (MotorData[i].RegulationMode & REGSTATE_SYNCHRONE) {
+      MotorTwo = i;
+      break;
     }
   }
-  if (MotorNr == MOTOR_B)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B
-    }
-    else
-    {
-      MotorTwo = MotorOne + 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-      }
-      else
-      {
-        //Only Motor B has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-  if (MotorNr == MOTOR_C)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 2;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & C
-    }
-    else
-    {
-      MotorTwo = MotorOne - 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-      }
-      else
-      {
-        //Only Motor C has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
+  if (MotorTwo == 0xFF)
+    MotorOne = 0xFF;
 
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
   if ((MotorOne != 0xFF) && (MotorTwo != 0xFF))
   {
-    MotorData[MotorOne].CurrentCaptureCount = 0;
-    MotorData[MotorOne].MotorTachoCountToRun = 0;
-    MotorData[MotorTwo].CurrentCaptureCount = 0;
-    MotorData[MotorTwo].MotorTachoCountToRun = 0;
+    MOTORDATA * pTwo = &(MotorData[MotorTwo]);
+    pMD->CurrentCaptureCount = 0;
+    pMD->MotorTachoCountToRun = 0;
+    pTwo->CurrentCaptureCount = 0;
+    pTwo->MotorTachoCountToRun = 0;
   }
   else
   {
-    MotorData[MotorNr].CurrentCaptureCount = 0;
-    MotorData[MotorNr].MotorTachoCountToRun = 0;
+    pMD->CurrentCaptureCount = 0;
+    pMD->MotorTachoCountToRun = 0;
   }
 }
 
@@ -1500,113 +1298,57 @@ void dOutputRampDownSynch(UBYTE MotorNr)
 {
   UBYTE MotorOne, MotorTwo;
 
-  if (MotorNr == MOTOR_A)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne + 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B
-    }
-    else
-    {
-      MotorTwo = MotorOne + 2;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor A & C
-      }
-      else
-      {
-        //Only Motor A has Sync setting => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
+  MotorOne = MotorNr;
+  MotorTwo = 0xFF;
+  UBYTE i;
+  for(i = MOTOR_A; i <= MOTOR_C; i++) {
+    if (i == MotorOne)
+      continue;
+    if (MotorData[i].RegulationMode & REGSTATE_SYNCHRONE) {
+      MotorTwo = i;
+      break;
     }
   }
-  if (MotorNr == MOTOR_B)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 1;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & B, which has already been called when running throught motor A
-      //MotorOne = 0xFF;
-      //MotorTwo = 0xFF;
-    }
-    else
-    {
-      MotorTwo = MotorOne + 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C
-      }
-      else
-      {
-        //Only Motor B has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
-  if (MotorNr == MOTOR_C)
-  {
-    MotorOne = MotorNr;
-    MotorTwo = MotorOne - 2;
-    if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-    {
-      //Synchronise motor A & C, which has already been called when running throught motor A
-    }
-    else
-    {
-      MotorTwo = MotorOne - 1;
-      if (MotorData[MotorTwo].RegulationMode & REGSTATE_SYNCHRONE)
-      {
-        //Synchronise motor B & C,, which has already been called when running throught motor B
-      }
-      else
-      {
-        //Only Motor C has Sync settings => Stop normal
-        MotorOne = 0xFF;
-        MotorTwo = 0xFF;
-      }
-    }
-  }
+  if (MotorTwo == 0xFF)
+    MotorOne = 0xFF;
 
   if ((MotorOne != 0xFF) && (MotorTwo != 0xFF))
   {
-    if (MotorData[MotorOne].TurnParameter != 0)
+    MOTORDATA * pOne = &(MotorData[MotorOne]);
+    MOTORDATA * pTwo = &(MotorData[MotorTwo]);
+    if (pOne->TurnParameter != 0)
     {
-      if (MotorData[MotorOne].TurnParameter > 0)
+      if (pOne->TurnParameter > 0)
       {
-        if (MotorData[MotorOne].MotorTargetSpeed >= 0)
+        if (pOne->MotorTargetSpeed >= 0)
         {
-          if (MotorData[MotorTwo].MotorActualSpeed < 0)
+          if (pTwo->MotorActualSpeed < 0)
           {
-            MotorData[MotorTwo].MotorTargetSpeed--;
+            pTwo->MotorTargetSpeed--;
           }
         }
         else
         {
-          if (MotorData[MotorTwo].MotorActualSpeed > 0)
+          if (pTwo->MotorActualSpeed > 0)
           {
-            MotorData[MotorTwo].MotorTargetSpeed++;
+            pTwo->MotorTargetSpeed++;
           }
         }
       }
       else
       {
-        if (MotorData[MotorOne].MotorTargetSpeed >= 0)
+        if (pOne->MotorTargetSpeed >= 0)
         {
-          if (MotorData[MotorTwo].MotorActualSpeed < 0)
+          if (pTwo->MotorActualSpeed < 0)
           {
-            MotorData[MotorTwo].MotorTargetSpeed--;
+            pTwo->MotorTargetSpeed--;
           }
         }
         else
         {
-          if (MotorData[MotorTwo].MotorActualSpeed > 0)
+          if (pTwo->MotorActualSpeed > 0)
           {
-            MotorData[MotorTwo].MotorTargetSpeed++;
+            pTwo->MotorTargetSpeed++;
           }
         }
       }

@@ -279,6 +279,12 @@ UWORD     cLoaderFileRq(UBYTE Cmd, UBYTE *pFileName, UBYTE *pBuffer, ULONG *pLen
       ReturnState = dLoaderSeek(*pFileName, *(SLONG*)pLength, Cmd-SEEKFROMSTART);
     }
     break;
+    case FILEPOSITION:
+    {
+      // *pFileName is the handle, pLength is the returned file position
+      ReturnState = dLoaderTell(*pFileName, pLength);
+    }
+    break;
     case READ:
     {
       ReturnState = dLoaderRead(*pFileName, pBuffer, pLength);

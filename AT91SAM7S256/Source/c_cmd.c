@@ -257,8 +257,8 @@ static pSysCall SysCallFuncs[SYSCALL_COUNT] =
   cCmdWrapDrawFont, // 95
   cCmdWrapMemoryManager, 
   cCmdWrapReadLastResponse, 
-  cCmdWrapUndefinedSysCall, 
-  cCmdWrapUndefinedSysCall // 99 --> 100 system call slots
+  cCmdWrapFileTell,
+  cCmdWrapUndefinedSysCall //  100 system call slots
     
   // don't forget to update SYSCALL_COUNT in c_cmd.h
 };
@@ -504,7 +504,8 @@ UBYTE CMD_RESPONSE_LENGTH[256] =
    0, //   SEEKFROMSTART   = 0xD1,
    0, //   SEEKFROMCURRENT = 0xD2,
    0, //   SEEKFROMEND     = 0xD3
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (xD4-xDF)
+   0, //   FILEPOSITION    = 0xD4
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (xD5-xDF)
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // (xE0-xEF)
    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  // (xF0-xFF)
 };
@@ -2206,9 +2207,6 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
   VarsCmd.Debugging  = FALSE;
   VarsCmd.PauseClump = NOT_A_CLUMP;
   VarsCmd.PausePC    = 0xFFFF;
-  // restore default data mode values
-  pMapComm->BtDataMode = DATA_MODE_NXT|DATA_MODE_UPDATE;
-  pMapComm->HsDataMode = DATA_MODE_RAW|DATA_MODE_UPDATE;
   return (Status);
 }
 
@@ -9661,6 +9659,20 @@ NXT_STATUS cCmdWrapReadLastResponse(UBYTE * ArgV[])
     memset(VarsCmd.LastResponseBuffer, 0, 64);
   }
   
+  return (NO_ERR);
+}
+
+//cCmdWrapFileTell
+//ArgV[0]: (Function return) Loader status, U16 return
+//ArgV[1]: File Handle, U8 in/out
+//ArgV[2]: File Position, U32 out
+NXT_STATUS cCmdWrapFileTell(UBYTE * ArgV[])
+{
+  LOADER_STATUS LStatus = pMapLoader->pFunc(FILEPOSITION, ArgV[1], NULL, (ULONG *)ArgV[2]);
+  //Status code in high byte of LStatus
+  *((UWORD *)ArgV[0]) = LOADER_ERR(LStatus);
+  //File handle in low byte of LStatus
+  *(ArgV[1]) = LOADER_HANDLE(LStatus);
   return (NO_ERR);
 }
 

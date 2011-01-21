@@ -909,6 +909,7 @@ NXT_STATUS cCmdWrapDrawEllipse(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapDrawFont(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapMemoryManager(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapReadLastResponse(UBYTE * ArgV[]);
+NXT_STATUS cCmdWrapFileTell(UBYTE * ArgV[]);
 
 NXT_STATUS cCmdWrapUndefinedSysCall(UBYTE * ArgV[]);
 

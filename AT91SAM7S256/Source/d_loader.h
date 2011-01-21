@@ -86,6 +86,7 @@ UWORD     dLoaderWriteData(UWORD Handle, UBYTE *pBuf, UWORD *pLen);
 UWORD     dLoaderCloseHandle(UWORD Handle);
 UWORD     dLoaderOpenRead(UBYTE *pFileName, ULONG *pLength);
 UWORD     dLoaderSeek(UBYTE Handle, SLONG offset, UBYTE from);
+UWORD     dLoaderTell(UBYTE Handle, ULONG* filePos);
 UWORD     dLoaderRead(UBYTE Handle, UBYTE *pBuf, ULONG *pLength);
 UWORD     dLoaderDelete(UBYTE *pFile);
 UWORD     dLoaderFind(UBYTE *pFind, UBYTE *pFound, ULONG *pFileLength, ULONG *pDataLength, UBYTE Session);

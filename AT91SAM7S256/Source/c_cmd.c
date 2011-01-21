@@ -1042,6 +1042,7 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
       // pInBuf[1] = Remove? (bool)
       case RC_DATALOG_READ:
       {
+#ifndef STRIPPED
         if (SendResponse == TRUE)
         {
           RCStatus = cCmdDatalogGetSize(&Count);
@@ -1064,13 +1065,16 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
           memset(&(pOutBuf[ResponseLen]), 0, Count);
           ResponseLen += Count;
         }
+#endif
       }
       break;
       case RC_DATALOG_SET_TIMES:
       {
+#ifndef STRIPPED
         //SyncTime SLONG
         memcpy((PSZ)&IOMapCmd.SyncTime, (PSZ)&(pInBuf[1]), 4);
         IOMapCmd.SyncTick= dTimerReadNoPoll();
+#endif
       }
       break;
 
@@ -2178,6 +2182,7 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
     }
   }
 
+#ifndef STRIPPED
   //Initialize datalog queue
   VarsCmd.DatalogBuffer.ReadIndex = 0;
   VarsCmd.DatalogBuffer.WriteIndex = 0;
@@ -2185,6 +2190,7 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
   {
     VarsCmd.DatalogBuffer.Datalogs[j] = NOT_A_DS_ID;
   }
+#endif
 
   // now that we've loaded program, prime memmgr dopevectors based upon number of handles in ds.
   ULONG numHandles= DV_ARRAY[0].Count/2;
@@ -3521,6 +3527,7 @@ NXT_STATUS cCmdDatalogWrite(UBYTE * pData, UWORD Length)
 {
   NXT_STATUS Status = NO_ERR;
 
+#ifndef STRIPPED
   if (pData == NULL)
     return ERR_ARG;
 
@@ -3563,11 +3570,13 @@ NXT_STATUS cCmdDatalogWrite(UBYTE * pData, UWORD Length)
   //Advance write index
   VarsCmd.DatalogBuffer.WriteIndex = (VarsCmd.DatalogBuffer.WriteIndex + 1) % DATALOG_QUEUE_DEPTH;
 
+#endif
   return Status;
 }
 
 NXT_STATUS cCmdDatalogGetSize(UWORD * Size)
 {
+#ifndef STRIPPED
   DV_INDEX ReadDVIndex;
 
   if (Size == NULL)
@@ -3591,11 +3600,16 @@ NXT_STATUS cCmdDatalogGetSize(UWORD * Size)
     *Size = 0;
     return (STAT_MSG_EMPTY_MAILBOX);
   }
+#else
+  *Size = 0;
+  return (NO_ERR);
+#endif
 }
 
 NXT_STATUS cCmdDatalogRead(UBYTE * pBuffer, UWORD Length, UBYTE Remove)
 {
   NXT_STATUS Status = NO_ERR;
+#ifndef STRIPPED
   DV_INDEX ReadDVIndex;
 
   if (pBuffer == NULL)
@@ -3636,7 +3650,7 @@ NXT_STATUS cCmdDatalogRead(UBYTE * pBuffer, UWORD Length, UBYTE Remove)
 
     return (STAT_MSG_EMPTY_MAILBOX);
   }
-
+#endif
   return Status;
 }
 
@@ -8779,6 +8793,7 @@ void cCmdWriteBenchmarkFile()
 //
 NXT_STATUS cCmdWrapDatalogWrite(UBYTE * ArgV[])
 {
+#ifndef STRIPPED
   NXT_STATUS Status = NO_ERR;
   DV_INDEX DVIndex;
 
@@ -8794,6 +8809,9 @@ NXT_STATUS cCmdWrapDatalogWrite(UBYTE * ArgV[])
     return Status;
   else
     return (NO_ERR);
+#else
+  return (NO_ERR);
+#endif
 }
 
 //
@@ -8803,8 +8821,10 @@ NXT_STATUS cCmdWrapDatalogWrite(UBYTE * ArgV[])
 //
 NXT_STATUS cCmdWrapDatalogGetTimes(UBYTE * ArgV[])
 {
+#ifndef STRIPPED
   *((ULONG *)ArgV[1]) = IOMapCmd.SyncTime;
   *((ULONG *)ArgV[2]) = IOMapCmd.SyncTick;
+#endif
   return (NO_ERR);
 }
 

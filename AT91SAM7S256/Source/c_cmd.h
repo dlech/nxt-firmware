@@ -332,6 +332,7 @@ typedef struct
 #define SET_WRITE_MSG(QueueID, DVIndex) (VarsCmd.MessageQueues[(QueueID)].Messages[VarsCmd.MessageQueues[(QueueID)].WriteIndex] = (DVIndex))
 #define SET_READ_MSG(QueueID, DVIndex) (VarsCmd.MessageQueues[(QueueID)].Messages[VarsCmd.MessageQueues[(QueueID)].ReadIndex] = (DVIndex))
 
+#ifndef STRIPPED
 //
 // Datalog Queuing
 //
@@ -362,6 +363,7 @@ typedef struct
 #define SET_WRITE_DTLG(DVIndex) (VarsCmd.DatalogBuffer.Datalogs[VarsCmd.DatalogBuffer.WriteIndex] = (DVIndex))
 #define SET_READ_DTLG(DVIndex) (VarsCmd.DatalogBuffer.Datalogs[VarsCmd.DatalogBuffer.ReadIndex] = (DVIndex))
 
+#endif
 
 //
 //Definitions related to dataflow scheduling
@@ -560,7 +562,9 @@ typedef struct
 
   ULONG StartTick;
 
+#ifndef STRIPPED
   DATALOG_QUEUE DatalogBuffer;
+#endif
 
   UBYTE Debugging;
   UBYTE PauseClump;

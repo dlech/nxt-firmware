@@ -19,7 +19,7 @@
 #ifndef   C_UI
 #define   C_UI
 
-#ifdef INCLUDE_DATALOG
+#ifndef STRIPPED
 #define   DATALOGENABLED                1           // 1 == Datalog enable
 #else
 #define   DATALOGENABLED                0           // 0 == Datalog disabled
@@ -287,7 +287,7 @@ typedef   struct
   UBYTE   FileRight;                                // File right
   UBYTE   NoOfFiles;                                // No of files
 
-#ifdef INCLUDE_OBP
+#ifndef STRIPPED
   // On brick programming menu
   UBYTE   ProgramSteps[ON_BRICK_PROGRAMSTEPS];      // On brick programming steps
   UBYTE   ProgramStepPointer;                       // On brick programming step pointer
@@ -343,7 +343,7 @@ typedef   struct
   SLONG   ViewSampleValue;                          // Latch for sensor values
   UBYTE   ViewSampleValid;                          // Latch for sensor valid
 
-#ifdef INCLUDE_DATALOG  
+#ifndef STRIPPED
   // Datalog
   ULONG   DatalogOldTick;
   ULONG   DatalogRTC;                               // Real time in mS

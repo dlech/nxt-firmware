@@ -59,7 +59,7 @@ const     HEADER  cUi =
 #include  "Display.txt"       // Bitmap for frame used in view and datalog
 #include  "LowBattery.txt"    // Bitmap showed when low battery occures
 #include  "Font.txt"          // Font used for all text
-#ifdef INCLUDE_OBP
+#ifndef STRIPPED
 #include  "Step.txt"          // Bitmap used in On Brick Programming
 #endif
 #include  "Cursor.txt"        // Bitmap for cursor
@@ -71,7 +71,7 @@ const     HEADER  cUi =
 #include  "Info.txt"          // Bitmap for feedback
 #include  "Icons.txt"         // Icon collection used for menues
 
-#ifdef INCLUDE_INTRO
+#ifndef STRIPPED
 // ****** INTRO ANIMATION RESOURCES ******************************************
 
 #include  "RCXintro_1.txt"    // Bitmap for picture 1  in the intro animation
@@ -1285,7 +1285,7 @@ void      cUiCtrl(void)
 
   VarsUi.CRPasskey++;
   VarsUi.ButtonTimer++;
-#ifdef INCLUDE_OBP
+#ifndef STRIPPED
   VarsUi.OBPTimer++;
 #endif
   switch (IOMapUi.State)
@@ -1307,7 +1307,7 @@ void      cUiCtrl(void)
       pMapDisplay->pFont                              =  (FONT*)Font;
       pMapDisplay->pStatusIcons                       =  (ICON*)Status;
       pMapDisplay->pStatusText                        =  (UBYTE*)VarsUi.StatusText;
-#ifdef INCLUDE_OBP
+#ifndef STRIPPED
       pMapDisplay->pStepIcons                         =  (ICON*)Step;
 #endif
 
@@ -1328,7 +1328,7 @@ void      cUiCtrl(void)
       IOMapUi.State                                   =  INIT_INTRO;
 
       pMapDisplay->EraseMask                          =  SCREEN_BIT(SCREEN_BACKGROUND);
-#ifdef INCLUDE_INTRO
+#ifndef STRIPPED
       pMapDisplay->pBitmaps[BITMAP_1]                 =  (BMPMAP*)Intro[VarsUi.Pointer];
 #endif
       pMapDisplay->UpdateMask                         =  BITMAP_BIT(BITMAP_1);
@@ -1346,7 +1346,7 @@ void      cUiCtrl(void)
       {
         VarsUi.LowBattHasOccured        = 2;
         pMapDisplay->EraseMask          =  SCREEN_BIT(SCREEN_BACKGROUND);
-#ifdef INCLUDE_INTRO
+#ifndef STRIPPED
         pMapDisplay->pBitmaps[BITMAP_1] =  (BMPMAP*)Intro[VarsUi.Pointer];
 #endif
         pMapDisplay->UpdateMask         =  BITMAP_BIT(BITMAP_1);
@@ -1380,7 +1380,7 @@ void      cUiCtrl(void)
             VarsUi.LowBattHasOccured = 1;
           }
         }
-#ifdef INCLUDE_INTRO
+#ifndef STRIPPED
         if (++VarsUi.Timer >= (INTRO_SHIFT_TIME))
         {
           switch (VarsUi.State)
@@ -1440,7 +1440,7 @@ void      cUiCtrl(void)
       }
     }
     break;
-#ifdef INCLUDE_INTRO
+#ifndef STRIPPED
     case INIT_WAIT :
     {
       if (++VarsUi.Timer >= INTRO_STOP_TIME)

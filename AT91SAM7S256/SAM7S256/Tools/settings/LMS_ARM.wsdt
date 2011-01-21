@@ -11,7 +11,7 @@
           
           
           
-        <Column0>123</Column0><Column1>3</Column1><Column2>27</Column2><Column3>1307876</Column3></ColumnWidths>
+        <Column0>156</Column0><Column1>3</Column1><Column2>27</Column2><Column3>1307876</Column3></ColumnWidths>
       </Workspace>
       <Build><PreferedWindows><Position>3</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows><Window><Factory>Find-in-Files</Factory></Window><Window><Factory>Debug-Log</Factory></Window></Windows></PreferedWindows><ColumnWidth0>18</ColumnWidth0><ColumnWidth1>627</ColumnWidth1><ColumnWidth2>244</ColumnWidth2><ColumnWidth3>61</ColumnWidth3></Build>
       <TerminalIO/>
@@ -40,7 +40,7 @@
             <Factory>Workspace</Factory>
             <Session>
               
-            <NodeDict><ExpandedNode>LMS_ARM</ExpandedNode><ExpandedNode>LMS_ARM/c_led.c</ExpandedNode></NodeDict></Session>
+            <NodeDict><ExpandedNode>LMS_ARM</ExpandedNode><ExpandedNode>LMS_ARM/c_led.c</ExpandedNode><ExpandedNode>LMS_ARM/c_ui.c</ExpandedNode></NodeDict></Session>
           </Tab>
         </Tabs>
         
@@ -50,14 +50,14 @@
       
       
       
-    <Pane><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_131\AT91SAM7S256\Source\c_cmd.c</Filename><XPos>0</XPos><YPos>9569</YPos><SelStart>270796</SelStart><SelEnd>270796</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_131\AT91SAM7S256\Source\c_cmd.iom</Filename><XPos>0</XPos><YPos>134</YPos><SelStart>5503</SelStart><SelEnd>5503</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_131\AT91SAM7S256\Source\c_comm.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_131\AT91SAM7S256\Source\c_comm.iom</Filename><XPos>0</XPos><YPos>255</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_131\AT91SAM7S256\Source\d_output.c</Filename><XPos>0</XPos><YPos>177</YPos><SelStart>6984</SelStart><SelEnd>6984</SelEnd></Tab><ActiveTab>4</ActiveTab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
+    <Pane><Tab><Factory>TextEditor</Factory><Filename>D:\NXT\lms_nbcnxc_131\AT91SAM7S256\Source\c_cmd.c</Filename><XPos>0</XPos><YPos>240</YPos><SelStart>6949</SelStart><SelEnd>6961</SelEnd></Tab><ActiveTab>0</ActiveTab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
     <Positions>
       
       
       
       
       
-    <Top><Row0><Sizes><Toolbar-0057f468><key>iaridepm.enu1</key></Toolbar-0057f468></Sizes></Row0></Top><Left><Row0><Sizes><Wnd2><Rect><Top>-2</Top><Left>-2</Left><Bottom>463</Bottom><Right>190</Right><x>-2</x><y>-2</y><xscreen>0</xscreen><yscreen>0</yscreen><sizeHorzCX>0</sizeHorzCX><sizeHorzCY>0</sizeHorzCY><sizeVertCX>157119</sizeVertCX><sizeVertCY>701357</sizeVertCY></Rect></Wnd2></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd3><Rect><Top>-2</Top><Left>-2</Left><Bottom>155</Bottom><Right>1224</Right><x>-2</x><y>-2</y><xscreen>1226</xscreen><yscreen>157</yscreen><sizeHorzCX>1003273</sizeHorzCX><sizeHorzCY>236802</sizeHorzCY><sizeVertCX>139935</sizeVertCX><sizeVertCY>236802</sizeVertCY></Rect></Wnd3></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
+    <Top><Row0><Sizes><Toolbar-0089f618><key>iaridepm.enu1</key></Toolbar-0089f618></Sizes></Row0></Top><Left><Row0><Sizes><Wnd2><Rect><Top>-2</Top><Left>-2</Left><Bottom>655</Bottom><Right>223</Right><x>-2</x><y>-2</y><xscreen>0</xscreen><yscreen>0</yscreen><sizeHorzCX>0</sizeHorzCX><sizeHorzCY>0</sizeHorzCY><sizeVertCX>157123</sizeVertCX><sizeVertCY>719606</sizeVertCY></Rect></Wnd2></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd3><Rect><Top>-2</Top><Left>-2</Left><Bottom>214</Bottom><Right>1434</Right><x>-2</x><y>-2</y><xscreen>1436</xscreen><yscreen>216</yscreen><sizeHorzCX>1002793</sizeHorzCX><sizeHorzCY>236583</sizeHorzCY><sizeVertCX>139665</sizeVertCX><sizeVertCY>236583</sizeVertCY></Rect></Wnd3></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
   </Desktop>
 </Workspace>
 

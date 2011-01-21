@@ -31,12 +31,12 @@ enum
 
 // Various filenames without extension
 #define   UI_NONVOLATILE      "NVConfig"      // Ui non volatile config filename
-#ifdef INCLUDE_OBP
+#ifndef STRIPPED
 #define   UI_PROGRAM_DEFAULT  "Untitled"      // On brick programming default filename
 #define   UI_PROGRAM_TEMP     "Program"       // On brick programming tmp filename
 #define   UI_PROGRAM_READER   "RPGReader"     // On brick programming script reader filename
 #endif
-#ifdef INCLUDE_DATALOG
+#ifndef STRIPPED
 #define   UI_DATALOG_FILENAME "OBD_"          // On brick datalog filename
 #define   UI_DATALOG_DEFAULT  "Untitled"      // On brick datalog default name
 #define   UI_DATALOG_TEMP     "Tmp"           // On brick datalog tmp filename

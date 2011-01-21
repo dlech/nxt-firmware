@@ -127,6 +127,17 @@ enum
 #define HS_MODE_8N1 (HS_MODE_8_DATA|HS_MODE_N_PARITY|HS_MODE_10_STOP)
 #define HS_MODE_7E1 (HS_MODE_7_DATA|HS_MODE_E_PARITY|HS_MODE_10_STOP)
 
+// constants referring to HsAddress
+#define HS_ADDRESS_ALL 0
+#define HS_ADDRESS_1   1
+#define HS_ADDRESS_2   2
+#define HS_ADDRESS_3   3
+#define HS_ADDRESS_4   4
+#define HS_ADDRESS_5   5
+#define HS_ADDRESS_6   6
+#define HS_ADDRESS_7   7
+#define HS_ADDRESS_8   8
+
 //Constants refering to DeviceStatus within DeviceTable
 enum
 {
@@ -273,7 +284,7 @@ typedef   struct
   UBYTE          HsState;
 
   UBYTE          UsbState;
-  UBYTE          Spare1; // fill the vacant byte that would otherwise be here
+  UBYTE          HsAddress; // make RS485 addressible for up to 8 bricks
 
   UWORD          HsMode;
   

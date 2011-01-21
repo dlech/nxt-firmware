@@ -161,6 +161,7 @@ void      cCommInit(void* pHeader)
   IOMapComm.BtDeviceCnt = 0;
   IOMapComm.BrickData.BtStateStatus = 0;
   IOMapComm.HsSpeed    = HS_BAUD_921600;
+  IOMapComm.HsAddress  = HS_ADDRESS_ALL;
   IOMapComm.HsMode     = HS_MODE_8N1;
   IOMapComm.BtDataMode = DATA_MODE_NXT;
   IOMapComm.HsDataMode = DATA_MODE_RAW;
@@ -1508,7 +1509,8 @@ void cCommReceivedHiSpeedData(void)
 {
   UWORD NumberOfBytes;
   UWORD Tmp;
-
+  UBYTE Address;
+  
   dHiSpeedReceivedData(&NumberOfBytes);
 
   if (NumberOfBytes != 0)
@@ -1532,29 +1534,37 @@ void cCommReceivedHiSpeedData(void)
     else
     {
       // receiving hi-speed data in NXT mode
-      /* Copy the bytes into the IOMapBuffer */
       if (NumberOfBytes > SIZE_OF_HSBUF)
         NumberOfBytes = SIZE_OF_HSBUF;
-      memcpy((PSZ)IOMapComm.HsInBuf.Buf, (PSZ)VarsComm.HsModuleInBuf.Buf, NumberOfBytes);
-      memset((PSZ)VarsComm.HsModuleInBuf.Buf, 0, 256);
-    
-      /* Move the inptr ahead */
-      IOMapComm.HsInBuf.InPtr = NumberOfBytes;
-      IOMapComm.HsInBuf.OutPtr = 0;
-    
-      /* using the outbuf inptr in order to get the number of bytes in the return answer at the right place*/
-      IOMapComm.HsOutBuf.InPtr = NumberOfBytes;
-    
-      /* call the data stream interpreter */
-      cCommInterprete(IOMapComm.HsInBuf.Buf, IOMapComm.HsOutBuf.Buf, &(IOMapComm.HsOutBuf.InPtr), (UBYTE) HS_CMD_READY, NumberOfBytes);
-    
-      /* if there is a reply to be sent then send it */
-      if (IOMapComm.HsOutBuf.InPtr)
+      Address = VarsComm.HsModuleInBuf.Buf[0];
+      NumberOfBytes--;
+      if ((IOMapComm.HsAddress == Address) || 
+          (HS_ADDRESS_ALL == Address) || 
+          (HS_ADDRESS_ALL == IOMapComm.HsAddress))
       {
-        cCommSendHiSpeedData();
-//        dHiSpeedSendData(IOMapComm.HsOutBuf.Buf, IOMapComm.HsOutBuf.InPtr);
-        IOMapComm.HsOutBuf.InPtr = 0;
-        IOMapComm.HsOutBuf.OutPtr = 0;
+        /* Copy the bytes into the IOMapBuffer */
+        memcpy((PSZ)IOMapComm.HsInBuf.Buf, (PSZ)(VarsComm.HsModuleInBuf.Buf+1), NumberOfBytes);
+        memset((PSZ)VarsComm.HsModuleInBuf.Buf, 0, 256);
+      
+        /* Move the inptr ahead */
+        IOMapComm.HsInBuf.InPtr = NumberOfBytes;
+        IOMapComm.HsInBuf.OutPtr = 0;
+      
+        /* using the outbuf inptr in order to get the number of bytes in the return answer at the right place*/
+        IOMapComm.HsOutBuf.InPtr = NumberOfBytes;
+      
+        /* call the data stream interpreter */
+        cCommInterprete(IOMapComm.HsInBuf.Buf, (UBYTE *)(IOMapComm.HsOutBuf.Buf+1), &(IOMapComm.HsOutBuf.InPtr), (UBYTE) HS_CMD_READY, NumberOfBytes);
+      
+        /* if there is a reply to be sent then send it */
+        if (IOMapComm.HsOutBuf.InPtr)
+        {
+          IOMapComm.HsOutBuf.Buf[0] = HS_ADDRESS_ALL; // reply is sent to "all"
+          IOMapComm.HsOutBuf.InPtr++;
+          cCommSendHiSpeedData();
+          IOMapComm.HsOutBuf.InPtr = 0;
+          IOMapComm.HsOutBuf.OutPtr = 0;
+        }
       }
     }
   }

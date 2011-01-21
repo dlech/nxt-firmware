@@ -338,6 +338,7 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
             case TX_DATA_CLK_HIGH:
             {
               SETClkLow(ChannelNr);
+              for (int a=0; a<60; a++);  // let the line settle
               if (LowSpeedData[ChannelNr].MaskBit == 0)     				                           //Is Byte Done, then we need a ack from receiver
             {
               SETDataToInput(ChannelNr);                                                             //Set datapin to input

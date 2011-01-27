@@ -794,42 +794,35 @@ void dOutputRegulateMotor(UBYTE MotorNr)
 /* The regulation form only control one motor at a time */
 void dOutputCalculateMotorPosition(UBYTE MotorNr)
 {
-  SWORD PositionError;
-  SWORD PValue;
-  SWORD IValue;
-  SWORD DValue;
-  SWORD TotalRegValue;
-  SWORD NewSpeedCount = 0;
+  SLONG PositionError;
+  SLONG PValue;
+  SLONG IValue;
+  SLONG DValue;
+  SLONG TotalRegValue;
+  SLONG NewSpeedCount = 0;
 
   MOTORDATA * pMD = &(MotorData[MotorNr]);
   NewSpeedCount = (SWORD)((pMD->MotorTargetSpeed * MAX_CAPTURE_COUNT)/INPUT_SCALE_FACTOR);
 
-  PositionError = (SWORD)(pMD->OldPositionError - pMD->DeltaCaptureCount) + NewSpeedCount;
+  PositionError = (pMD->OldPositionError - pMD->DeltaCaptureCount) + NewSpeedCount;
 
   //Overflow control on PositionError
-  if (pMD->RegPParameter != 0)
-  {
-    PositionError = dOutputBound (PositionError, 32000 / pMD->RegPParameter);
-  }
-  else
-  {
-    PositionError = dOutputBound (PositionError, 32000);
-  }
+  PositionError = dOutputBound (PositionError, 32000);
 
-  PValue = PositionError * (SWORD)(pMD->RegPParameter/REG_CONST_DIV);
+  PValue = PositionError * (pMD->RegPParameter/REG_CONST_DIV);
   PValue = dOutputBound (PValue, REG_MAX_VALUE);
 
-  DValue = (PositionError - pMD->OldPositionError) * (SWORD)(pMD->RegDParameter/REG_CONST_DIV);
-  pMD->OldPositionError = PositionError;
+  DValue = (PositionError - pMD->OldPositionError) * (pMD->RegDParameter/REG_CONST_DIV);
+  pMD->OldPositionError = (SWORD)PositionError;
 
-  pMD->AccError = (pMD->AccError * 3) + PositionError;
+  pMD->AccError = (pMD->AccError * 3) + (SWORD)PositionError;
   pMD->AccError = pMD->AccError / 4;
   pMD->AccError = dOutputBound (pMD->AccError, 800);
 
-  IValue = pMD->AccError * (SWORD)(pMD->RegIParameter/REG_CONST_DIV);
+  IValue = pMD->AccError * (pMD->RegIParameter/REG_CONST_DIV);
   IValue = dOutputBound (IValue, REG_MAX_VALUE);
 
-  TotalRegValue = (SWORD)((PValue + IValue + DValue)/2);
+  TotalRegValue = (PValue + IValue + DValue) / 2;
 
   if (TotalRegValue > MAXIMUM_SPEED_FW)
   {
@@ -849,11 +842,11 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
 void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
 {
   SLONG TempTurnParameter;
-  SWORD PValue;
-  SWORD IValue;
-  SWORD DValue;
-  SWORD CorrectionValue;
-  SWORD MotorSpeed;
+  SLONG PValue;
+  SLONG IValue;
+  SLONG DValue;
+  SLONG CorrectionValue;
+  SLONG MotorSpeed;
 
   MOTORDATA * pOne = &(MotorData[MotorOne]);
   MOTORDATA * pTwo = &(MotorData[MotorTwo]);
@@ -902,19 +895,19 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
   SyncData.SyncTachoDif += SyncData.SyncTurnParameter;
   SyncData.SyncTachoDif = dOutputBound (SyncData.SyncTachoDif, 500);
 
-  PValue = (SWORD)SyncData.SyncTachoDif * (SWORD)(pOne->RegPParameter/REG_CONST_DIV);
+  PValue = SyncData.SyncTachoDif * (pOne->RegPParameter/REG_CONST_DIV);
 
-  DValue = ((SWORD)SyncData.SyncTachoDif - SyncData.SyncOldError) * (SWORD)(pOne->RegDParameter/REG_CONST_DIV);
+  DValue = (SyncData.SyncTachoDif - SyncData.SyncOldError) * (pOne->RegDParameter/REG_CONST_DIV);
   SyncData.SyncOldError = (SWORD)SyncData.SyncTachoDif;
 
   SyncData.SyncAccError += (SWORD)SyncData.SyncTachoDif;
   SyncData.SyncAccError = dOutputBound (SyncData.SyncAccError, 900);
 
-  IValue = SyncData.SyncAccError * (SWORD)(pOne->RegIParameter/REG_CONST_DIV);
+  IValue = SyncData.SyncAccError * (pOne->RegIParameter/REG_CONST_DIV);
 
-  CorrectionValue = (SWORD)((PValue + IValue + DValue)/4);
+  CorrectionValue = (PValue + IValue + DValue) / 4;
 
-  MotorSpeed = (SWORD)pOne->MotorTargetSpeed - CorrectionValue;
+  MotorSpeed = pOne->MotorTargetSpeed - CorrectionValue;
   MotorSpeed = dOutputBound (MotorSpeed, MAXIMUM_SPEED_FW);
 
   if (pOne->TurnParameter != 0)
@@ -930,7 +923,7 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
   }
   pOne->MotorActualSpeed = (SBYTE)MotorSpeed;
 
-  MotorSpeed = (SWORD)pTwo->MotorTargetSpeed + CorrectionValue;
+  MotorSpeed = pTwo->MotorTargetSpeed + CorrectionValue;
   MotorSpeed = dOutputBound (MotorSpeed, MAXIMUM_SPEED_FW);
 
   if (pOne->TurnParameter != 0)

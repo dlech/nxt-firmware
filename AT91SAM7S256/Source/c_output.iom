@@ -72,7 +72,7 @@ typedef   struct
   UBYTE   RegMode;						/* RW - Tells which regulation mode should be used */
   UBYTE   Overloaded;					/* R  - True if the motor has been overloaded within speed control regulation */ 
   SBYTE   SyncTurnParameter;			/* RW - Holds the turning parameter need within MoveBlock */   
-  UBYTE   SpareOne;
+  UBYTE   Options;
   UBYTE   SpareTwo; 
   UBYTE   SpareThree;
 }OUTPUT;

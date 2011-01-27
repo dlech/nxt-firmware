@@ -266,6 +266,7 @@ TYPE_CODE IO_TYPES_OUT[IO_OUT_FIELD_COUNT] =
   TC_UBYTE, //IO_OUT_REG_D_VAL
   TC_SLONG, //IO_OUT_BLOCK_TACH_COUNT
   TC_SLONG, //IO_OUT_ROTATION_COUNT
+  TC_UBYTE, //IO_OUT_OPTIONS
 
   //IO_OUT1
   TC_UBYTE, //IO_OUT_FLAGS
@@ -283,6 +284,7 @@ TYPE_CODE IO_TYPES_OUT[IO_OUT_FIELD_COUNT] =
   TC_UBYTE, //IO_OUT_REG_D_VAL
   TC_SLONG, //IO_OUT_BLOCK_TACH_COUNT
   TC_SLONG, //IO_OUT_ROTATION_COUNT
+  TC_UBYTE, //IO_OUT_OPTIONS
 
   //IO_OUT2
   TC_UBYTE, //IO_OUT_FLAGS
@@ -300,6 +302,7 @@ TYPE_CODE IO_TYPES_OUT[IO_OUT_FIELD_COUNT] =
   TC_UBYTE, //IO_OUT_REG_D_VAL
   TC_SLONG, //IO_OUT_BLOCK_TACH_COUNT
   TC_SLONG, //IO_OUT_ROTATION_COUNT
+  TC_UBYTE, //IO_OUT_OPTIONS
 };
 
 
@@ -486,6 +489,7 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
           pOut->RegMode           = pInBuf[4];
           pOut->SyncTurnParameter = pInBuf[5];
           pOut->RunState          = pInBuf[6];
+          pOut->Options           = pOut->Mode & REG_METHOD;
           memcpy((PSZ)(&(pOut->TachoLimit)), (PSZ)(&pInBuf[7]), 4);
 
           pOut->Flags |= UPDATE_MODE | UPDATE_SPEED | UPDATE_TACHO_LIMIT;
@@ -1107,6 +1111,7 @@ void      cCmdInit(void* pHeader)
     IO_PTRS_OUT[IO_OUT_REG_D_VAL        + i * IO_OUT_FPP] = (void*)&(pOut->RegDParameter);
     IO_PTRS_OUT[IO_OUT_BLOCK_TACH_COUNT + i * IO_OUT_FPP] = (void*)&(pOut->BlockTachoCount);
     IO_PTRS_OUT[IO_OUT_ROTATION_COUNT   + i * IO_OUT_FPP] = (void*)&(pOut->RotationCount);
+    IO_PTRS_OUT[IO_OUT_OPTIONS          + i * IO_OUT_FPP] = (void*)&(pOut->Options);
   }
 
   //Initialize IO_PTRS_IN

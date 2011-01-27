@@ -25,7 +25,6 @@
 #define MAX_COUNT_TO_RUN         10000000
 
 #define REG_MAX_VALUE            100
-#define REG_MIN_VALUE            -100
 
 #define RAMP_TIME_INTERVAL       25           // Measured in 1 mS => 25 mS interval
 #define REGULATION_TIME          100          // Measured in 1 mS => 100 mS regulation interval
@@ -36,6 +35,7 @@
 #define COAST_MOTOR_MODE         0
 
 void dOutputRampDownSynch(UBYTE MotorNr);
+SLONG dOutputBound(SLONG In, SLONG Limit);
 
 typedef struct
 {
@@ -754,6 +754,17 @@ void dOutputMotorIdleControl(UBYTE MotorNr)
   }
 }
 
+/* Check if Value is between [-Limit:Limit], and change it if it is not the case. */
+SLONG dOutputBound(SLONG Value, SLONG Limit)
+{
+  if (Value > Limit)
+    return Limit;
+  else if (Value < -Limit)
+    return -Limit;
+  else
+    return Value;
+}
+
 /* Function called to evaluate which regulation princip that need to run and which MotorNr to use (I.E.: Which motors are synched together)*/
 void dOutputRegulateMotor(UBYTE MotorNr)
 {
@@ -798,61 +809,26 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
   //Overflow control on PositionError
   if (pMD->RegPParameter != 0)
   {
-    if (PositionError > (SWORD)(32000 / pMD->RegPParameter))
-    {
-      PositionError = (SWORD)(32000 / pMD->RegPParameter);
-    }
-    if (PositionError < (SWORD)(-(32000 / pMD->RegPParameter)))
-    {
-      PositionError = (SWORD)(-(32000 / pMD->RegPParameter));
-    }
+    PositionError = dOutputBound (PositionError, 32000 / pMD->RegPParameter);
   }
   else
   {
-    if (PositionError > (SWORD)32000)
-    {
-      PositionError = (SWORD)32000;
-    }
-    if (PositionError < (SWORD)-32000)
-    {
-      PositionError = (SWORD)-32000;
-    }
+    PositionError = dOutputBound (PositionError, 32000);
   }
 
   PValue = PositionError * (SWORD)(pMD->RegPParameter/REG_CONST_DIV);
-  if (PValue > (SWORD)REG_MAX_VALUE)
-  {
-    PValue = REG_MAX_VALUE;
-  }
-  if (PValue <= (SWORD)REG_MIN_VALUE)
-  {
-    PValue = REG_MIN_VALUE;
-  }
+  PValue = dOutputBound (PValue, REG_MAX_VALUE);
 
   DValue = (PositionError - pMD->OldPositionError) * (SWORD)(pMD->RegDParameter/REG_CONST_DIV);
   pMD->OldPositionError = PositionError;
 
   pMD->AccError = (pMD->AccError * 3) + PositionError;
   pMD->AccError = pMD->AccError / 4;
+  pMD->AccError = dOutputBound (pMD->AccError, 800);
 
-  if (pMD->AccError > (SWORD)800)
-  {
-    pMD->AccError = 800;
-  }
-  if (pMD->AccError <= (SWORD)-800)
-  {
-    pMD->AccError = -800;
-  }
   IValue = pMD->AccError * (SWORD)(pMD->RegIParameter/REG_CONST_DIV);
+  IValue = dOutputBound (IValue, REG_MAX_VALUE);
 
-  if (IValue > (SWORD)REG_MAX_VALUE)
-  {
-    IValue = REG_MAX_VALUE;
-  }
-  if (IValue <= (SWORD)REG_MIN_VALUE)
-  {
-    IValue = REG_MIN_VALUE;
-  }
   TotalRegValue = (SWORD)((PValue + IValue + DValue)/2);
 
   if (TotalRegValue > MAXIMUM_SPEED_FW)
@@ -924,26 +900,7 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
   //SyncTurnParameter should ophold difference between the two motors.
 
   SyncData.SyncTachoDif += SyncData.SyncTurnParameter;
-
-  if (SyncData.SyncTachoDif > 500)
-  {
-    SyncData.SyncTachoDif = 500;
-  }
-  if (SyncData.SyncTachoDif < -500)
-  {
-    SyncData.SyncTachoDif = -500;
-  }
-
-  /*
-  if ((SWORD)SyncData.SyncTachoDif > 500)
-  {
-    SyncData.SyncTachoDif = 500;
-  }
-  if ((SWORD)SyncData.SyncTachoDif < -500)
-  {
-    SyncData.SyncTachoDif = -500;
-  }
-  */
+  SyncData.SyncTachoDif = dOutputBound (SyncData.SyncTachoDif, 500);
 
   PValue = (SWORD)SyncData.SyncTachoDif * (SWORD)(pOne->RegPParameter/REG_CONST_DIV);
 
@@ -951,109 +908,40 @@ void dOutputSyncMotorPosition(UBYTE MotorOne, UBYTE MotorTwo)
   SyncData.SyncOldError = (SWORD)SyncData.SyncTachoDif;
 
   SyncData.SyncAccError += (SWORD)SyncData.SyncTachoDif;
+  SyncData.SyncAccError = dOutputBound (SyncData.SyncAccError, 900);
 
-  if (SyncData.SyncAccError > (SWORD)900)
-  {
-    SyncData.SyncAccError = 900;
-  }
-  if (SyncData.SyncAccError < (SWORD)-900)
-  {
-    SyncData.SyncAccError = -900;
-  }
   IValue = SyncData.SyncAccError * (SWORD)(pOne->RegIParameter/REG_CONST_DIV);
 
   CorrectionValue = (SWORD)((PValue + IValue + DValue)/4);
 
   MotorSpeed = (SWORD)pOne->MotorTargetSpeed - CorrectionValue;
-
-  if (MotorSpeed > (SWORD)MAXIMUM_SPEED_FW)
-  {
-    MotorSpeed = MAXIMUM_SPEED_FW;
-  }
-  else
-  {
-    if (MotorSpeed < (SWORD)MAXIMUM_SPEED_RW)
-    {
-      MotorSpeed = MAXIMUM_SPEED_RW;
-    }
-  }
+  MotorSpeed = dOutputBound (MotorSpeed, MAXIMUM_SPEED_FW);
 
   if (pOne->TurnParameter != 0)
   {
     if (pOne->MotorTargetSpeed > 0)
     {
-      if (MotorSpeed > (SWORD)pOne->MotorTargetSpeed)
-      {
-        MotorSpeed = (SWORD)pOne->MotorTargetSpeed;
-      }
-      else
-      {
-        if (MotorSpeed < (SWORD)-pOne->MotorTargetSpeed)
-        {
-          MotorSpeed = -pOne->MotorTargetSpeed;
-        }
-      }
+      MotorSpeed = dOutputBound (MotorSpeed, pOne->MotorTargetSpeed);
     }
     else
     {
-      if (MotorSpeed < (SWORD)pOne->MotorTargetSpeed)
-      {
-        MotorSpeed = (SWORD)pOne->MotorTargetSpeed;
-      }
-      else
-      {
-        if (MotorSpeed > (SWORD)-pOne->MotorTargetSpeed)
-        {
-          MotorSpeed = -pOne->MotorTargetSpeed;
-        }
-      }
+      MotorSpeed = dOutputBound (MotorSpeed, -pOne->MotorTargetSpeed);
     }
   }
   pOne->MotorActualSpeed = (SBYTE)MotorSpeed;
 
   MotorSpeed = (SWORD)pTwo->MotorTargetSpeed + CorrectionValue;
-
-  if (MotorSpeed > (SWORD)MAXIMUM_SPEED_FW)
-  {
-    MotorSpeed = MAXIMUM_SPEED_FW;
-  }
-  else
-  {
-    if (MotorSpeed < (SWORD)MAXIMUM_SPEED_RW)
-    {
-      MotorSpeed = MAXIMUM_SPEED_RW;
-    }
-  }
+  MotorSpeed = dOutputBound (MotorSpeed, MAXIMUM_SPEED_FW);
 
   if (pOne->TurnParameter != 0)
   {
     if (pTwo->MotorTargetSpeed > 0)
     {
-      if (MotorSpeed > (SWORD)pTwo->MotorTargetSpeed)
-      {
-        MotorSpeed = (SWORD)pTwo->MotorTargetSpeed;
-      }
-      else
-      {
-        if (MotorSpeed < (SWORD)-pTwo->MotorTargetSpeed)
-        {
-          MotorSpeed = -pTwo->MotorTargetSpeed;
-        }
-      }
+      MotorSpeed = dOutputBound (MotorSpeed, pTwo->MotorTargetSpeed);
     }
     else
     {
-      if (MotorSpeed < (SWORD)pTwo->MotorTargetSpeed)
-      {
-        MotorSpeed = (SWORD)pTwo->MotorTargetSpeed;
-      }
-      else
-      {
-        if (MotorSpeed > (SWORD)-pTwo->MotorTargetSpeed)
-        {
-          MotorSpeed = -pTwo->MotorTargetSpeed;
-        }
-      }
+      MotorSpeed = dOutputBound (MotorSpeed, -pTwo->MotorTargetSpeed);
     }
   }
   pTwo->MotorActualSpeed = (SBYTE)MotorSpeed;

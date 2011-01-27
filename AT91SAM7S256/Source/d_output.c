@@ -36,6 +36,7 @@
 
 void dOutputRampDownSynch(UBYTE MotorNr);
 SLONG dOutputBound(SLONG In, SLONG Limit);
+SLONG dOutputPIDRegulation(UBYTE MotorNr, SLONG PositionError);
 
 typedef struct
 {
@@ -823,28 +824,13 @@ void dOutputRegulateMotor(UBYTE MotorNr)
   }
 }
 
-/* Absolute position regulation. */
-void dOutputAbsolutePositionRegulation(UBYTE MotorNr)
+/* Compute PID regulation result for a given error. */
+SLONG dOutputPIDRegulation(UBYTE MotorNr, SLONG PositionError)
 {
-  /* Inputs:
-   *  - CurrentCaptureCount: current motor position.
-   *  - MotorTachoCountToRun: wanted position.
-   *
-   *  - RegPParameter, RegIParameter, RegDParameter: PID parameters.
-   *
-   * Outputs:
-   *  - MotorActualSpeed: power to be applied to motor.
-   *  - MotorOverloaded: set if MotorActualSpeed reached maximum.
-   *
-   *  - OldPositionError: remember last error, used for D part.
-   *  - AccError: Accumulated error, used for I part.
-   */
-  SLONG PositionError;
   SLONG PValue, DValue, IValue, TotalRegValue;
 
   MOTORDATA *pMD = &MotorData[MotorNr];
 
-  PositionError = pMD->MotorTachoCountToRun - pMD->CurrentCaptureCount;
   PositionError = dOutputBound (PositionError, 32000);
 
   PValue = PositionError * (pMD->RegPParameter/REG_CONST_DIV);
@@ -864,6 +850,7 @@ void dOutputAbsolutePositionRegulation(UBYTE MotorNr)
   }
 
   TotalRegValue = (PValue + IValue + DValue) / 2;
+
   if (TotalRegValue > MAXIMUM_SPEED_FW)
   {
     TotalRegValue = MAXIMUM_SPEED_FW;
@@ -875,6 +862,29 @@ void dOutputAbsolutePositionRegulation(UBYTE MotorNr)
     pMD->MotorOverloaded = 1;
   }
 
+  return TotalRegValue;
+}
+
+/* Absolute position regulation. */
+void dOutputAbsolutePositionRegulation(UBYTE MotorNr)
+{
+  /* Inputs:
+   *  - CurrentCaptureCount: current motor position.
+   *  - MotorTachoCountToRun: wanted position.
+   *
+   * Outputs:
+   *  - MotorActualSpeed: power to be applied to motor.
+   *  - MotorOverloaded: set if MotorActualSpeed reached maximum.
+   */
+  SLONG PositionError;
+  SLONG TotalRegValue;
+
+  MOTORDATA *pMD = &MotorData[MotorNr];
+
+  PositionError = pMD->MotorTachoCountToRun - pMD->CurrentCaptureCount;
+
+  TotalRegValue = dOutputPIDRegulation (MotorNr, PositionError);
+
   pMD->MotorActualSpeed = TotalRegValue;
 }
 
@@ -883,9 +893,6 @@ void dOutputAbsolutePositionRegulation(UBYTE MotorNr)
 void dOutputCalculateMotorPosition(UBYTE MotorNr)
 {
   SLONG PositionError;
-  SLONG PValue;
-  SLONG IValue;
-  SLONG DValue;
   SLONG TotalRegValue;
   SLONG NewSpeed;
   SLONG NewSpeedCount;
@@ -911,38 +918,8 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
 
   PositionError = (pMD->OldPositionError - pMD->DeltaCaptureCount) + NewSpeedCount;
 
-  //Overflow control on PositionError
-  PositionError = dOutputBound (PositionError, 32000);
+  TotalRegValue = dOutputPIDRegulation (MotorNr, PositionError);
 
-  PValue = PositionError * (pMD->RegPParameter/REG_CONST_DIV);
-
-  DValue = (PositionError - pMD->OldPositionError) * (pMD->RegDParameter/REG_CONST_DIV);
-  pMD->OldPositionError = (SWORD)PositionError;
-
-  pMD->AccError = (pMD->AccError * 3) + (SWORD)PositionError;
-  pMD->AccError = pMD->AccError / 4;
-  pMD->AccError = dOutputBound (pMD->AccError, 800);
-
-  IValue = pMD->AccError * (pMD->RegIParameter/REG_CONST_DIV);
-
-  if (!(RegulationOptions & REGOPTION_NO_SATURATION))
-  {
-    PValue = dOutputBound (PValue, REG_MAX_VALUE);
-    IValue = dOutputBound (IValue, REG_MAX_VALUE);
-  }
-
-  TotalRegValue = (PValue + IValue + DValue) / 2;
-
-  if (TotalRegValue > MAXIMUM_SPEED_FW)
-  {
-    TotalRegValue = MAXIMUM_SPEED_FW;
-    pMD->MotorOverloaded = 1;
-  }
-  if (TotalRegValue < MAXIMUM_SPEED_RW)
-  {
-    TotalRegValue = MAXIMUM_SPEED_RW;
-    pMD->MotorOverloaded = 1;
-  }
   pMD->MotorActualSpeed = (SBYTE)TotalRegValue;
 }
 

@@ -54,6 +54,9 @@
 #define MOTOR_RUN_STATE_RAMPDOWN  0x40
 #define MOTOR_RUN_STATE_HOLD      0x60
 
+// Constants related to Regulation Options
+#define REGOPTION_NO_SATURATION 0x01 // Do not limit intermediary regulation results
+
 
 enum
 {
@@ -77,6 +80,7 @@ void      dOutputResetBlockTachoLimit(UBYTE MotorNr);
 void      dOutputResetRotationCaptureCount(UBYTE MotorNr);
 void      dOutputSetPIDParameters(UBYTE MotorNr, UBYTE NewRegPParameter, UBYTE NewRegIParameter, UBYTE NewRegDParameter);
 void      dOutputSetRegulationTime(UBYTE NewRegulationTime);
+void      dOutputSetRegulationOptions(UBYTE NewRegulationOptions);
 
 void 	    dOutputRegulateMotor(UBYTE MotorNr);
 void      dOutputCalculateRampUpParameter(UBYTE MotorNr, ULONG NewTachoLimit);

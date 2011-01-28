@@ -83,6 +83,7 @@ typedef   struct
 {
   OUTPUT  Outputs[NO_OF_OUTPUTS];
   UBYTE   RegulationTime;               /* RW - Interval between regulation computations */
+  UBYTE   RegulationOptions;            /* RW - Options for regulation, see REGOPTION_* */
 }IOMAPOUTPUT;
 
 

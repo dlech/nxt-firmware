@@ -58,6 +58,7 @@ void      cOutputInit(void* pHeader)
     pOut->Options = 0x00;
   }
   IOMapOutput.RegulationTime = REGULATION_TIME;
+  IOMapOutput.RegulationOptions = 0;
   VarsOutput.TimeCnt = 0;
   dOutputInit();
 }
@@ -137,6 +138,7 @@ void cOutputCtrl(void)
     }
   }
   dOutputSetRegulationTime(IOMapOutput.RegulationTime);
+  dOutputSetRegulationOptions(IOMapOutput.RegulationOptions);
   dOutputCtrl();
   cOutputUpdateIomap();
 }

@@ -78,6 +78,7 @@ typedef struct
 static    MOTORDATA         MotorData[3];
 static    SYNCMOTORDATA     SyncData;
 static    UBYTE             RegulationTime;
+static    UBYTE             RegulationOptions;
 
 void      dOutputInit(void)
 {
@@ -281,6 +282,12 @@ void dOutputSetPIDParameters(UBYTE MotorNr, UBYTE NewRegPParameter, UBYTE NewReg
 void dOutputSetRegulationTime(UBYTE NewRegulationTime)
 {
   RegulationTime = NewRegulationTime;
+}
+
+/* Set new regulation options */
+void dOutputSetRegulationOptions(UBYTE NewRegulationOptions)
+{
+  RegulationOptions = NewRegulationOptions;
 }
 
 /* Called to set TachoCountToRun which is used for position control for the model */
@@ -841,7 +848,6 @@ void dOutputAbsolutePositionRegulation(UBYTE MotorNr)
   PositionError = dOutputBound (PositionError, 32000);
 
   PValue = PositionError * (pMD->RegPParameter/REG_CONST_DIV);
-  PValue = dOutputBound (PValue, REG_MAX_VALUE);
 
   DValue = (PositionError - pMD->OldPositionError) * (pMD->RegDParameter/REG_CONST_DIV);
   pMD->OldPositionError = PositionError;
@@ -850,7 +856,12 @@ void dOutputAbsolutePositionRegulation(UBYTE MotorNr)
   pMD->AccError = dOutputBound (pMD->AccError, 800);
 
   IValue = pMD->AccError * (pMD->RegIParameter/REG_CONST_DIV);
-  IValue = dOutputBound (IValue, REG_MAX_VALUE);
+
+  if (!(RegulationOptions & REGOPTION_NO_SATURATION))
+  {
+    PValue = dOutputBound (PValue, REG_MAX_VALUE);
+    IValue = dOutputBound (IValue, REG_MAX_VALUE);
+  }
 
   TotalRegValue = (PValue + IValue + DValue) / 2;
   if (TotalRegValue > MAXIMUM_SPEED_FW)
@@ -904,7 +915,6 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
   PositionError = dOutputBound (PositionError, 32000);
 
   PValue = PositionError * (pMD->RegPParameter/REG_CONST_DIV);
-  PValue = dOutputBound (PValue, REG_MAX_VALUE);
 
   DValue = (PositionError - pMD->OldPositionError) * (pMD->RegDParameter/REG_CONST_DIV);
   pMD->OldPositionError = (SWORD)PositionError;
@@ -914,7 +924,12 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
   pMD->AccError = dOutputBound (pMD->AccError, 800);
 
   IValue = pMD->AccError * (pMD->RegIParameter/REG_CONST_DIV);
-  IValue = dOutputBound (IValue, REG_MAX_VALUE);
+
+  if (!(RegulationOptions & REGOPTION_NO_SATURATION))
+  {
+    PValue = dOutputBound (PValue, REG_MAX_VALUE);
+    IValue = dOutputBound (IValue, REG_MAX_VALUE);
+  }
 
   TotalRegValue = (PValue + IValue + DValue) / 2;
 

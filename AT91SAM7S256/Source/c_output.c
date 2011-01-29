@@ -55,6 +55,7 @@ void      cOutputInit(void* pHeader)
     pOut->RegPParameter = DEFAULT_P_GAIN_FACTOR;
     pOut->RegIParameter = DEFAULT_I_GAIN_FACTOR;
     pOut->RegDParameter = DEFAULT_D_GAIN_FACTOR;
+    pOut->Options = 0x00;
   }
   VarsOutput.TimeCnt = 0;
   dOutputInit();

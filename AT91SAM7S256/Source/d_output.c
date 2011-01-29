@@ -37,6 +37,7 @@
 void dOutputRampDownSynch(UBYTE MotorNr);
 SLONG dOutputBound(SLONG In, SLONG Limit);
 SLONG dOutputPIDRegulation(UBYTE MotorNr, SLONG PositionError);
+SLONG dOutputFractionalChange(SLONG Value, SWORD *FracError);
 
 typedef struct
 {
@@ -865,6 +866,34 @@ SLONG dOutputPIDRegulation(UBYTE MotorNr, SLONG PositionError)
   return TotalRegValue;
 }
 
+/* Compute integer change for this regulation step, according to value and
+ * previous fractional error.
+ * Used for values which are expressed as "per SPEED_TIME" to translate them
+ * in "per RegulationTime".*/
+SLONG dOutputFractionalChange(SLONG Value, SWORD *FracError)
+{
+  SLONG IntegerChange;
+
+  /* Apply fractional change in case RegulationTime is different from
+   * SPEED_TIME.  In this case, fractional part is accumulated until it reach
+   * one (with "one" being SPEED_TIME).  This is use the same principle as the
+   * Bresenham algorithm. */
+  IntegerChange = Value * RegulationTime / SPEED_TIME;
+  *FracError += Value * RegulationTime % SPEED_TIME;
+  if (*FracError > SPEED_TIME)
+  {
+    *FracError -= SPEED_TIME;
+    IntegerChange++;
+  }
+  else if (*FracError < -SPEED_TIME)
+  {
+    *FracError += SPEED_TIME;
+    IntegerChange--;
+  }
+
+  return IntegerChange;
+}
+
 /* Absolute position regulation. */
 void dOutputAbsolutePositionRegulation(UBYTE MotorNr)
 {
@@ -894,29 +923,13 @@ void dOutputCalculateMotorPosition(UBYTE MotorNr)
 {
   SLONG PositionError;
   SLONG TotalRegValue;
-  SLONG NewSpeed;
-  SLONG NewSpeedCount;
+  SLONG PositionChange;
 
   MOTORDATA * pMD = &(MotorData[MotorNr]);
-  /* Apply fractional speed in case RegulationTime is different from
-   * SPEED_TIME.  In this case, fractional part is accumulated until it reach
-   * one (with "one" being SPEED_TIME).  This is use the same principle as the
-   * Bresenham algorithm. */
-  NewSpeed = pMD->MotorTargetSpeed * MAX_CAPTURE_COUNT / INPUT_SCALE_FACTOR;
-  NewSpeedCount = NewSpeed * RegulationTime / SPEED_TIME;
-  pMD->PositionFracError += NewSpeed * RegulationTime % SPEED_TIME;
-  if (pMD->PositionFracError > SPEED_TIME)
-  {
-    pMD->PositionFracError -= SPEED_TIME;
-    NewSpeedCount++;
-  }
-  else if (pMD->PositionFracError < -SPEED_TIME)
-  {
-    pMD->PositionFracError += SPEED_TIME;
-    NewSpeedCount--;
-  }
 
-  PositionError = (pMD->OldPositionError - pMD->DeltaCaptureCount) + NewSpeedCount;
+  PositionChange = dOutputFractionalChange (pMD->MotorTargetSpeed * MAX_CAPTURE_COUNT / INPUT_SCALE_FACTOR, &pMD->PositionFracError);
+
+  PositionError = (pMD->OldPositionError - pMD->DeltaCaptureCount) + PositionChange;
 
   TotalRegValue = dOutputPIDRegulation (MotorNr, PositionError);
 

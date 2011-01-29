@@ -56,6 +56,8 @@ void      cOutputInit(void* pHeader)
     pOut->RegIParameter = DEFAULT_I_GAIN_FACTOR;
     pOut->RegDParameter = DEFAULT_D_GAIN_FACTOR;
     pOut->Options = 0x00;
+    pOut->MaxSpeed = DEFAULT_MAX_SPEED;
+    pOut->MaxAcceleration = DEFAULT_MAX_ACCELERATION;
   }
   IOMapOutput.RegulationTime = REGULATION_TIME;
   IOMapOutput.RegulationOptions = 0;
@@ -134,6 +136,7 @@ void cOutputCtrl(void)
       {
         pOut->Flags &= ~UPDATE_PID_VALUES;
         dOutputSetPIDParameters(Tmp, pOut->RegPParameter, pOut->RegIParameter, pOut->RegDParameter);
+        dOutputSetMax(Tmp, pOut->MaxSpeed, pOut->MaxAcceleration);
       }
     }
   }

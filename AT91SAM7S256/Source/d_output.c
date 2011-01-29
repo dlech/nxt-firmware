@@ -293,6 +293,14 @@ void dOutputSetPIDParameters(UBYTE MotorNr, UBYTE NewRegPParameter, UBYTE NewReg
   pMD->RegDParameter = NewRegDParameter;
 }
 
+/* Set maximum speed and acceleration */
+void dOutputSetMax(UBYTE MotorNr, SBYTE NewMaxSpeed, SBYTE NewMaxAcceleration)
+{
+  MOTORDATA * pMD = &(MotorData[MotorNr]);
+  pMD->MotorMaxSpeed = NewMaxSpeed;
+  pMD->MotorMaxAcceleration = NewMaxAcceleration;
+}
+
 /* Set new regulation time */
 void dOutputSetRegulationTime(UBYTE NewRegulationTime)
 {

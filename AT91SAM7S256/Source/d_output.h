@@ -82,6 +82,7 @@ void      dOutputResetTachoLimit(UBYTE MotorNr);
 void      dOutputResetBlockTachoLimit(UBYTE MotorNr);
 void      dOutputResetRotationCaptureCount(UBYTE MotorNr);
 void      dOutputSetPIDParameters(UBYTE MotorNr, UBYTE NewRegPParameter, UBYTE NewRegIParameter, UBYTE NewRegDParameter);
+void      dOutputSetMax(UBYTE MotorNr, SBYTE NewMaxSpeed, SBYTE NewMaxAcceleration);
 void      dOutputSetRegulationTime(UBYTE NewRegulationTime);
 void      dOutputSetRegulationOptions(UBYTE NewRegulationOptions);
 

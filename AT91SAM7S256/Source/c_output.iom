@@ -74,8 +74,8 @@ typedef   struct
   UBYTE   Overloaded;					/* R  - True if the motor has been overloaded within speed control regulation */ 
   SBYTE   SyncTurnParameter;			/* RW - Holds the turning parameter need within MoveBlock */   
   UBYTE   Options;
-  UBYTE   SpareTwo; 
-  UBYTE   SpareThree;
+  SBYTE   MaxSpeed;						/* RW - Maximum speed for absolute regulation, or 0 for no limit */
+  SBYTE   MaxAcceleration;				/* RW - Maximum acceleration for absolute regulation, or 0 for no limit */
 }OUTPUT;
 
 

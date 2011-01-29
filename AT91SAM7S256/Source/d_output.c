@@ -17,6 +17,8 @@
 #include  "d_output.h"
 #include  "d_output.r"
 
+#include  <math.h>
+
 #define MAXIMUM_SPEED_FW         100
 #define MAXIMUM_SPEED_RW         -100
 
@@ -38,6 +40,10 @@ void dOutputRampDownSynch(UBYTE MotorNr);
 SLONG dOutputBound(SLONG In, SLONG Limit);
 SLONG dOutputPIDRegulation(UBYTE MotorNr, SLONG PositionError);
 SLONG dOutputFractionalChange(SLONG Value, SWORD *FracError);
+void dOutputSpeedFilter(UBYTE MotorNr, SLONG PositionDiff);
+
+#define ABS(a) (((a) < 0) ? -(a) : (a))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 typedef struct
 {
@@ -67,6 +73,10 @@ typedef struct
   SLONG MotorRampTachoCountOld;               // Used to hold old position during Ramp-Up
   SLONG MotorRampTachoCountStart;             // Used to hold position when Ramp-up started
   SLONG RotationCaptureCount;                 // Counter for additional rotation counter
+  SLONG MotorTachoCountTarget;                // For absolute regulation, position on which regulation is done
+  SWORD SpeedFracError;                       // Fractionnal speed error of last speed update
+  SBYTE MotorMaxSpeed;                        // For absolute regulation, maximum motor speed
+  SBYTE MotorMaxAcceleration;                 // For absolute regulation, maximum motor acceleration
 }MOTORDATA;
 
 typedef struct
@@ -108,6 +118,8 @@ void      dOutputInit(void)
     pMD->RegPParameter = DEFAULT_P_GAIN_FACTOR;
     pMD->RegIParameter = DEFAULT_I_GAIN_FACTOR;
     pMD->RegDParameter = DEFAULT_D_GAIN_FACTOR;
+    pMD->MotorMaxSpeed = DEFAULT_MAX_SPEED;
+    pMD->MotorMaxAcceleration = DEFAULT_MAX_ACCELERATION;
     pMD->RegulationMode = 0;
     pMD->MotorOverloaded = 0;
     INSERTMode(Temp, COAST_MOTOR_MODE);
@@ -245,6 +257,7 @@ void dOutputResetTachoLimit(UBYTE MotorNr)
   MOTORDATA * pMD = &(MotorData[MotorNr]);
   pMD->CurrentCaptureCount = 0;
   pMD->MotorTachoCountToRun = 0;
+  pMD->MotorTachoCountTarget = 0;
 
   if (pMD->RegulationMode & REGSTATE_SYNCHRONE)
   {
@@ -894,24 +907,77 @@ SLONG dOutputFractionalChange(SLONG Value, SWORD *FracError)
   return IntegerChange;
 }
 
+/* Filter speed according to motor maximum speed and acceleration. */
+void dOutputSpeedFilter(UBYTE MotorNr, SLONG PositionDiff)
+{
+  /* Inputs:
+   *  - PositionDiff: difference between current position and position to reach.
+   *  - MotorMaxAcceleration: maximum speed change per regulation period (or 0 for unlimited).
+   *  - MotorMaxSpeed: maximum motor speed (can not be zero, or do not call this function).
+   * Output:
+   *  - MotorTargetSpeed: speed to regulate on motor.
+   */
+  MOTORDATA *pMD = &MotorData[MotorNr];
+  SLONG IdealSpeed;
+  SLONG PositionDiffAbs = ABS (PositionDiff);
+  /* Should be able to brake on time. */
+  if (pMD->MotorMaxAcceleration
+      && PositionDiffAbs < MAXIMUM_SPEED_FW * MAXIMUM_SPEED_FW / 2)
+  {
+    IdealSpeed = sqrtf (2 * PositionDiffAbs * pMD->MotorMaxAcceleration);
+    IdealSpeed = dOutputBound (IdealSpeed, pMD->MotorMaxSpeed);
+  }
+  else
+  {
+    /* Do not go past consign. */
+    IdealSpeed = MIN (PositionDiffAbs, pMD->MotorMaxSpeed);
+  }
+  /* Apply sign. */
+  if (PositionDiff < 0)
+  {
+    IdealSpeed = -IdealSpeed;
+  }
+  /* Check max acceleration. */
+  SLONG SpeedDiff = IdealSpeed - pMD->MotorTargetSpeed;
+  if (pMD->MotorMaxAcceleration)
+  {
+    SLONG MaxSpeedChange = dOutputFractionalChange (pMD->MotorMaxAcceleration, &pMD->SpeedFracError);
+    SpeedDiff = dOutputBound (SpeedDiff, MaxSpeedChange);
+  }
+  pMD->MotorTargetSpeed += SpeedDiff;
+}
+
 /* Absolute position regulation. */
 void dOutputAbsolutePositionRegulation(UBYTE MotorNr)
 {
   /* Inputs:
    *  - CurrentCaptureCount: current motor position.
-   *  - MotorTachoCountToRun: wanted position.
+   *  - MotorTachoCountToRun: wanted position, filtered with speed and acceleration.
    *
    * Outputs:
    *  - MotorActualSpeed: power to be applied to motor.
    *  - MotorOverloaded: set if MotorActualSpeed reached maximum.
    */
+  SLONG PositionChange;
   SLONG PositionError;
   SLONG TotalRegValue;
 
   MOTORDATA *pMD = &MotorData[MotorNr];
 
-  PositionError = pMD->MotorTachoCountToRun - pMD->CurrentCaptureCount;
+  /* Position update. */
+  if (pMD->MotorMaxSpeed)
+  {
+    dOutputSpeedFilter (MotorNr, pMD->MotorTachoCountToRun - pMD->MotorTachoCountTarget);
+    PositionChange = dOutputFractionalChange (pMD->MotorTargetSpeed * MAX_CAPTURE_COUNT / INPUT_SCALE_FACTOR, &pMD->PositionFracError);
+    pMD->MotorTachoCountTarget += PositionChange;
+  }
+  else
+  {
+    pMD->MotorTachoCountTarget = pMD->MotorTachoCountToRun;
+  }
 
+  /* Regulation. */
+  PositionError = pMD->MotorTachoCountTarget - pMD->CurrentCaptureCount;
   TotalRegValue = dOutputPIDRegulation (MotorNr, PositionError);
 
   pMD->MotorActualSpeed = TotalRegValue;
@@ -1263,13 +1329,16 @@ void dOutputResetSyncMotors(UBYTE MotorNr)
     MOTORDATA * pTwo = &(MotorData[MotorTwo]);
     pMD->CurrentCaptureCount = 0;
     pMD->MotorTachoCountToRun = 0;
+    pMD->MotorTachoCountTarget = 0;
     pTwo->CurrentCaptureCount = 0;
     pTwo->MotorTachoCountToRun = 0;
+    pTwo->MotorTachoCountTarget = 0;
   }
   else
   {
     pMD->CurrentCaptureCount = 0;
     pMD->MotorTachoCountToRun = 0;
+    pMD->MotorTachoCountTarget = 0;
   }
 }
 

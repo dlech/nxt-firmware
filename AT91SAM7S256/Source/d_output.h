@@ -39,6 +39,9 @@
 
 #endif
 
+#define DEFAULT_MAX_SPEED        80
+#define DEFAULT_MAX_ACCELERATION 20
+
 #define REGULATION_TIME         100          // Measured in 1 mS, regulation interval
 
 //Constant reffering to RegMode parameter

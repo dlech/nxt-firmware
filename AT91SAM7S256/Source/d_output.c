@@ -876,16 +876,16 @@ SLONG dOutputFractionalChange(SLONG Value, SWORD *FracError)
 
   /* Apply fractional change in case RegulationTime is different from
    * SPEED_TIME.  In this case, fractional part is accumulated until it reach
-   * one (with "one" being SPEED_TIME).  This is use the same principle as the
-   * Bresenham algorithm. */
+   * one half (with "one" being SPEED_TIME).  This is use the same principle
+   * as the Bresenham algorithm. */
   IntegerChange = Value * RegulationTime / SPEED_TIME;
   *FracError += Value * RegulationTime % SPEED_TIME;
-  if (*FracError > SPEED_TIME)
+  if (*FracError > SPEED_TIME / 2)
   {
     *FracError -= SPEED_TIME;
     IntegerChange++;
   }
-  else if (*FracError < -SPEED_TIME)
+  else if (*FracError < -SPEED_TIME / 2)
   {
     *FracError += SPEED_TIME;
     IntegerChange--;

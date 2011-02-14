@@ -35,9 +35,8 @@ typedef   struct
 {
   const   UBYTE  *pFlash;
   const   UWORD  *pSectorNo;
-  ULONG           FilePosition;
-  ULONG           DataSize;
-  ULONG           RemainingLength;
+  ULONG           ReadLength;
+  ULONG           DataLength;
   ULONG           FileDlPtr;
   UBYTE           SearchStr[FILENAME_SIZE];
   UWORD           FileIndex;
@@ -332,8 +331,8 @@ UWORD     dLoaderCreateFileHeader(ULONG FileSize, UBYTE *pName, UBYTE LinearStat
   ULONG       CompleteFileByteSize;
   UWORD       Handle;
   UBYTE       Name[FILENAME_SIZE];
-  ULONG       TmpFileSize;
-  ULONG       DataSize;
+  ULONG       FileLength;
+  ULONG       DataLength;
   UWORD       ErrorCode;
   UWORD       CompleteSectorNo;
   UWORD       Tmp;
@@ -341,7 +340,7 @@ UWORD     dLoaderCreateFileHeader(ULONG FileSize, UBYTE *pName, UBYTE LinearStat
   memset(&(Header.FileName), 0, sizeof(Header.FileName));
   memset(&(Header.FileSectorTable), 0xFF, sizeof(Header.FileSectorTable));
 
-  ErrorCode = dLoaderFind(pName, Name, &TmpFileSize, &DataSize, (UBYTE)BUSY);
+  ErrorCode = dLoaderFind(pName, Name, &FileLength, &DataLength, (UBYTE)BUSY);
   Handle =  ErrorCode & 0x00FF;
   if (SUCCESS == (ErrorCode & 0xFF00))
   {
@@ -369,8 +368,8 @@ UWORD     dLoaderCreateFileHeader(ULONG FileSize, UBYTE *pName, UBYTE LinearStat
 
           dLoaderCopyFileName((Header.FileName), pName);
           HandleTable[Handle].pSectorNo  = 0;
-          HandleTable[Handle].RemainingLength = FileSize; /* used for end of file detection            */
-          Header.FileSize                     = FileSize; /* used to program into flash                */
+          HandleTable[Handle].DataLength = FileSize; /* used for end of file detection            */
+          Header.FileSize                = FileSize; /* used to program into flash                */
           if (DATAFILE == FileType)
           {
             Header.DataSize = 0;
@@ -379,8 +378,7 @@ UWORD     dLoaderCreateFileHeader(ULONG FileSize, UBYTE *pName, UBYTE LinearStat
           {
             Header.DataSize = FileSize;
           }
-          HandleTable[Handle].DataSize     = Header.DataSize;
-          HandleTable[Handle].FilePosition = 0;
+          HandleTable[Handle].ReadLength = 0;
           HandleTable[Handle].FileType   = FileType | LinearState; /* if it is a datafile it can be stopped     */
           Header.FileType                = FileType | LinearState; /* FileType included for future appending    */
 
@@ -454,23 +452,17 @@ UWORD     dLoaderCreateFileHeader(ULONG FileSize, UBYTE *pName, UBYTE LinearStat
 UWORD     dLoaderWriteData(UWORD Handle, UBYTE *pBuf, UWORD *pLen)
 {
   UWORD   Tmp;
-  ULONG   NewFP, TmpLen;
   UBYTE   *pSectorBuf;
 
   Handle =  dLoaderCheckHandle(Handle, DOWNLOADING);
   if (0x8000 > Handle)
   {
-    // will we write past the current DataSize value?
-    NewFP = HandleTable[Handle].FilePosition + *pLen;
-    if (NewFP > HandleTable[Handle].DataSize)
-      TmpLen = NewFP - HandleTable[Handle].DataSize;
-    else
-      TmpLen = 0;
-    if (TmpLen > HandleTable[Handle].RemainingLength)
+
+    if (*pLen > HandleTable[Handle].DataLength)
     {
 
       /* Write request exceeds filesize - only flash up to filesize*/
-      *pLen = HandleTable[Handle].RemainingLength;
+      *pLen   = HandleTable[Handle].DataLength;
       WriteBuffer[HandleTable[Handle].WriteBufNo].Status = DLERROR;  /* save error untill close handle */
     }
 
@@ -490,18 +482,10 @@ UWORD     dLoaderWriteData(UWORD Handle, UBYTE *pBuf, UWORD *pLen)
         (WriteBuffer[HandleTable[Handle].WriteBufNo].BufIndex)++;
       }
     }
-    // did we write past the current DataSize value?
-    NewFP = HandleTable[Handle].FilePosition + *pLen;
-    if (NewFP > HandleTable[Handle].DataSize)
-    {
-      TmpLen = NewFP - HandleTable[Handle].DataSize;
-      HandleTable[Handle].RemainingLength -= TmpLen;
-      HandleTable[Handle].DataSize        = NewFP;
-    }
-    HandleTable[Handle].FilePosition = NewFP;
+    HandleTable[Handle].DataLength -= *pLen;
 
     /* Check for correct end of file */
-    if (0 == HandleTable[Handle].RemainingLength)
+    if (0 == HandleTable[Handle].DataLength)
     {
       if ((WriteBuffer[HandleTable[Handle].WriteBufNo].BufIndex) != 0)
       {
@@ -599,7 +583,7 @@ UWORD     dLoaderCloseHandle(UWORD Handle)
 
           /* This is a Datafile that should be closed and this is a legal action */
           /* 1. Write the data from the writebuffer into flash                   */
-          /* 2. Update the RemainingLength in the file header                         */
+          /* 2. Update the Datalength in the file header                         */
           /* This takes minimum 8 mS (2 page writes into flash)                  */
 
           if (WriteBuffer[HandleTable[Handle].WriteBufNo].BufIndex)
@@ -612,14 +596,14 @@ UWORD     dLoaderCloseHandle(UWORD Handle)
           /* Now the databuffer is free now use if for a buffer for the fileheader*/
           memcpy(WriteBuffer[HandleTable[Handle].WriteBufNo].Buf, (void const*)HandleTable[Handle].FileDlPtr, SECTORSIZE);
           TmpFileHeader = (FILEHEADER *) WriteBuffer[HandleTable[Handle].WriteBufNo].Buf;
-          TmpFileHeader->DataSize = TmpFileHeader->FileSize - HandleTable[Handle].RemainingLength;
+          TmpFileHeader->DataSize = TmpFileHeader->FileSize - HandleTable[Handle].DataLength;
           dLoaderWritePage(((ULONG)HandleTable[Handle].FileDlPtr & ~(SECTORSIZE - 1)), SECTORSIZE, WriteBuffer[HandleTable[Handle].WriteBufNo].Buf);
         }
         else
         {
 
           /* This is a system file being closed now update the file pointer table if no error and complete file written */
-          if ((DLERROR != WriteBuffer[HandleTable[Handle].WriteBufNo].Status) && (0 == HandleTable[Handle].RemainingLength))
+          if ((DLERROR != WriteBuffer[HandleTable[Handle].WriteBufNo].Status) && (0 == HandleTable[Handle].DataLength))
           {
 
             /* no error durig download - add the file pointer to the file pointer table */
@@ -650,21 +634,20 @@ UWORD     dLoaderOpenRead(UBYTE *pFileName, ULONG *pLength)
   UWORD   Handle;
   UBYTE   Name[FILENAME_SIZE];
   const   FILEHEADER *TmpHeader;
-  ULONG   FileSize;
-  ULONG   DataSize;
+  ULONG   FileLength;
+  ULONG   DataLength;
 
-  Handle = dLoaderFind(pFileName, Name, &FileSize, &DataSize, (UBYTE)BUSY);
+  Handle = dLoaderFind(pFileName, Name, &FileLength, &DataLength, (UBYTE)BUSY);
   if (0x8000 > Handle)
   {
-    if (FileSize)
+    if (FileLength)
     {
       TmpHeader = (FILEHEADER const *)(FILEPTRTABLE[HandleTable[Handle].FileIndex]);
       HandleTable[Handle].pFlash = (const UBYTE *)TmpHeader->FileStartAdr;
       HandleTable[Handle].pSectorNo    = TmpHeader->FileSectorTable;
-      HandleTable[Handle].DataSize     = DataSize;
-      HandleTable[Handle].FilePosition = 0;
-      HandleTable[Handle].RemainingLength = FileSize - DataSize;
-      *pLength = DataSize;
+      HandleTable[Handle].DataLength = TmpHeader->DataSize;
+      HandleTable[Handle].ReadLength = 0;
+      *pLength = TmpHeader->DataSize;
     }
     else
     {
@@ -676,7 +659,7 @@ UWORD     dLoaderOpenRead(UBYTE *pFileName, ULONG *pLength)
 
 UWORD     dLoaderSeek(UBYTE Handle, SLONG offset, UBYTE from)
 {
-  // move the FilePosition file pointer for this handle to the new offset
+  // move the ReadLength file pointer for this handle to the new offset
   // and update pFlash appropriately
   UWORD   Status;
   SLONG   distFromStart;
@@ -694,31 +677,31 @@ UWORD     dLoaderSeek(UBYTE Handle, SLONG offset, UBYTE from)
       distFromStart = offset;
       break;
     case SEEK_FROMCURRENT:
-      distFromStart = (SLONG)HandleTable[Handle].FilePosition + offset;
+      distFromStart = (SLONG)HandleTable[Handle].ReadLength + offset;
       break;
     case SEEK_FROMEND:
-      distFromStart = (SLONG)HandleTable[Handle].DataSize + offset;
+      distFromStart = (SLONG)HandleTable[Handle].DataLength + offset;
       break;
     }
-    if (distFromStart != HandleTable[Handle].FilePosition) {
-      if ((distFromStart < 0) || (distFromStart > HandleTable[Handle].DataSize))
+    if (distFromStart != HandleTable[Handle].ReadLength) {
+      if ((distFromStart < 0) || (distFromStart > HandleTable[Handle].DataLength))
         return (Status | INVALIDSEEK);
-      if (distFromStart < HandleTable[Handle].FilePosition) {
+      if (distFromStart < HandleTable[Handle].ReadLength) {
         // start from the beginning in this case
         TmpHeader = (FILEHEADER const *)(FILEPTRTABLE[HandleTable[Handle].FileIndex]);
         HandleTable[Handle].pFlash       = (const UBYTE *)TmpHeader->FileStartAdr;
         HandleTable[Handle].pSectorNo    = TmpHeader->FileSectorTable;
-        HandleTable[Handle].FilePosition = 0;
+        HandleTable[Handle].ReadLength = 0;
       }
       else
-        distFromStart -= HandleTable[Handle].FilePosition; // dist from current
+        distFromStart -= HandleTable[Handle].ReadLength; // dist from current
       // now move forward from the current location
       while (distFromStart > 0) {
         distFromStart--;
         // move to next byte in the flash
         HandleTable[Handle].pFlash++;
         // update our file pointer
-        HandleTable[Handle].FilePosition++;
+        HandleTable[Handle].ReadLength++;
         // if we reach a flash sector boundary then find the next sector pointer
         if (!((ULONG)(HandleTable[Handle].pFlash) & (SECTORSIZE-1)))
         {
@@ -745,7 +728,7 @@ UWORD     dLoaderTell(UBYTE Handle, ULONG* filePos)
   if (0x8000 > Status)
   {
     Status = Handle;
-    *filePos = HandleTable[Handle].FilePosition;
+    *filePos = HandleTable[Handle].ReadLength;
   }
   return(Status);
 }
@@ -761,9 +744,9 @@ UWORD      dLoaderRead(UBYTE Handle, UBYTE *pBuffer, ULONG *pLength)
     ByteCnt = 0;
     while (ByteCnt < *pLength)
     {
-      if (HandleTable[Handle].DataSize <= HandleTable[Handle].FilePosition)
+      if (HandleTable[Handle].DataLength <= HandleTable[Handle].ReadLength)
       {
-        // if the file pointer (FilePosition) is >= file size then return EOF
+        // if the file pointer (ReadLength) is >= file size then return EOF
         *pLength = ByteCnt;
         Status  |= ENDOFFILE;
       }
@@ -776,7 +759,7 @@ UWORD      dLoaderRead(UBYTE Handle, UBYTE *pBuffer, ULONG *pLength)
         // move to next byte in the flash
         HandleTable[Handle].pFlash++;
         // update our file pointer
-        HandleTable[Handle].FilePosition++;
+        HandleTable[Handle].ReadLength++;
         // if we reach a flash sector boundary then find the next sector pointer
         if (!((ULONG)(HandleTable[Handle].pFlash) & (SECTORSIZE-1)))
         {
@@ -791,11 +774,11 @@ UWORD      dLoaderRead(UBYTE Handle, UBYTE *pBuffer, ULONG *pLength)
 UWORD      dLoaderDelete(UBYTE *pFile)
 {
   UWORD   LStatus;
-  ULONG   FileSize;
-  ULONG   DataSize;
+  ULONG   FileLength;
+  ULONG   DataLength;
   UBYTE   Name[FILENAME_SIZE];
 
-  LStatus = dLoaderFind(pFile, Name, &FileSize, &DataSize, (UBYTE)BUSY);
+  LStatus = dLoaderFind(pFile, Name, &FileLength, &DataLength, (UBYTE)BUSY);
 
   if (!IS_LOADER_ERR(LStatus))
   {
@@ -807,7 +790,7 @@ UWORD      dLoaderDelete(UBYTE *pFile)
   return(LStatus);
 }
 
-UWORD     dLoaderFind(UBYTE *pFind, UBYTE *pFound, ULONG *pFileSize, ULONG *pDataSize, UBYTE Session)
+UWORD     dLoaderFind(UBYTE *pFind, UBYTE *pFound, ULONG *pFileLength, ULONG *pDataLength, UBYTE Session)
 {
   UWORD   Handle;
 
@@ -823,20 +806,20 @@ UWORD     dLoaderFind(UBYTE *pFind, UBYTE *pFound, ULONG *pFileSize, ULONG *pDat
       HandleTable[Handle].FileIndex = 0xFFFF;
       HandleTable[Handle].Status    = Session;
       dLoaderInsertSearchStr((HandleTable[Handle].SearchStr), pFind, &(HandleTable[Handle].SearchType));
-      Handle = dLoaderFindNext(Handle, pFound, pFileSize, pDataSize);
+      Handle = dLoaderFindNext(Handle, pFound, pFileLength, pDataLength);
     }
   }
 
   return(Handle);
 }
 
-UWORD     dLoaderFindNext(UWORD Handle, UBYTE *pFound, ULONG *pFileSize, ULONG *pDataSize)
+UWORD     dLoaderFindNext(UWORD Handle, UBYTE *pFound, ULONG *pFileLength, ULONG *pDataLength)
 {
   UBYTE   Tmp;
   UWORD   ReturnVal;
   FILEHEADER  *pHeader;
 
-  *pFileSize    = 0;
+  *pFileLength  = 0;
   ReturnVal     = Handle | FILENOTFOUND;
 
 
@@ -855,13 +838,13 @@ UWORD     dLoaderFindNext(UWORD Handle, UBYTE *pFound, ULONG *pFileSize, ULONG *
   if (0x8000 > ReturnVal)
   {
     pHeader = (FILEHEADER *)FILEPTRTABLE[HandleTable[Handle].FileIndex];
-    if (NULL != pFileSize)
+    if (NULL != pFileLength)
     {
-      *pFileSize = pHeader->FileSize;
+      *pFileLength = pHeader->FileSize;
     }
-    if (NULL != pDataSize)
+    if (NULL != pDataLength)
     {
-      *pDataSize = pHeader->DataSize;
+      *pDataLength = pHeader->DataSize;
     }
     if (NULL != pFound)
     {
@@ -933,15 +916,15 @@ ULONG     dLoaderCalcFreeFileSpace(UWORD NosOfFreeSectors)
 }
 
 
-UWORD     dLoaderGetFilePtr(UBYTE *pFileName, UBYTE *pPtrToFile, ULONG *pFileSize)
+UWORD     dLoaderGetFilePtr(UBYTE *pFileName, UBYTE *pPtrToFile, ULONG *pFileLength)
 {
   UWORD       RtnVal;
   UBYTE       FoundFile[16];
   FILEHEADER  *File;
-  ULONG       DataSize;
+  ULONG       DataLength;
 
 
-  RtnVal = dLoaderFind(pFileName, FoundFile, pFileSize, &DataSize, (UBYTE)BUSY);
+  RtnVal = dLoaderFind(pFileName, FoundFile, pFileLength, &DataLength, (UBYTE)BUSY);
   if (0x8000 > RtnVal)
   {
 
@@ -1305,9 +1288,8 @@ UWORD     dLoaderOpenAppend(UBYTE *pFileName, ULONG *pAvailSize)
             HandleTable[Handle].FileDlPtr  = FILEPTRTABLE[HandleTable[Handle].FileIndex];
             HandleTable[Handle].Status     = (UBYTE)DOWNLOADING;
             *pAvailSize                    = FileSize - DataSize;
-            HandleTable[Handle].RemainingLength = *pAvailSize;
-            HandleTable[Handle].FilePosition    = DataSize;
-            HandleTable[Handle].DataSize   = DataSize;
+            HandleTable[Handle].DataLength = *pAvailSize;
+            HandleTable[Handle].ReadLength = DataSize;
             HandleTable[Handle].FileType   = pHeader->FileType;
           }
         }

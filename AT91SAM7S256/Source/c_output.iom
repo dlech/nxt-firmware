@@ -52,9 +52,10 @@ enum
 // Constant related to RegMode
 enum
 {
-  REGULATION_MODE_IDLE,
-  REGULATION_MODE_MOTOR_SPEED,
-  REGULATION_MODE_MOTOR_SYNC
+  REGULATION_MODE_IDLE = 0,
+  REGULATION_MODE_MOTOR_SPEED = 1,
+  REGULATION_MODE_MOTOR_SYNC = 2,
+  REGULATION_MODE_MOTOR_POS = 4,
 };
 											
 typedef   struct
@@ -76,15 +77,16 @@ typedef   struct
   UBYTE   Overloaded;					/* R  - True if the motor has been overloaded within speed control regulation */ 
   SBYTE   SyncTurnParameter;			/* RW - Holds the turning parameter need within MoveBlock */   
   UBYTE   Options;
-  UBYTE   SpareTwo; 
-  UBYTE   SpareThree;
+  SBYTE   MaxSpeed;						/* RW - Maximum speed for absolute regulation, or 0 for no limit */
+  SBYTE   MaxAcceleration;				/* RW - Maximum acceleration for absolute regulation, or 0 for no limit */
 }OUTPUT;
 
 
 typedef   struct
 {
   OUTPUT  Outputs[NO_OF_OUTPUTS];
-  UBYTE   PwnFreq; // use for frequency of checking regulation mode
+  UBYTE   RegulationTime;               /* RW - Interval between regulation computations */
+  UBYTE   RegulationOptions;            /* RW - Options for regulation, see REGOPTION_* */
 }IOMAPOUTPUT;
 
 

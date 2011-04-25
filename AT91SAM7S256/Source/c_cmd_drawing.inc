@@ -1658,7 +1658,7 @@ void cCmdDrawString(UBYTE *pString, ULONG X, ULONG Y, UBYTE InvertMode, UBYTE Lo
     //Calculate X coordinate of the right edge of this character.
     //If it will extend past the right edge, clip the string.
     X += FontWidth;
-    if (X >= DISPLAY_WIDTH)
+    if (X > DISPLAY_WIDTH) // JCH: was >= This clipped text that ended at pixel 99
       break;
 
     //If Item is defined by the font, display it.  Else, ignore it.

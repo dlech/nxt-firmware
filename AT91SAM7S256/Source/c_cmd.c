@@ -258,7 +258,7 @@ static pSysCall SysCallFuncs[SYSCALL_COUNT] =
   cCmdWrapMemoryManager, 
   cCmdWrapReadLastResponse, 
   cCmdWrapFileTell,
-  cCmdWrapUndefinedSysCall //  100 system call slots
+  cCmdWrapRandomEx //  100 system call slots
     
   // don't forget to update SYSCALL_COUNT in c_cmd.h
 };
@@ -9702,6 +9702,53 @@ NXT_STATUS cCmdWrapFileTell(UBYTE * ArgV[])
   //File handle in low byte of LStatus
   *(ArgV[1]) = LOADER_HANDLE(LStatus);
   return (NO_ERR);
+}
+
+//
+//cCmdWrapRandomEx
+//ArgV[0]: Seed, SLONG (in/out)
+//ArgV[1]: Reseed?, UBYTE (true or false) (in)
+static SLONG __random_seed = 1;
+static SLONG __old_random_seed = 1;
+
+NXT_STATUS cCmdWrapRandomEx(UBYTE * ArgV[])
+{
+  SLONG * pSeed = (SLONG*)(ArgV[0]);
+  if (*(ArgV[1]))
+  {
+    // reseed
+    if (*pSeed == 0) {
+      *pSeed = (SLONG)dTimerRead();
+      if (*pSeed < 0)
+        *pSeed = 1;
+    }
+    else if (*pSeed < 0)
+      *pSeed = __old_random_seed;
+    __random_seed = *pSeed;
+    __old_random_seed = __random_seed;
+  }
+  else
+  {
+    /*
+     MINSTD  
+     a = 16807 (with q = 127773 and r = 2836) or 
+     better randomness 
+     a = 48271 (with q = 44488 and r = 3399) or 
+     a = 69621 (with q = 30845 and r = 23902)
+     */
+#define a 48271
+#define m 2147483647
+#define q (m / a)
+#define r (m % a)
+    SLONG test = a * (__random_seed % q) - r * (__random_seed / q);
+    if (test > 0)
+      __random_seed = test;
+    else
+      __random_seed = test + m;
+  }
+  *pSeed = __random_seed;
+
+  return NO_ERR;
 }
 
 NXT_STATUS cCmdWrapUndefinedSysCall(UBYTE * ArgV[])

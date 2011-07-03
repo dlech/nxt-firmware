@@ -44,6 +44,7 @@
 #include <stdlib.h>
 #include <math.h> // for sqrt, abs, and trig stuff
 #include <limits.h>
+#include <float.h>
 
 #define VMProfilingCode 0
 
@@ -7356,13 +7357,30 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
 
       SLONG sval, svaltmp;
       ULONG uval, uvaltmp;
+      float fval, fvaltmp;
       float numElements = (float)MinCount;
       //sum elements from src subset to dst
       if ((Arg1 == OPARR_SUM) || (Arg1 == OPARR_MEAN) ||
           (Arg1 == OPARR_SUMSQR) || (Arg1 == OPARR_STD)) 
       {
         pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
-        if (IS_SIGNED_TYPE(TypeCode3) && (Arg1 != OPARR_SUMSQR))
+        if (TypeCode3 == TC_FLOAT)
+        {
+          fval = 0;
+          for (i = 0; i < MinCount; i++)
+          {
+            pArg3 = cCmdResolveDataArg(INC_ID(Arg3), ARRAY_ELEM_OFFSET(DVIndex3, ArgVal4 + i), NULL);
+            fvaltmp = cCmdGetValFlt(pArg3, TypeCode3);
+            if (Arg1 == OPARR_SUMSQR)
+              fvaltmp *= fvaltmp;
+            fval += fvaltmp;
+          }
+          if (Arg1 == OPARR_MEAN)
+            cCmdSetValFlt(pArg2, TypeCode2, fval/numElements);
+          else if (Arg1 != OPARR_STD)
+            cCmdSetValFlt(pArg2, TypeCode2, fval);
+        }
+        else if (IS_SIGNED_TYPE(TypeCode3) && (Arg1 != OPARR_SUMSQR))
         {
           sval = 0;
           for (i = 0; i < MinCount; i++)
@@ -7402,9 +7420,12 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
             cCmdSetVal(pArg2, TypeCode2, uval);
         }
         // calculate standard deviation
-        if (Arg1 == OPARR_STD) {
+        if (Arg1 == OPARR_STD) 
+        {
           float avg, delta, sumSqr;
-          if (IS_SIGNED_TYPE(TypeCode3)) 
+          if (TypeCode3 == TC_FLOAT)
+            avg = fval/numElements;
+          else if (IS_SIGNED_TYPE(TypeCode3)) 
             avg = (float)sval/numElements;
           else
             avg = (float)uval/numElements;
@@ -7412,14 +7433,18 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
           for (i = 0; i < MinCount; i++)
           {
             pArg3 = cCmdResolveDataArg(INC_ID(Arg3), ARRAY_ELEM_OFFSET(DVIndex3, ArgVal4 + i), NULL);
+            if (TypeCode3 == TC_FLOAT)
+              delta = cCmdGetValFlt(pArg3, TypeCode3) - avg;              
             if (IS_SIGNED_TYPE(TypeCode3))
               delta = (float)(SLONG)cCmdGetVal(pArg3, TypeCode3) - avg;
-            else
+            else // unsigned types
               delta = (float)cCmdGetVal(pArg3, TypeCode3) - avg;
             sumSqr += (delta*delta);
           }
           delta = sqrtf(sumSqr / (numElements - (float)1.0));
-          if (IS_SIGNED_TYPE(TypeCode3))
+          if (TypeCode3 == TC_FLOAT)
+            cCmdSetValFlt(pArg2, TypeCode2, delta);
+          else if (IS_SIGNED_TYPE(TypeCode3))
             cCmdSetVal(pArg2, TypeCode2, (SLONG)delta);
           else
             cCmdSetVal(pArg2, TypeCode2, (ULONG)delta);
@@ -7428,7 +7453,23 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
       else if ((Arg1 == OPARR_MIN) || (Arg1 == OPARR_MAX)) 
       {
         pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
-        if (IS_SIGNED_TYPE(TypeCode3))
+        if (TypeCode3 == TC_FLOAT)
+        {
+          if (Arg1 == OPARR_MIN)
+            fval = FLT_MAX;
+          else
+            fval = -FLT_MAX;
+          for (i = 0; i < MinCount; i++)
+          {
+            pArg3 = cCmdResolveDataArg(INC_ID(Arg3), ARRAY_ELEM_OFFSET(DVIndex3, ArgVal4 + i), NULL);
+            fvaltmp = cCmdGetValFlt(pArg3, TypeCode3);
+            if (((Arg1 == OPARR_MIN) && (fvaltmp < fval)) ||
+                ((Arg1 == OPARR_MAX) && (fvaltmp > fval)))
+              fval = fvaltmp;
+          }
+          cCmdSetValFlt(pArg2, TypeCode2, fval);
+        }
+        else if (IS_SIGNED_TYPE(TypeCode3))
         {
           if (Arg1 == OPARR_MIN)
             sval = LONG_MAX;

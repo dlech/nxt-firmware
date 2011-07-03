@@ -52,8 +52,7 @@ static    UBYTE  InBufOutCnt;
                                           *AT91C_PIOA_CODR	= HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;	 /* Set output low */\
                                         }
 
-
-#define   HIGHSPEEDSetupUart            {\
+#define   HIGHSPEEDSetupUart(_baud, _mode) {\
                                           UBYTE Tmp;\
                                           InBufInPtr = 0;\
                                           for(Tmp = 0; Tmp < NO_OF_INBUFFERS; Tmp++)\
@@ -66,18 +65,16 @@ static    UBYTE  InBufOutCnt;
                                           *AT91C_PIOA_ASR = HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;; /* Enable Per. A on PA5, PA6 & PA7 */\
                                           *AT91C_US0_CR   = AT91C_US_RSTSTA;                       /* Resets pins on UART0 */\
                                           *AT91C_US0_CR   = AT91C_US_STTTO;                        /* Start timeout functionality after 1 byte */\
-                                          *AT91C_US0_RTOR = 2400;                                  /* Approxitely 20 mS,x times bit time with 115200 bit pr s */\
+                                          *AT91C_US0_RTOR = ((_baud)/400);                         /* Approxitely 20 mS,x times bit time with 115200 bit pr s */\
                                           *AT91C_US0_IDR  = AT91C_US_TIMEOUT;                      /* Disable interrupt on timeout */\
                                           *AT91C_AIC_IDCR = UART0_INQ;                             /* Disable UART0 interrupt */\
                                           *AT91C_AIC_ICCR = UART0_INQ;                             /* Clear interrupt register */\
                                           *AT91C_US0_MR   = AT91C_US_USMODE_RS485;                 /* Set UART to RUN RS485 Mode*/\
                                           *AT91C_US0_MR  &= ~AT91C_US_SYNC;                        /* Set UART in asynchronous mode */\
                                           *AT91C_US0_MR  |= AT91C_US_CLKS_CLOCK;                   /* Clock setup MCK*/\
-                                          *AT91C_US0_MR  |= AT91C_US_CHRL_8_BITS;                  /* UART using 8-bit */\
-                                          *AT91C_US0_MR  |= AT91C_US_PAR_NONE;                     /* UART using none parity bit */\
-                                          *AT91C_US0_MR  |= AT91C_US_NBSTOP_1_BIT;                 /* UART using 1 stop bit */\
-                                          *AT91C_US0_MR  |= AT91C_US_OVER;                         /* UART is using 8-bit sampling */\
-                                          *AT91C_US0_BRGR = ((OSC/8/BAUD_RATE) | (((OSC/8) - ((OSC/8/BAUD_RATE) * BAUD_RATE)) / ((BAUD_RATE + 4)/8)) << 16);\
+                                          *AT91C_US0_MR  |= AT91C_US_OVER;                         /* UART is using over sampling mode */\
+                                          *AT91C_US0_MR  |= (_mode);                               /* default is 8n1 */\
+                                          *AT91C_US0_BRGR = ((OSC/8/(_baud)) | (((OSC/8) - ((OSC/8/(_baud)) * (_baud))) / (((_baud) + 4)/8)) << 16);\
                                           *AT91C_US0_PTCR = (AT91C_PDC_RXTDIS | AT91C_PDC_TXTDIS); /* Disable of TX & RX with DMA */\
                                           *AT91C_US0_RCR  = 0;                                     /* Receive Counter Register */\
                                           *AT91C_US0_TCR  = 0;                                     /* Transmit Counter Register */\

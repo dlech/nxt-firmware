@@ -173,12 +173,12 @@ ULONG CLK_PINS[4] = {CHANNEL_ONE_CLK, CHANNEL_TWO_CLK, CHANNEL_THREE_CLK, CHANNE
 #define GetClkPinLevel(ChannelNr) (*AT91C_PIOA_PDSR & CLK_PINS[ChannelNr])
 #define GetDataPinLevel(ChannelNr)	(*AT91C_PIOA_PDSR & DATA_PINS[ChannelNr])
 
-#define   ENABLEPWMTimerForLowCom       {\
-                                          *AT91C_PWMC_ENA		= AT91C_PWMC_CHID0;			/* Enable PWM output channel 0 */\
+#define   ENABLEPWMTimerForLowCom  {\
+  *AT91C_PWMC_ENA = AT91C_PWMC_CHID0;	/* Enable PWM output channel 0 */\
 										}
 
-#define    DISABLEPWMTimerForLowCom		{\
-                                          *AT91C_PWMC_DIS	 = AT91C_PWMC_CHID0;			/* Disable PWM output channel 0 */\
+#define    DISABLEPWMTimerForLowCom  {\
+  *AT91C_PWMC_DIS = AT91C_PWMC_CHID0;	/* Disable PWM output channel 0 */\
 										}
 										
 #define    OLD_DISABLEPWMTimerForLowCom	{\
@@ -231,6 +231,7 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
             case TX_DATA_CLK_HIGH:
             {
               SETClkLow(ChannelNr);
+              for (int a=0; a<60; a++);  // let the line settle
               if (LowSpeedData[ChannelNr].MaskBit == 0)     				                           //Is Byte Done, then we need a ack from receiver
             {
               SETDataToInput(ChannelNr);                                                             //Set datapin to input
@@ -530,13 +531,13 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
   }\
 }
 
-#define RxData(ChannelNumber, DataInBuffer, RxBytes) {\
-											           LowSpeedData[ChannelNumber].pComInBuffer = DataInBuffer;\
-									                   LowSpeedData[ChannelNumber].RxBitCnt = 0;\
-												       LowSpeedData[ChannelNumber].RxByteCnt = RxBytes;\
-									                   LowSpeedData[ChannelNumber].RxState = RX_DATA_CLK_LOW;\
-									                   LowSpeedData[ChannelNumber].ReStartBit = 1;\
-									                   LowSpeedData[ChannelNumber].RxWaitCnt = 0;\
+#define RxData(ChannelNumber, DataInBuffer, RxBytes, NoRestart)  {\
+  LowSpeedData[ChannelNumber].pComInBuffer = DataInBuffer;\
+  LowSpeedData[ChannelNumber].RxBitCnt = 0;\
+  LowSpeedData[ChannelNumber].RxByteCnt = RxBytes;\
+  LowSpeedData[ChannelNumber].RxState = RX_DATA_CLK_LOW;\
+  LowSpeedData[ChannelNumber].ReStartBit = (1 - (NoRestart & (1<<ChannelNumber)));\
+  LowSpeedData[ChannelNumber].RxWaitCnt = 0;\
 											         }
 											
 											

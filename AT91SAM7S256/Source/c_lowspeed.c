@@ -101,7 +101,7 @@ void      cLowSpeedCtrl(void)
             {
 		          if (IOMapLowSpeed.InBuf[ChannelNumber].BytesToRx != 0)
               {
-                dLowSpeedReceiveData(ChannelNumber, &VarsLowSpeed.InputBuf[ChannelNumber].Buf[0], IOMapLowSpeed.InBuf[ChannelNumber].BytesToRx);
+                dLowSpeedReceiveData(ChannelNumber, &VarsLowSpeed.InputBuf[ChannelNumber].Buf[0], IOMapLowSpeed.InBuf[ChannelNumber].BytesToRx, IOMapLowSpeed.NoRestartOnRead);
                 VarsLowSpeed.RxTimeCnt[ChannelNumber] = 0;
               }
               IOMapLowSpeed.ChannelState[ChannelNumber] = LOWSPEED_COMMUNICATING;

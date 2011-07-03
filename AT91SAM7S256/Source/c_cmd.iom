@@ -41,12 +41,24 @@
 #define NO_ERR        0
 
 //Fatal errors
-#define ERR_ARG      -1 //0xFF Bad arguments
-#define ERR_INSTR    -2 //0xFE Illegal bytecode instruction
-#define ERR_FILE     -3 //0xFD Mal-formed file contents
-#define ERR_VER      -4 //0xFC Version mismatch between firmware and compiler
-#define ERR_MEM      -5 //0xFB Insufficient memory available
-#define ERR_BAD_PTR  -6 //0xFA Someone passed us a bad pointer!
+#define ERR_ARG             -1  // 0xFF Bad arguments
+#define ERR_INSTR           -2  // 0xFE Illegal bytecode instruction
+#define ERR_FILE            -3  // 0xFD cCmdVerifyMemMgr() != TRUE
+#define ERR_VER             -4  // 0xFC Version mismatch between firmware and compiler
+#define ERR_MEM             -5  // 0xFB Insufficient memory available
+#define ERR_BAD_PTR         -6  // 0xFA Someone passed us a bad pointer!
+
+#define ERR_CLUMP_COUNT     -7  // 0xF9 (FileClumpCount == 0 || FileClumpCount >= NOT_A_CLUMP)
+#define ERR_NO_CODE         -8  // 0xF8 VarsCmd.CodespaceCount == 0
+#define ERR_INSANE_OFFSET   -9  // 0xF7 CurrOffset != (DataSize - VarsCmd.CodespaceCount * 2)
+#define ERR_BAD_POOL_SIZE   -10 // 0xF6 VarsCmd.PoolSize > POOL_MAX_SIZE
+#define ERR_LOADER_ERR      -11 // 0xF5 LOADER_ERR(LStatus) != SUCCESS || pData == NULL || DataSize == 0
+#define ERR_SPOTCHECK_FAIL  -12 // 0xF4 ((UBYTE*)(VarsCmd.pCodespace) < pData) (c_cmd.c 1893)
+#define ERR_NO_ACTIVE_CLUMP -13 // 0xF3 VarsCmd.RunQ.Head == NOT_A_CLUMP
+#define ERR_DEFAULT_OFFSETS -14 // 0xF2 (DefaultsOffset != FileOffsets.DynamicDefaults) || (DefaultsOffset + FileOffsets.DynamicDefaultsSize != FileOffsets.DSDefaultsSize)
+#define ERR_MEMMGR_FAIL     -15 // 0xF1 (UBYTE *)VarsCmd.MemMgr.pDopeVectorArray != VarsCmd.pDataspace + DV_ARRAY[0].Offset
+
+#define ERR_NON_FATAL -16 //0xF0 or greater
 
 //General errors
 #define ERR_INVALID_PORT   -16 //0xF0 Bad input or output port specified
@@ -73,7 +85,7 @@
 #define IS_ERR(Status)   ((Status) < NO_ERR)
 
 //Errors are considered fatal if they are something we'd consider halting the VM for.
-#define IS_FATAL(Status) ((Status) < NO_ERR && (Status) >= ERR_BAD_PTR)
+#define IS_FATAL(Status) ((Status) < NO_ERR && (Status) > ERR_NON_FATAL)
 
 //Direct command protocol opcodes
 //!!! These MUST be mutually exclusive with c_comm's protocol opcodes.
@@ -114,7 +126,10 @@ enum
   RC_SET_PROPERTY,
   RC_GET_PROPERTY,
   RC_UPDATE_RESET_COUNT,
-
+  RC_SET_VM_STATE,
+  RC_GET_VM_STATE,
+  RC_SET_BREAKPOINTS,
+  RC_GET_BREAKPOINTS,
   NUM_RC_OPCODES
 };
 
@@ -122,8 +137,19 @@ enum
 enum {
 RC_PROP_BTONOFF,
 RC_PROP_SOUND_LEVEL,
-RC_PROP_SLEEP_TIMEOUT
+RC_PROP_SLEEP_TIMEOUT,
+RC_PROP_DEBUGGING = 0xF
 };
+
+#define RC_PORTS_AB  0xFC
+#define RC_PORTS_AC  0xFD
+#define RC_PORTS_BC  0xFE
+#define RC_PORTS_ALL 0xFF
+
+#define RC_OUT_AB  0x03
+#define RC_OUT_AC  0x04
+#define RC_OUT_BC  0x05
+#define RC_OUT_ABC 0x06
 
 //
 //Published status of last program to be activated
@@ -134,15 +160,14 @@ RC_PROP_SLEEP_TIMEOUT
 //PROG_ERROR: Last program ended because of an error
 //PROG_ABORT: Last program ended because of (user) abort
 //
-typedef enum
-{
-  PROG_IDLE,
-  PROG_OK,
-  PROG_RUNNING,
-  PROG_ERROR,
-  PROG_ABORT,
-  PROG_RESET
-} PROGRAM_STATUS;
+
+typedef SBYTE PROGRAM_STATUS;
+#define PROG_IDLE    0x00
+#define PROG_OK      0x01
+#define PROG_RUNNING 0x02
+#define PROG_ERROR   0x03
+#define PROG_ABORT   0x04
+#define PROG_RESET   0x05
 
 //Maximum size of memory pool, in bytes
 //!!! Code assumes this value is evenly divisible by 4!

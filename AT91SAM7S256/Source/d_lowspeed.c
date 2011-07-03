@@ -48,9 +48,9 @@ UBYTE dLowSpeedSendData(UBYTE ChannelNumber, UBYTE *DataOutBuffer, UBYTE NumberO
   return(Status);
 }
 
-void dLowSpeedReceiveData(UBYTE ChannelNumber, UBYTE *DataInBuffer, UBYTE ByteToRx)
+void dLowSpeedReceiveData(UBYTE ChannelNumber, UBYTE *DataInBuffer, UBYTE ByteToRx, UBYTE NoRestart)
 {	
-  RxData(ChannelNumber, DataInBuffer, ByteToRx); 
+  RxData(ChannelNumber, DataInBuffer, ByteToRx, NoRestart); 
 }
 
 UBYTE dLowSpeedComTxStatus(UBYTE ChannelNumber)

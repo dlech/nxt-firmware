@@ -130,7 +130,7 @@ void cOutputCtrl(void)
       if (pOut->Flags & UPDATE_TACHO_LIMIT)
       {
         pOut->Flags &= ~UPDATE_TACHO_LIMIT;
-        dOutputSetTachoLimit(Tmp, pOut->TachoLimit);
+        dOutputSetTachoLimit(Tmp, pOut->TachoLimit, pOut->Options);
       }
       if (pOut->Flags & UPDATE_PID_VALUES)
       {

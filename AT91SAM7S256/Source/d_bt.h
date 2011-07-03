@@ -23,7 +23,7 @@ void      dBtExit(void);
 void      dBtStartADConverter(void);
 void      dBtSetArm7CmdSignal(void);
 void      dBtClearArm7CmdSignal(void);
-void      dBtInitReceive(UBYTE *InputBuffer, UBYTE Mode);
+void      dBtInitReceive(UBYTE *InputBuffer, UBYTE Mode, UBYTE NoLengthBytes);
 void      dBtSetBcResetPinLow(void);
 void      dBtSetBcResetPinHigh(void);
 void      dBtSendBtCmd(UBYTE Cmd, UBYTE Param1, UBYTE Param2, UBYTE *pBdAddr, UBYTE *pName, UBYTE *pCod, UBYTE *pPin);
@@ -33,7 +33,7 @@ void      dBtResetTimeOut(void);
 void      dBtClearTimeOut(void);
 UBYTE     dBtGetBc4CmdSignal(void);
 UWORD     dBtTxEnd(void);
-UWORD     dBtReceivedData(UWORD *pLength, UWORD *pBytesToGo);
+UWORD     dBtReceivedData(UWORD *pLength, UWORD *pBytesToGo, UBYTE NoLengthBytes);
 UWORD     dBtCheckForTxBuf(void);
 
 #endif

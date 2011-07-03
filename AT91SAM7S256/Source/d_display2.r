@@ -3,15 +3,15 @@
 //
 // Date init       14.12.2004
 //
-// Reviser         $Author:: Dkandlun                                        $
+// Reviser         $Author:: Dktochpe                                        $
 //
-// Revision date   $Date:: 14-11-07 12:40                                    $
+// Revision date   $Date:: 20-12-05 12:28                                    $
 //
 // Filename        $Workfile:: d_display.r                                   $
 //
-// Version         $Revision:: 1                                             $
+// Version         $Revision:: 18                                            $
 //
-// Archive         $Archive:: /LMS2006/Sys01/Main_V02/Firmware/Source/d_disp $
+// Archive         $Archive:: /LMS2006/Sys01/Main/Firmware/Source/d_display. $
 //
 // Platform        C
 //
@@ -315,13 +315,26 @@ UBYTE     DisplayUpdate(UWORD Height,UWORD Width,UBYTE *pImage)
   {
     if ((State & 1))
     {
-      if (DisplayWrite(CMD,(UBYTE*)DisplayLineString[Line],3) == TRUE)
-      {
+      // always write all lines so only use address 0
+      if (DisplayWrite(CMD, (UBYTE*)DisplayLineString[0], 3) == TRUE)
         State++;
-      }
+//      if (DisplayWrite(CMD,(UBYTE*)DisplayLineString[Line],3) == TRUE)
+//        State++;
     }
     else
     {
+      // write 1056 bytes once rather than 100 bytes 8 times
+      static UBYTE buffer[132*8];
+      UBYTE *pBuf = buffer;
+      while (Line < (Height / 8))
+      {
+        memcpy(pBuf,(UBYTE*)&pImage[Line * Width],ACTUAL_WIDTH);
+        pBuf += 132;
+        Line++;
+      }
+      if (DisplayWrite(DAT,pBuf,132*8) == TRUE)
+        State = 0;
+/*
       if (DisplayWrite(DAT,(UBYTE*)&pImage[Line * Width],ACTUAL_WIDTH) == TRUE)
       {
         State++;
@@ -330,6 +343,7 @@ UBYTE     DisplayUpdate(UWORD Height,UWORD Width,UBYTE *pImage)
           State = 0;
         }
       }
+*/
     }
   }
 
@@ -353,8 +367,8 @@ UBYTE     DisplayUpdate(UWORD Height,UWORD Width,UBYTE *pImage)
                                         
 #endif                                        
 
-#define   DISPLAYOn(c)                  {\
-                                          DisplayInitString[6]  = (c)&0x7F;\
+#define   DISPLAYOn                     {\
+                                          DisplayInitString[6]  = 0x5A;\
                                           DisplayInitString[13] = 0xAF;\
                                         }
 

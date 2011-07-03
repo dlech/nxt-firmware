@@ -59,7 +59,9 @@ const     HEADER  cUi =
 #include  "Display.txt"       // Bitmap for frame used in view and datalog
 #include  "LowBattery.txt"    // Bitmap showed when low battery occures
 #include  "Font.txt"          // Font used for all text
+#ifndef STRIPPED
 #include  "Step.txt"          // Bitmap used in On Brick Programming
+#endif
 #include  "Cursor.txt"        // Bitmap for cursor
 #include  "Running.txt"       // Icon collection used for "running" symbol
 #include  "Port.txt"          // Font used for naming sensor ports in datalog/bluetooth
@@ -69,6 +71,7 @@ const     HEADER  cUi =
 #include  "Info.txt"          // Bitmap for feedback
 #include  "Icons.txt"         // Icon collection used for menues
 
+#ifndef STRIPPED
 // ****** INTRO ANIMATION RESOURCES ******************************************
 
 #include  "RCXintro_1.txt"    // Bitmap for picture 1  in the intro animation
@@ -107,6 +110,7 @@ const     BMPMAP *Intro[NO_OF_INTROBITMAPS] = // Picture sequence for the intro 
   (BMPMAP*) POINTER_TO_DATA (RCXintro_15),
   (BMPMAP*) POINTER_TO_DATA (RCXintro_16)
 };
+#endif
 
 // ****** STATUS LINE GRAPHIC RESOURCES **************************************
 
@@ -168,43 +172,29 @@ enum STATUS_NO                          // Index in status icon collection file
 enum                          // String index in text string file
 {
   TXT_GENERAL_EMPTY,
+  TXT_FB_GENERIC_FAIL,                      // "Failed!"
+  
                                             // BlueTooth connect
   TXT_FB_BT_CONNECTING_WAIT,                // "Connecting"
   TXT_FB_BT_CONNECT_BUSY_FAIL,              // "Line is busy"
-  TXT_FB_BT_CONNECTING_FAIL,                // "Failed!"
 
                                             // BlueTooth send file
   TXT_FB_BT_SENDING_NO_CONN_FAIL,           // "Connection?"
   TXT_FB_BT_SENDING_WAIT,                   // "Sending file"
-  TXT_FB_BT_SENDING_FAIL,                   // "Failed!"
 
                                             // BlueTooth on/off
   TXT_FB_BT_TURNING_ON_WAIT,                // "Turning on"
-  TXT_FB_BT_TURNING_ON_FAIL,                // "Failed!"
   TXT_FB_BT_TURNING_OFF_WAIT,               // "Turning off"
-  TXT_FB_BT_TURNING_OFF_FAIL,               // "Failed!"
 
                                             // BlueTooth seach
   TXT_FB_BT_SEARCHING_WAIT,                 // "Searching"
   TXT_FB_BT_SEARCH_ABORTED_INFO,            // "Aborted!"
-  TXT_FB_BT_SEARCHING_FAIL,                 // "Failed!"
-
-                                            // BlueTooth device list
-  TXT_FB_BT_REMOVE_FAIL,                    // "Failed!"
-
-                                            // BlueTooth connection list
-  TXT_FB_BT_DISCONNECT_FAIL,                // "Failed!"
 
                                             // On Brick Programming
   TXT_FB_OBP_MEMORY_FULL_FAIL,              // "Memory full!"
-  TXT_FB_OBP_FILE_SAVED_INFO,               // "File saved"
-  TXT_FB_OBP_FILE_EXIST_FAIL,               // "File exist"
-  TXT_FB_OBP_OVERWRITE_FAIL,                // "overwrite!"
-
-                                            // Datalogging
-  TXT_FB_DL_FILE_SAVED_INFO,                // "File saved"
-  TXT_FB_DL_FILE_EXIST_FAIL,                // "File exist"
-  TXT_FB_DL_OVERWRITE_FAIL,                 // "overwrite!"
+  TXT_FB_FILE_SAVED_INFO,                   // "File saved"
+  TXT_FB_FILE_EXIST_FAIL,                   // "File exist"
+  TXT_FB_OVERWRITE_FAIL,                    // "overwrite!"
 
                                             // File delete
   TXT_FB_FD_FILE_DELETED_INFO,              // "File deleted"
@@ -217,7 +207,7 @@ enum                          // String index in text string file
   TXT_FILERUN_RUNNING,                      // "Running"
   TXT_FILERUN_ABORTED,                      // "Aborted!"
   TXT_FILERUN_ENDED,                        // "Ended"
-  TXT_FILERUN_FILE_ERROR,                   // "File error!"
+  TXT_FILERUN_FILE_ERROR,                   // "File error! %d"
 
                                             // Files delete
   TXT_FILESDELETE_DELETING_ALL,             // "Deleting all"
@@ -250,13 +240,7 @@ enum                          // String index in text string file
   TXT_ONBRICKPROGRAMMING_BC_LR_MOTORS,      // "B/C - L/R motors"
 
                                             // View
-  TXT_VIEW_SELECT,                          // "Select"
-
-                                            // BlueTooth device list
-  TXT_BTDEVICELIST_SELECT,                  // "Select"
-
-                                            // BlueTooth connection list
-  TXT_BTCONNECTLIST_SELECT,                 // "Select"
+  TXT_GENERIC_SELECT,                       // "Select"
 
                                             // Bluetooth list errors
   TXT_FB_BT_ERROR_LR_COULD_NOT_SAVE_1,      // BT save data error!
@@ -1286,10 +1270,24 @@ void      cUiCtrl(void)
 */
 //
 
+  if ((!(IOMapUi.Flags & UI_EXECUTE_LMS_FILE)) && (IOMapUi.State == INIT_INTRO)/* && ((pMapButton->State[BTN1] & PRESSED_STATE)!=PRESSED_STATE)*/)
+  {
+    UWORD LStatus;
+    if (LOADER_ERR(LStatus = pMapLoader->pFunc(FINDFIRST, UI_STARTUP_PROGRAM, NULL, NULL)) == SUCCESS)
+    {
+      //Close file handle returned by FINDFIRST
+      pMapLoader->pFunc(CLOSE, LOADER_HANDLE_P(LStatus), NULL, NULL);
+      strcpy((char*)IOMapUi.LMSfilename, UI_STARTUP_PROGRAM);
+      IOMapUi.Flags |= UI_EXECUTE_LMS_FILE;
+      IOMapUi.State = INIT_MENU;
+    }
+  }
 
   VarsUi.CRPasskey++;
   VarsUi.ButtonTimer++;
+#ifndef STRIPPED
   VarsUi.OBPTimer++;
+#endif
   switch (IOMapUi.State)
   {
     case INIT_DISPLAY : // Load font and icons
@@ -1309,7 +1307,9 @@ void      cUiCtrl(void)
       pMapDisplay->pFont                              =  (FONT*)Font;
       pMapDisplay->pStatusIcons                       =  (ICON*)Status;
       pMapDisplay->pStatusText                        =  (UBYTE*)VarsUi.StatusText;
+#ifndef STRIPPED
       pMapDisplay->pStepIcons                         =  (ICON*)Step;
+#endif
 
       VarsUi.State                                    =  0;
       VarsUi.Pointer                                  =  0;
@@ -1328,7 +1328,9 @@ void      cUiCtrl(void)
       IOMapUi.State                                   =  CONFIG_INTRO ? INIT_INTRO : INIT_WAIT;
 
       pMapDisplay->EraseMask                          =  SCREEN_BIT(SCREEN_BACKGROUND);
-      pMapDisplay->pBitmaps[BITMAP_1]                 =  CONFIG_INTRO ? (BMPMAP*)Intro[VarsUi.Pointer] : RCXintro_16;
+#ifndef STRIPPED
+      pMapDisplay->pBitmaps[BITMAP_1]                 =  (BMPMAP*)Intro[VarsUi.Pointer];
+#endif
       pMapDisplay->UpdateMask                         =  BITMAP_BIT(BITMAP_1);
       pMapDisplay->Flags                             |=  DISPLAY_ON;
 
@@ -1345,7 +1347,9 @@ void      cUiCtrl(void)
       {
         VarsUi.LowBattHasOccured        = 2;
         pMapDisplay->EraseMask          =  SCREEN_BIT(SCREEN_BACKGROUND);
+#ifndef STRIPPED
         pMapDisplay->pBitmaps[BITMAP_1] =  (BMPMAP*)Intro[VarsUi.Pointer];
+#endif
         pMapDisplay->UpdateMask         =  BITMAP_BIT(BITMAP_1);
         IOMapUi.Flags                  &= ~UI_ENABLE_STATUS_UPDATE;
         VarsUi.State                    =  0;
@@ -1377,6 +1381,7 @@ void      cUiCtrl(void)
             VarsUi.LowBattHasOccured = 1;
           }
         }
+#ifndef STRIPPED
         if (++VarsUi.Timer >= (INTRO_SHIFT_TIME))
         {
           switch (VarsUi.State)
@@ -1429,11 +1434,15 @@ void      cUiCtrl(void)
 
           }
         }
+#else
+        pMapDisplay->EraseMask |=  SCREEN_BIT(SCREEN_BACKGROUND);
+        IOMapUi.State = INIT_MENU;
+#endif
       }
     }
     break;
 #endif /* CONFIG_INTRO */
-
+#ifndef STRIPPED
     case INIT_WAIT :
     {
       if (++VarsUi.Timer >= INTRO_STOP_TIME)
@@ -1443,7 +1452,7 @@ void      cUiCtrl(void)
       }
     }
     break;
-
+#endif
     case INIT_MENU :
     {
       // Restart menu system

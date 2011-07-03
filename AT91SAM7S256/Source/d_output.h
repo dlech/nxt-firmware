@@ -77,7 +77,7 @@ void      dOutputSetMode(UBYTE MotorNr, UBYTE Mode);
 void      dOutputSetSpeed (UBYTE MotorNr, UBYTE NewMotorRunState, SBYTE Speed, SBYTE TurnParameter);
 void      dOutputEnableRegulation(UBYTE MotorNr, UBYTE RegulationMode);
 void	    dOutputDisableRegulation(UBYTE MotorNr);
-void      dOutputSetTachoLimit(UBYTE MotorNr, ULONG TachoCntToTravel);
+void      dOutputSetTachoLimit(UBYTE MotorNr, ULONG TachoCntToTravel, UBYTE Options);
 void      dOutputResetTachoLimit(UBYTE MotorNr);
 void      dOutputResetBlockTachoLimit(UBYTE MotorNr);
 void      dOutputResetRotationCaptureCount(UBYTE MotorNr);
@@ -99,5 +99,6 @@ void      dOutputMotorIdleControl(UBYTE MotorNr);
 void      dOutputSyncTachoLimitControl(UBYTE MotorNr);
 void      dOutputMotorSyncStatus(UBYTE MotorNr, UBYTE *SyncMotorOne, UBYTE *SyncMotorTwo);
 void      dOutputResetSyncMotors(UBYTE MotorNr);
+void      dOutputUpdateRegulationTime(UBYTE rt);
 
 #endif

@@ -17,7 +17,7 @@
 
 void      dHiSpeedInit(void);
 void      dHiSpeedSendData(UBYTE *OutputBuffer, UBYTE BytesToSend);
-void      dHiSpeedSetupUart(void);
+void      dHiSpeedSetupUart(UBYTE speed, UWORD mode);
 void      dHiSpeedInitReceive(UBYTE *InputBuffer);
 void      dHiSpeedReceivedData(UWORD *ByteCnt);
 void      dHiSpeedExit(void);

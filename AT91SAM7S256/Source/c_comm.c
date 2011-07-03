@@ -60,13 +60,13 @@ enum
                                         IOMapComm.BtInBuf.InPtr    = 0;\
                                         CLEARExtMode;\
                                         dBtClearArm7CmdSignal();\
-                                        dBtInitReceive(VarsComm.BtModuleInBuf.Buf, (UBYTE)CMD_MODE);
+                                        dBtInitReceive(VarsComm.BtModuleInBuf.Buf, (UBYTE)CMD_MODE, FALSE);
 
 #define   SETBtDataState                IOMapComm.BtInBuf.InPtr  = 0;\
                                         VarsComm.BtState         = BT_ARM_DATA_MODE;\
                                         dBtClearTimeOut(); /* stop cmd timeout because in datamode  */\
                                         dBtSetArm7CmdSignal();\
-                                        dBtInitReceive(VarsComm.BtModuleInBuf.Buf, (UBYTE)STREAM_MODE)
+                                        dBtInitReceive(VarsComm.BtModuleInBuf.Buf, (UBYTE)STREAM_MODE, IOMapComm.BtDataMode != DATA_MODE_NXT);
 
 #define   SETBtOff                      VarsComm.BtState = BT_ARM_OFF;\
                                         dBtSetBcResetPinLow()
@@ -160,10 +160,15 @@ void      cCommInit(void* pHeader)
   }
   IOMapComm.BtDeviceCnt = 0;
   IOMapComm.BrickData.BtStateStatus = 0;
-
+  IOMapComm.HsSpeed    = HS_BAUD_921600;
+  IOMapComm.HsAddress  = HS_ADDRESS_ALL;
+  IOMapComm.HsMode     = HS_MODE_8N1;
+  IOMapComm.BtDataMode = DATA_MODE_NXT;
+  IOMapComm.HsDataMode = DATA_MODE_RAW;
+    
   cCommClrConnTable();
 
-  dBtInitReceive(VarsComm.BtModuleInBuf.Buf, (UBYTE)CMD_MODE);
+  dBtInitReceive(VarsComm.BtModuleInBuf.Buf, (UBYTE)CMD_MODE, FALSE);
   dBtStartADConverter();
 
   dHiSpeedInit();
@@ -177,7 +182,18 @@ void      cCommInit(void* pHeader)
 
 void      cCommCtrl(void)
 {
-
+  // remove the update flag from the hi-speed data mode field
+  IOMapComm.HsDataMode &= ~DATA_MODE_UPDATE;
+  
+  if (IOMapComm.BtDataMode & DATA_MODE_UPDATE)
+  {
+    // remove the update flag from the data mode field
+    IOMapComm.BtDataMode &= ~DATA_MODE_UPDATE;
+    // re-initialize the receiver (only changing the NoLengthBytes param)
+    
+    dBtInitReceive(VarsComm.BtModuleInBuf.Buf, (UBYTE)((VarsComm.BtState == BT_ARM_CMD_MODE) ? CMD_MODE : STREAM_MODE), IOMapComm.BtDataMode != DATA_MODE_NXT);
+  }
+  
   if (FALSE == cCommReceivedBtData())
   {
 
@@ -227,7 +243,9 @@ void      cCommCtrl(void)
       break;
     }
   }
-  IOMapComm.BtInBuf.Buf[BT_CMD_BYTE] = 0;
+  // don't overwrite this byte when we are in DATA GPS or RAW mode
+  if ((VarsComm.BtState == BT_ARM_CMD_MODE) || (IOMapComm.BtDataMode == DATA_MODE_NXT))
+    IOMapComm.BtInBuf.Buf[BT_CMD_BYTE] = 0;
 
 
   /* Here comes the the HIGHSPEED_PORT implementation */
@@ -238,7 +256,7 @@ void      cCommCtrl(void)
     {
       case HS_INITIALISE:
       {
-        dHiSpeedSetupUart();
+        dHiSpeedSetupUart(IOMapComm.HsSpeed, IOMapComm.HsMode);
         IOMapComm.HsState = HS_INIT_RECEIVER;
         IOMapComm.HsFlags |= HS_UPDATE;
       }
@@ -254,6 +272,7 @@ void      cCommCtrl(void)
       case HS_SEND_DATA:
       {
         cCommSendHiSpeedData();
+        IOMapComm.HsState = HS_DEFAULT; // do not leave this in HS_SEND_DATA state
       }
       break;
 
@@ -261,6 +280,13 @@ void      cCommCtrl(void)
       {
         VarsComm.HsState = 0x00;
         dHiSpeedExit();
+      }
+      break;
+      
+      case HS_ENABLE:
+      {
+        if (VarsComm.HsState == 0)
+          dHiSpeedInit();
       }
       break;
     }
@@ -413,8 +439,11 @@ UWORD     cCommInterprete(UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pLength, UBYTE C
       case REPLY_CMD:
       {
 
-        /* If this is a reply to a direct command opcode, pRCHandler will handle it */
-        if (pInBuf[1] < NUM_RC_OPCODES)
+          // in the enhanced firmware all replies (system or direct) go to the RC Handler function
+          // since it stores the last response in VarsCmd.LastResponseBuffer field
+
+//        /* If this is a reply to a direct command opcode, pRCHandler will handle it */
+//        if (pInBuf[1] < NUM_RC_OPCODES)
           pMapCmd->pRCHandler(&(pInBuf[0]), NULL, pLength);
 
         /* No Reply ever required on REPLY_CMD messages */
@@ -464,6 +493,9 @@ UWORD     cCommInterprete(UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pLength, UBYTE C
       break;
       case REPLY_CMD:
       {
+          // in the enhanced firmware all replies (system or direct) go to the RC Handler function
+          // since it stores the last response in VarsCmd.LastResponseBuffer field
+          pMapCmd->pRCHandler(&(pInBuf[0]), NULL, pLength);
       }
       break;
       default:
@@ -657,13 +689,19 @@ UWORD     cCommInterpreteCmd(UBYTE Cmd, UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pL
       Length       = FileLength;
 
       /* Here test for channel - USB can only handle a 64 byte return (- wrapping )*/
-      if (CmdBit & USB_CMD_READY)
+      if ((CmdBit & BT_CMD_READY) != BT_CMD_READY)
       {
-        if (FileLength > (SIZE_OF_USBBUF - 6))
+        // USB or HS
+        UBYTE bufSize;
+        if (CmdBit & USB_CMD_READY)
+          bufSize = SIZE_OF_USBBUF;
+        else
+          bufSize = SIZE_OF_HSBUF;
+        if (FileLength > (bufSize - 6))
         {
 
           /* Buffer cannot hold the requested data adjust to buffer size */
-          FileLength = (SIZE_OF_USBBUF - 6);
+          FileLength = (bufSize - 6);
         }
         *pLength   = FileLength + 4;
         Status     = pMapLoader->pFunc(READ, &pInBuf[1], &pOutBuf[4], &FileLength);
@@ -876,13 +914,18 @@ UWORD     cCommInterpreteCmd(UBYTE Cmd, UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pL
       FileLength <<= 8;
       FileLength  |= pInBuf[7];
 
-      if (CmdBit & USB_CMD_READY)
+      if (!(CmdBit & BT_CMD_READY))
       {
+        UBYTE bufSize;
+        if (CmdBit & USB_CMD_READY)
+          bufSize = SIZE_OF_USBBUF;
+        else
+          bufSize = SIZE_OF_HSBUF;
 
-        /* test for USB buffer overrun */
-        if (FileLength > (SIZE_OF_USBBUF - 9))
+        /* test for USB or HS buffer overrun */
+        if (FileLength > (bufSize - 9))
         {
-          FileLength = SIZE_OF_USBBUF - 9;
+          FileLength = bufSize - 9;
         }
       }
       else
@@ -1083,9 +1126,13 @@ UWORD     cCommInterpreteCmd(UBYTE Cmd, UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pL
       {
         MaxBufData = (SIZE_OF_USBDATA - 5); /* Substract wrapping */
       }
-      else
+      else if (CmdBit & BT_CMD_READY)
       {
         MaxBufData = (SIZE_OF_BTBUF - 7);  /* Substract wrapping + length bytes for BT*/
+      }
+      else // HS_CMD_READY
+      {
+        MaxBufData = (SIZE_OF_HSBUF - 5); /* Substract wrapping */
       }
 
       if (0x00 == pInBuf[1])
@@ -1123,7 +1170,7 @@ UWORD     cCommInterpreteCmd(UBYTE Cmd, UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pL
           for (Tmp = 0; ((Tmp < (*pLength)) && (IOMapComm.HsInBuf.InPtr != IOMapComm.HsInBuf.OutPtr)); Tmp++)
           {
             pOutBuf[3 + Tmp]         = IOMapComm.HsInBuf.Buf[IOMapComm.HsInBuf.OutPtr];
-            IOMapComm.HsInBuf.OutPtr = ((IOMapComm.HsInBuf.OutPtr) + 1) % SIZE_OF_USBBUF;
+            IOMapComm.HsInBuf.OutPtr = ((IOMapComm.HsInBuf.OutPtr) + 1) % SIZE_OF_HSBUF;
           }
           pOutBuf[2] = Tmp;
 
@@ -1143,12 +1190,23 @@ UWORD     cCommInterpreteCmd(UBYTE Cmd, UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pL
       (*pLength) += 3; /* Add 3 bytes for the status byte, length byte and Buf no */
     }
     break;
+    
+    case RENAMEFILE:
+    {
+      Status = pMapLoader->pFunc(RENAMEFILE, &pInBuf[1], &pInBuf[21], &FileLength);
+      pOutBuf[0] = LOADER_ERR_BYTE(Status);
+      pOutBuf[1] = LOADER_HANDLE(Status);
+      cCommCopyFileName(&pOutBuf[2], &pInBuf[1]);
+      cCommCopyFileName(&pOutBuf[22], &pInBuf[21]);
+      *pLength = 42;
+    }
+    break;
 
     case BTFACTORYRESET:
     {
       UWORD RtnVal;
 
-      if (CmdBit & USB_CMD_READY)
+      if ((CmdBit & USB_CMD_READY) || (CmdBit & HS_CMD_READY))
       {
         if (SUCCESS == cCommReq(FACTORYRESET, 0, 0, 0, NULL, &RtnVal))
         {
@@ -1188,7 +1246,7 @@ UWORD     cCommReceivedBtData(void)
   UWORD   BytesToGo;
   UWORD   RtnVal;
 
-  RtnVal = dBtReceivedData(&NumberOfBytes, &BytesToGo);
+  RtnVal = dBtReceivedData(&NumberOfBytes, &BytesToGo, IOMapComm.BtDataMode != DATA_MODE_NXT);
   if (TRUE == RtnVal)
   {
 
@@ -1214,21 +1272,35 @@ UWORD     cCommReceivedBtData(void)
         /* VarsComm.CmdSwitchCnt != 0 if a transition to Cmd mode is in process     */
         if ((VarsComm.BtState == BT_ARM_DATA_MODE) && (0 == VarsComm.CmdSwitchCnt))
         {
+          if (IOMapComm.BtDataMode == DATA_MODE_NXT)
+          {
 
-          /* Move the inptr ahead */
-          IOMapComm.BtInBuf.InPtr = NumberOfBytes;
+            /* Move the inptr ahead */
+            IOMapComm.BtInBuf.InPtr = NumberOfBytes;
 
-          /* using the outbuf inptr in order to get the number of bytes in the return answer at the right place*/
-          IOMapComm.BtOutBuf.InPtr = NumberOfBytes;
+            /* using the outbuf inptr in order to get the number of bytes in the return answer at the right place*/
+            IOMapComm.BtOutBuf.InPtr = NumberOfBytes;
 
-          /* call the data stream interpreter */
-          cCommInterprete(IOMapComm.BtInBuf.Buf, IOMapComm.BtOutBuf.Buf, &(IOMapComm.BtOutBuf.InPtr), (UBYTE) BT_CMD_READY, BytesToGo);
+            /* call the data stream interpreter */
+            cCommInterprete(IOMapComm.BtInBuf.Buf, IOMapComm.BtOutBuf.Buf, &(IOMapComm.BtOutBuf.InPtr), (UBYTE) BT_CMD_READY, BytesToGo);
 
           /* if there is a reply to be send then send it */
-          if (IOMapComm.BtOutBuf.InPtr)
+            if (IOMapComm.BtOutBuf.InPtr)
+            {
+              dBtSendMsg(IOMapComm.BtOutBuf.Buf, IOMapComm.BtOutBuf.InPtr, IOMapComm.BtOutBuf.InPtr);
+              IOMapComm.BtOutBuf.InPtr = 0;
+            }
+          }
+          else if (IOMapComm.BtDataMode == DATA_MODE_GPS) 
           {
-            dBtSendMsg(IOMapComm.BtOutBuf.Buf, IOMapComm.BtOutBuf.InPtr, IOMapComm.BtOutBuf.InPtr);
-            IOMapComm.BtOutBuf.InPtr = 0;
+            /* Move the inptr ahead */
+            IOMapComm.BtInBuf.InPtr = NumberOfBytes;
+            // interpret GPS sentence?
+          }
+          else if (IOMapComm.BtDataMode == DATA_MODE_RAW)
+          {
+            /* Move the inptr ahead */
+            IOMapComm.BtInBuf.InPtr = NumberOfBytes;
           }
         }
       }
@@ -1437,23 +1509,64 @@ void cCommReceivedHiSpeedData(void)
 {
   UWORD NumberOfBytes;
   UWORD Tmp;
-
+  UBYTE Address;
+  
   dHiSpeedReceivedData(&NumberOfBytes);
 
   if (NumberOfBytes != 0)
   {
-    for (Tmp = 0; Tmp < NumberOfBytes; Tmp++)
+    if (IOMapComm.HsDataMode != DATA_MODE_NXT)
     {
-      IOMapComm.HsInBuf.Buf[IOMapComm.HsInBuf.InPtr] = VarsComm.HsModuleInBuf.Buf[Tmp];
-      IOMapComm.HsInBuf.InPtr++;
-      if (IOMapComm.HsInBuf.InPtr > (SIZE_OF_HSBUF - 1))
+      // this is the normal way to handle incoming hi-speed data
+      for (Tmp = 0; Tmp < NumberOfBytes; Tmp++)
       {
-        IOMapComm.HsInBuf.InPtr = 0;
+        IOMapComm.HsInBuf.Buf[IOMapComm.HsInBuf.InPtr] = VarsComm.HsModuleInBuf.Buf[Tmp];
+        IOMapComm.HsInBuf.InPtr++;
+        if (IOMapComm.HsInBuf.InPtr > (SIZE_OF_HSBUF - 1))
+        {
+          IOMapComm.HsInBuf.InPtr = 0;
+        }
+        VarsComm.HsModuleInBuf.Buf[Tmp] = 0;
       }
-      VarsComm.HsModuleInBuf.Buf[Tmp] = 0;
-    }
 
     /* Now new data is available from the HIGH SPEED port ! */
+    }
+    else
+    {
+      // receiving hi-speed data in NXT mode
+      if (NumberOfBytes > SIZE_OF_HSBUF)
+        NumberOfBytes = SIZE_OF_HSBUF;
+      Address = VarsComm.HsModuleInBuf.Buf[0];
+      NumberOfBytes--;
+      if ((IOMapComm.HsAddress == Address) || 
+          (HS_ADDRESS_ALL == Address) || 
+          (HS_ADDRESS_ALL == IOMapComm.HsAddress))
+      {
+        /* Copy the bytes into the IOMapBuffer */
+        memcpy((PSZ)IOMapComm.HsInBuf.Buf, (PSZ)(VarsComm.HsModuleInBuf.Buf+1), NumberOfBytes);
+        memset((PSZ)VarsComm.HsModuleInBuf.Buf, 0, 256);
+      
+        /* Move the inptr ahead */
+        IOMapComm.HsInBuf.InPtr = NumberOfBytes;
+        IOMapComm.HsInBuf.OutPtr = 0;
+      
+        /* using the outbuf inptr in order to get the number of bytes in the return answer at the right place*/
+        IOMapComm.HsOutBuf.InPtr = NumberOfBytes;
+      
+        /* call the data stream interpreter */
+        cCommInterprete(IOMapComm.HsInBuf.Buf, (UBYTE *)(IOMapComm.HsOutBuf.Buf+1), &(IOMapComm.HsOutBuf.InPtr), (UBYTE) HS_CMD_READY, NumberOfBytes);
+      
+        /* if there is a reply to be sent then send it */
+        if (IOMapComm.HsOutBuf.InPtr)
+        {
+          IOMapComm.HsOutBuf.Buf[0] = HS_ADDRESS_ALL; // reply is sent to "all"
+          IOMapComm.HsOutBuf.InPtr++;
+          cCommSendHiSpeedData();
+          IOMapComm.HsOutBuf.InPtr = 0;
+          IOMapComm.HsOutBuf.OutPtr = 0;
+        }
+      }
+    }
   }
 }
 

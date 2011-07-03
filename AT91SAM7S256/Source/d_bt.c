@@ -56,9 +56,9 @@ void      dBtStartADConverter(void)
   BTStartADConverter;
 }
 
-void      dBtInitReceive(UBYTE *InputBuffer, UBYTE Mode)
+void      dBtInitReceive(UBYTE *InputBuffer, UBYTE Mode, UBYTE NoLengthBytes)
 {
-  BTInitReceiver(InputBuffer, Mode);
+  BTInitReceiver(InputBuffer, Mode, NoLengthBytes);
 }
 
 void      dBtSetArm7CmdSignal(void)
@@ -124,12 +124,12 @@ void      dBtSend(UBYTE *OutputBuffer, UBYTE BytesToSend)
   BTSend(OutputBuffer, BytesToSend);
 }
 
-UWORD     dBtReceivedData(UWORD *pLength, UWORD *pBytesToGo)
+UWORD     dBtReceivedData(UWORD *pLength, UWORD *pBytesToGo, UBYTE NoLengthBytes)
 {
   UWORD    RtnVal;
 
   RtnVal = TRUE;
-  BTReceivedData(pLength, pBytesToGo);
+  BTReceivedData(pLength, pBytesToGo, NoLengthBytes);
   if (*pLength)
   {
     SETTimeout(0);

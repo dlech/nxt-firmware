@@ -19,7 +19,11 @@
 #define   STARTOFFILETABLE              (0x140000L - (FILETABLE_SIZE*4))
 #define   FILEPTRTABLE                  ((const ULONG*)(0x140000L - (FILETABLE_SIZE*4)))
 #ifndef STARTOFUSERFLASH_FROM_LINKER
-#define   STARTOFUSERFLASH              (0x122100L)
+#ifndef STRIPPED
+#define   STARTOFUSERFLASH              (0x125800L)//(0x124600L) 1.31 == (0x122100L)
+#else
+#define   STARTOFUSERFLASH              (0x122400L)//(0x124600L) 1.31 == (0x122100L)
+#endif
 #define   SIZEOFUSERFLASH_MAX           SIZEOFUSERFLASH
 #else
 extern char __STARTOFUSERFLASH_FROM_LINKER;
@@ -66,6 +70,14 @@ enum
   NONLINEAR  = 0x08
 };
 
+/* Enum related to seek operation */
+enum
+{
+  SEEK_FROMSTART,
+  SEEK_FROMCURRENT,
+  SEEK_FROMEND
+};
+
 typedef   struct
 {
   UBYTE   FileName[FILENAME_SIZE];
@@ -84,6 +96,8 @@ UWORD     dLoaderCreateFileHeader(ULONG FileSize, UBYTE *pName, UBYTE LinearStat
 UWORD     dLoaderWriteData(UWORD Handle, UBYTE *pBuf, UWORD *pLen);
 UWORD     dLoaderCloseHandle(UWORD Handle);
 UWORD     dLoaderOpenRead(UBYTE *pFileName, ULONG *pLength);
+UWORD     dLoaderSeek(UBYTE Handle, SLONG offset, UBYTE from);
+UWORD     dLoaderTell(UBYTE Handle, ULONG* filePos);
 UWORD     dLoaderRead(UBYTE Handle, UBYTE *pBuf, ULONG *pLength);
 UWORD     dLoaderDelete(UBYTE *pFile);
 UWORD     dLoaderFind(UBYTE *pFind, UBYTE *pFound, ULONG *pFileLength, ULONG *pDataLength, UBYTE Session);

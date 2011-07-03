@@ -20,7 +20,7 @@ void	    dLowSpeedStartTimer(void);
 void      dLowSpeedStopTimer(void);
 void	    dLowSpeedInitPins(UBYTE ChannelNumber);
 UBYTE     dLowSpeedSendData(UBYTE ChannelNumber, UBYTE *DataOutBuffer, UBYTE NumberOfTxByte);
-void      dLowSpeedReceiveData(UBYTE ChannelNumber, UBYTE *DataInBuffer, UBYTE ByteToRx);
+void      dLowSpeedReceiveData(UBYTE ChannelNumber, UBYTE *DataInBuffer, UBYTE ByteToRx, UBYTE NoRestart);
 UBYTE     dLowSpeedComTxStatus(UBYTE ChannelNumber);
 UBYTE     dLowSpeedComRxStatus(UBYTE ChannelNumber);
 void      dLowSpeedExit(void);

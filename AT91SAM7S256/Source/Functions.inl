@@ -19,11 +19,15 @@
 //******* cUiBtTest **********************************************************
 
 const     UBYTE NONVOLATILE_NAME[]      = UI_NONVOLATILE;     // Non volatile filename without extention
+#ifndef STRIPPED
 const     UBYTE DEFAULT_PROGRAM_NAME[]  = UI_PROGRAM_DEFAULT; // On brick programming filename without extention
 const     UBYTE TEMP_PROGRAM_FILENAME[] = UI_PROGRAM_TEMP;    // On brick programming tmp filename without extention
 const     UBYTE VM_PROGRAM_READER[]     = UI_PROGRAM_READER;  // On brick programming script reader filename without extention
+#endif
+#ifndef STRIPPED
 const     UBYTE TEMP_DATALOG_FILENAME[] = UI_DATALOG_TEMP;    // On brick datalog tmp filename without extention
 const     UBYTE DEFAULT_DATALOG_NAME[]  = UI_DATALOG_DEFAULT; // On brick datalog filename without extention
+#endif
 const     UBYTE DEFAULT_PIN_CODE[]      = UI_PINCODE_DEFAULT; // Default blue tooth pin code
 const     UBYTE TXT_INVALID_SENSOR[]    = "??????????????";   // Display invalid sensor data
 
@@ -226,6 +230,8 @@ UBYTE     cUiReadLowspeed(UBYTE Port,UBYTE RxBytes,UWORD *Value)
 
 void      cUiUpdateSensor(SWORD Time)
 {
+#ifndef STRIPPED
+
   UBYTE   Port;
   UBYTE   Sensor;
   UBYTE   Result;
@@ -368,6 +374,7 @@ void      cUiUpdateSensor(SWORD Time)
 
     VarsUi.SensorReset = FALSE;
   }
+#endif
 }
 
 
@@ -422,6 +429,7 @@ const     UBYTE COLORNAME[COLORNAMES][10] =
 
 void      cUiPrintSensorInDisplayBuffer(UBYTE Port)
 {
+#ifndef STRIPPED
   UBYTE   Sensor;
   float   Value;
   SWORD   Size;
@@ -451,6 +459,7 @@ void      cUiPrintSensorInDisplayBuffer(UBYTE Port)
       }
     }
   }
+#endif
 }
 
 
@@ -1127,12 +1136,14 @@ UBYTE     cUiVolume(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_EXIT
     {
       VarsUi.Counter    = VarsUi.NVData.VolumeStep + 1;
 
+#ifndef STRIPPED
       VarsUi.pTmp       = (UBYTE*)Cursor;
       for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)SIZEOF_DATA(Cursor));VarsUi.Tmp++)
       {
         VarsUi.CursorTmp[VarsUi.Tmp] = *VarsUi.pTmp;
         VarsUi.pTmp++;
       }
+#endif
       Action            = MENU_DRAW;
     }
     break;
@@ -1175,9 +1186,11 @@ UBYTE     cUiVolume(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_EXIT
     sprintf((char*)VarsUi.DisplayBuffer,"%u",(UWORD)VarsUi.Counter - 1);
     pMapDisplay->pTextLines[TEXTLINE_3] = VarsUi.DisplayBuffer;
 
+#ifndef STRIPPED
     pMapDisplay->pBitmaps[BITMAP_1]     = (BMPMAP*)VarsUi.CursorTmp;
     VarsUi.CursorTmp[4] = 46;
     VarsUi.CursorTmp[5] = 24;
+#endif
     pMapDisplay->EraseMask             |= (TEXTLINE_BIT(TEXTLINE_3) | TEXTLINE_BIT(TEXTLINE_4));
     pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
     pMapDisplay->UpdateMask            |= (TEXTLINE_BIT(TEXTLINE_3) | BITMAP_BIT(BITMAP_1));
@@ -1319,7 +1332,7 @@ UBYTE     cUiGetUserString(UBYTE Type)  // 0=Pincode, 1=filename
               Tmp2 = 0;
             }
           }
-          pMapDisplay->pFunc(DISPLAY_HORISONTAL_LINE,TRUE,42,47,57,0);
+          pMapDisplay->pFunc(DISPLAY_HORIZONTAL_LINE,TRUE,42,47,57,0);
           pMapDisplay->pFunc(DISPLAY_VERTICAL_LINE,TRUE,42,47,0,63);
           pMapDisplay->pFunc(DISPLAY_VERTICAL_LINE,TRUE,57,47,0,63);
 
@@ -1475,6 +1488,7 @@ void      cUiDrawPortNo(UBYTE *Bitmap,UBYTE MenuIconNo,UBYTE PortNo)
 
 UBYTE     cUiDataLogging(UBYTE Action)
 {
+#ifndef STRIPPED
   SBYTE   TmpBuffer[DATALOGBUFFERSIZE + 1];
   
   switch (Action)
@@ -1482,7 +1496,7 @@ UBYTE     cUiDataLogging(UBYTE Action)
     case MENU_INIT : // Initialize all ports to empty
     {
 // Show select
-      pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_VIEW_SELECT);
+      pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_GENERIC_SELECT);
       pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
       pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
       pMapDisplay->EraseMask             |= SCREEN_BIT(SCREEN_SMALL);
@@ -1498,7 +1512,7 @@ UBYTE     cUiDataLogging(UBYTE Action)
     case MENU_EXIT : // Initialize all ports to empty
     {
 // Show select
-      pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_VIEW_SELECT);
+      pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_GENERIC_SELECT);
       pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
       pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
       pMapDisplay->EraseMask             |= SCREEN_BIT(SCREEN_SMALL);
@@ -1891,7 +1905,7 @@ UBYTE     cUiDataLogging(UBYTE Action)
 
         case 2 : // Display saved text
         {
-          if (!cUiFeedback((BMPMAP*)Info,TXT_FB_DL_FILE_SAVED_INFO,0xFF,DISPLAY_SHOW_FILENAME_TIME))
+          if (!cUiFeedback((BMPMAP*)Info,TXT_FB_FILE_SAVED_INFO,0xFF,DISPLAY_SHOW_FILENAME_TIME))
           {
             VarsUi.State++;
           }
@@ -1953,7 +1967,7 @@ UBYTE     cUiDataLogging(UBYTE Action)
 
     case MENU_SELECT : // Save sensor
     {
-      pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_VIEW_SELECT);
+      pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_GENERIC_SELECT);
       pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
       pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
 
@@ -2006,7 +2020,7 @@ UBYTE     cUiDataLogging(UBYTE Action)
     break;
 
   }
-
+#endif
   return (VarsUi.State);
 }
 
@@ -2067,6 +2081,7 @@ void      cUiRunning(UBYTE Action)
 
 UBYTE     cUiOnBrickProgramming(UBYTE Action) // On brick programming
 {
+#ifndef STRIPPED
   switch (Action)
   {
     case MENU_INIT :                    // Show motor / sensor text
@@ -2268,7 +2283,7 @@ UBYTE     cUiOnBrickProgramming(UBYTE Action) // On brick programming
 
         case 2 :
         {
-          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_OBP_FILE_EXIST_FAIL,TXT_FB_OBP_OVERWRITE_FAIL,0))
+          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_FILE_EXIST_FAIL,TXT_FB_OVERWRITE_FAIL,0))
           {
             VarsUi.State          = 0;
           }
@@ -2287,7 +2302,7 @@ UBYTE     cUiOnBrickProgramming(UBYTE Action) // On brick programming
 
         case 4 : // Display saved text
         {
-          if (!cUiFeedback((BMPMAP*)Info,TXT_FB_OBP_FILE_SAVED_INFO,0,DISPLAY_SHOW_TIME))
+          if (!cUiFeedback((BMPMAP*)Info,TXT_FB_FILE_SAVED_INFO,0,DISPLAY_SHOW_TIME))
           {
             VarsUi.State++;
           }
@@ -2330,7 +2345,7 @@ UBYTE     cUiOnBrickProgramming(UBYTE Action) // On brick programming
 
         default : // Display saved text
         {
-          if (!cUiFeedback((BMPMAP*)Info,TXT_FB_OBP_FILE_SAVED_INFO,0,DISPLAY_SHOW_TIME))
+          if (!cUiFeedback((BMPMAP*)Info,TXT_FB_FILE_SAVED_INFO,0,DISPLAY_SHOW_TIME))
           {
             VarsUi.State  = 0;
           }
@@ -2454,6 +2469,7 @@ UBYTE     cUiOnBrickProgramming(UBYTE Action) // On brick programming
     pMapDisplay->UpdateMask            |= (SPECIAL_BIT(STEPLINE) | SPECIAL_BIT(TOPLINE));
   }
 
+#endif
   return (VarsUi.State);
 }
 
@@ -2667,7 +2683,8 @@ UBYTE     cUiFileRun(UBYTE Action)      // Run selected file
 
             default :
             {
-              pMapDisplay->pTextLines[FILERUN_TEXTLINE]  = cUiGetString(TXT_FILERUN_FILE_ERROR);
+              sprintf((char*)VarsUi.DisplayText,(char*)cUiGetString(TXT_FILERUN_FILE_ERROR), pMapCmd->ProgStatus);
+              pMapDisplay->pTextLines[FILERUN_TEXTLINE]  = VarsUi.DisplayText;
               VarsUi.State = 99;
             }
             break;
@@ -2675,7 +2692,7 @@ UBYTE     cUiFileRun(UBYTE Action)      // Run selected file
           }
         }
         break;
-
+#ifndef STRIPPED
         case (FILETYPE_NXT * 10 + 0) :// Start Program file (*.prg)
         {
           VarsUi.TmpHandle = pMapLoader->pFunc(OPENREAD,VarsUi.SelectedFilename,NULL,&VarsUi.TmpLength);
@@ -2739,7 +2756,7 @@ UBYTE     cUiFileRun(UBYTE Action)      // Run selected file
           }
         }
         break;
-
+#endif
         case 99 :                         // Wait for display show time or user action
         {
           pMapDisplay->EraseMask                     = SCREEN_BIT(SCREEN_LARGE);
@@ -2840,15 +2857,17 @@ UBYTE     cUiView(UBYTE Action) // MENU_INIT
       {
         case MENU_INIT : // Init
         {
-          pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_VIEW_SELECT);
+          pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_GENERIC_SELECT);
           pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
           pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
           pMapDisplay->EraseMask             |= SCREEN_BIT(SCREEN_SMALL);
+#ifndef STRIPPED
 // Init ports
           for (VarsUi.Tmp = 0;VarsUi.Tmp < DATALOGPORTS;VarsUi.Tmp++)
           {
             VarsUi.DatalogPort[VarsUi.Tmp] = MENU_SENSOR_EMPTY;
           }
+#endif
         }
         break;
 
@@ -2861,8 +2880,9 @@ UBYTE     cUiView(UBYTE Action) // MENU_INIT
           if ((Action >= MENU_PORT_1) && (Action <= MENU_PORT_C))
           {
             VarsUi.SelectedPort = Action;
-            
+#ifndef STRIPPED
             VarsUi.DatalogPort[VarsUi.SelectedPort - MENU_PORT_1] = VarsUi.SelectedSensor;
+#endif
 
             IOMapUi.Flags |= UI_BUSY;
             pMapDisplay->EraseMask             |= SCREEN_BIT(SCREEN_LARGE);
@@ -2897,7 +2917,7 @@ UBYTE     cUiView(UBYTE Action) // MENU_INIT
       VarsUi.Tmp = cUiReadButtons();
       if (VarsUi.Tmp == BUTTON_EXIT)
       {
-        pMapDisplay->pTextLines[TEXTLINE_3] =  cUiGetString(TXT_VIEW_SELECT);
+        pMapDisplay->pTextLines[TEXTLINE_3] =  cUiGetString(TXT_GENERIC_SELECT);
         pMapDisplay->TextLinesCenterFlags  |=  TEXTLINE_BIT(TEXTLINE_3);
         pMapDisplay->UpdateMask            |=  TEXTLINE_BIT(TEXTLINE_3);
         pMapDisplay->UpdateMask            &=  ~TEXTLINE_BIT(TEXTLINE_4);
@@ -2980,7 +3000,7 @@ UBYTE     cUiBtOn(UBYTE Action)
 
         default : // Display fail text
         {
-          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_BT_TURNING_ON_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
+          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_GENERIC_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
           {
             Action = MENU_EXIT;
           }
@@ -3038,7 +3058,7 @@ UBYTE     cUiBtOn(UBYTE Action)
 
         default : // Display fail text
         {
-          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_BT_TURNING_OFF_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
+          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_GENERIC_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
           {
             Action = MENU_EXIT;
           }
@@ -3277,7 +3297,7 @@ UBYTE     cUiBtSearch(UBYTE Action) // Search for devices
 
       default : // Display fail text
       {
-        if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_BT_SEARCHING_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
+        if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_GENERIC_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
         {
           VarsUi.State  = 0;
           IOMapUi.State = EXIT_PRESSED;
@@ -3306,7 +3326,7 @@ UBYTE     cUiBtDeviceList(UBYTE Action) // Show devices
       cUiBTCommand(UI_BT_GET_DEVICES,VarsUi.DevicesKnown,&VarsUi.Devices,NULL);
       if (VarsUi.Devices)
       {
-        pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_BTDEVICELIST_SELECT);
+        pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_GENERIC_SELECT);
         pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
         pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
         VarsUi.MenuIconTextSave             = pMapDisplay->pMenuText;
@@ -3328,7 +3348,7 @@ UBYTE     cUiBtDeviceList(UBYTE Action) // Show devices
       cUiBTCommand(UI_BT_GET_DEVICES,VarsUi.DevicesKnown,&VarsUi.Devices,NULL);
       if (VarsUi.Devices)
       {
-        pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_BTDEVICELIST_SELECT);
+        pMapDisplay->pTextLines[TEXTLINE_3] = cUiGetString(TXT_GENERIC_SELECT);
         pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
         pMapDisplay->UpdateMask            |= TEXTLINE_BIT(TEXTLINE_3);
         VarsUi.MenuIconTextSave             = pMapDisplay->pMenuText;
@@ -3420,7 +3440,7 @@ UBYTE     cUiBtDeviceList(UBYTE Action) // Show devices
 
         default : // Display fail text
         {
-          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_BT_REMOVE_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
+          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_GENERIC_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
           {
             Action              = MENU_EXIT;
           }
@@ -3562,7 +3582,7 @@ UBYTE     cUiBtConnectList(UBYTE Action) // Show connections and maybe disconnec
 
         default : // Display fail text
         {
-          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_BT_DISCONNECT_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
+          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_GENERIC_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
           {
             Action          = MENU_EXIT;
           }
@@ -3793,7 +3813,7 @@ UBYTE     cUiBtConnect(UBYTE Action) // Select connection no and insert device
 
         default : // Display fail text
         {
-          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_BT_CONNECTING_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
+          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_GENERIC_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
           {
             Action = MENU_EXIT;
           }
@@ -3870,7 +3890,7 @@ UBYTE     cUiBtConnect(UBYTE Action) // Select connection no and insert device
 
         case 4 : // Display fail text
         {
-          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_BT_SENDING_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
+          if (!cUiFeedback((BMPMAP*)Fail,TXT_FB_GENERIC_FAIL,0,DISPLAY_SHOW_ERROR_TIME))
           {
             Action = MENU_EXIT;
           }
@@ -3965,12 +3985,14 @@ UBYTE     cUiPowerOffTime(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_E
     {
       VarsUi.Counter        = VarsUi.NVData.PowerdownCode + 1;
 
+#ifndef STRIPPED
       VarsUi.pTmp           = (UBYTE*)Cursor;
       for (VarsUi.Tmp = 0;(VarsUi.Tmp < SIZE_OF_CURSOR) && (VarsUi.Tmp < (UBYTE)SIZEOF_DATA(Cursor));VarsUi.Tmp++)
       {
         VarsUi.CursorTmp[VarsUi.Tmp] = *VarsUi.pTmp;
         VarsUi.pTmp++;
       }
+#endif
       Action                = MENU_DRAW;
     }
     break;
@@ -4012,9 +4034,11 @@ UBYTE     cUiPowerOffTime(UBYTE Action) // MENU_INIT,MENU_LEFT,MENU_RIGHT,MENU_E
     }
     pMapDisplay->pTextLines[TEXTLINE_3] = VarsUi.DisplayBuffer;
 
+#ifndef STRIPPED
     pMapDisplay->pBitmaps[BITMAP_1]     = (BMPMAP*)VarsUi.CursorTmp;
     VarsUi.CursorTmp[4] = 46;
     VarsUi.CursorTmp[5] = 24;
+#endif
     pMapDisplay->EraseMask             |= (TEXTLINE_BIT(TEXTLINE_3) | TEXTLINE_BIT(TEXTLINE_4));
     pMapDisplay->TextLinesCenterFlags  |= TEXTLINE_BIT(TEXTLINE_3);
     pMapDisplay->UpdateMask            |= (TEXTLINE_BIT(TEXTLINE_3) | BITMAP_BIT(BITMAP_1));

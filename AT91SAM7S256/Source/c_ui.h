@@ -19,7 +19,11 @@
 #ifndef   C_UI
 #define   C_UI
 
+#ifndef STRIPPED
 #define   DATALOGENABLED                1           // 1 == Datalog enable
+#else
+#define   DATALOGENABLED                0           // 0 == Datalog disabled
+#endif
 
 #define   NO_OF_FEEDBACK_CHARS          12          // Chars left when bitmap also showed
 #define   SIZE_OF_CURSOR                16          // Bitmap size of cursor  (header + 8x8 pixels)
@@ -283,6 +287,7 @@ typedef   struct
   UBYTE   FileRight;                                // File right
   UBYTE   NoOfFiles;                                // No of files
 
+#ifndef STRIPPED
   // On brick programming menu
   UBYTE   ProgramSteps[ON_BRICK_PROGRAMSTEPS];      // On brick programming steps
   UBYTE   ProgramStepPointer;                       // On brick programming step pointer
@@ -290,7 +295,8 @@ typedef   struct
   UBYTE   FileHeader[FILEHEADER_LENGTH];            // File header for programs
   UBYTE   *FeedBackText;                            // Program end text
   UWORD   OBPTimer;                                 // Graphic update timer
-
+#endif
+  
   // BT search menu
   UBYTE   NoOfDevices;                              // BT search no of devices found
   UBYTE   NoOfNames;                                // BT search no of names found
@@ -337,6 +343,7 @@ typedef   struct
   SLONG   ViewSampleValue;                          // Latch for sensor values
   UBYTE   ViewSampleValid;                          // Latch for sensor valid
 
+#ifndef STRIPPED
   // Datalog
   ULONG   DatalogOldTick;
   ULONG   DatalogRTC;                               // Real time in mS
@@ -348,7 +355,8 @@ typedef   struct
   UWORD   DatalogError;                             // Error code
   UBYTE   DatalogPort[DATALOGPORTS];                // Logging sensor
   UBYTE   Update;                                   // Update icons flag
-
+#endif
+  
   // NV storage
   ULONG   NVTmpLength;                              // Non volatile filelength
   SWORD   NVTmpHandle;                              // Non volatile filehandle

@@ -30,6 +30,9 @@ typedef   struct
   UBYTE   ModSearchType;
   UBYTE   UsbStatus;
   UBYTE   IoMapHandle;
+  UBYTE   Resizing;
+  UBYTE   ResizeOldHandle;
+  UBYTE   ResizeNewHandle;
 }VARSLOADER;
 
 void      cLoaderInit(void* pHeader);

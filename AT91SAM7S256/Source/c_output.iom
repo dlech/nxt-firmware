@@ -27,6 +27,9 @@ enum
   REG_METHOD = 0xF0   /* Regulation methods - to be designed! */
 };
 
+#define OPTION_HOLDATLIMIT     0x10
+#define OPTION_RAMPDOWNTOLIMIT 0x20
+
 // Constants related to Flags
 enum
 {

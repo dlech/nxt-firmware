@@ -256,7 +256,9 @@ void      cCommCtrl(void)
     {
       case HS_INITIALISE:
       {
-        dHiSpeedSetupUart(IOMapComm.HsSpeed, IOMapComm.HsMode);
+        dHiSpeedSetupUart(IOMapComm.HsSpeed, 
+                          IOMapComm.HsMode & HS_MODE_MASK, 
+                          IOMapComm.HsMode & HS_UART_MASK ? 0 : 1);
         IOMapComm.HsState = HS_INIT_RECEIVER;
         IOMapComm.HsFlags |= HS_UPDATE;
       }
@@ -266,13 +268,14 @@ void      cCommCtrl(void)
       {
         dHiSpeedInitReceive(VarsComm.HsModuleInBuf.Buf);
         VarsComm.HsState = 0x01;
+        IOMapComm.HsState = HS_DEFAULT;
       }
       break;
 
       case HS_SEND_DATA:
       {
         cCommSendHiSpeedData();
-        IOMapComm.HsState = HS_DEFAULT; // do not leave this in HS_SEND_DATA state
+        IOMapComm.HsState = HS_BYTES_REMAINING + IOMapComm.HsOutBuf.InPtr;
       }
       break;
 
@@ -280,6 +283,7 @@ void      cCommCtrl(void)
       {
         VarsComm.HsState = 0x00;
         dHiSpeedExit();
+        IOMapComm.HsState = HS_DEFAULT;
       }
       break;
       
@@ -287,9 +291,24 @@ void      cCommCtrl(void)
       {
         if (VarsComm.HsState == 0)
           dHiSpeedInit();
+        IOMapComm.HsState = HS_DEFAULT;
       }
       break;
     }
+  }
+
+  // update the HsState if there are bytes remaining to be sent
+  if (IOMapComm.HsState >= HS_BYTES_REMAINING)
+  {
+    UWORD bts = 0;
+    dHiSpeedBytesToSend(&bts);
+    if (bts == 0)
+    {
+      IOMapComm.HsState = HS_DEFAULT;
+      IOMapComm.HsOutBuf.OutPtr = IOMapComm.HsOutBuf.InPtr;
+    }
+    else
+      IOMapComm.HsState = HS_BYTES_REMAINING + bts;
   }
 
   if (VarsComm.HsState != 0)
@@ -1497,12 +1516,10 @@ void     cCommCopyFileName(UBYTE *pDst, UBYTE *pSrc)
 void cCommSendHiSpeedData(void)
 {
   VarsComm.HsModuleOutBuf.OutPtr = 0;
-  for (VarsComm.HsModuleOutBuf.InPtr = 0; VarsComm.HsModuleOutBuf.InPtr < IOMapComm.HsOutBuf.InPtr; VarsComm.HsModuleOutBuf.InPtr++)
-  {
-    VarsComm.HsModuleOutBuf.Buf[VarsComm.HsModuleOutBuf.InPtr] = IOMapComm.HsOutBuf.Buf[IOMapComm.HsOutBuf.OutPtr];
-    IOMapComm.HsOutBuf.OutPtr++;
-  }
-  dHiSpeedSendData(VarsComm.HsModuleOutBuf.Buf, (VarsComm.HsModuleOutBuf.InPtr - VarsComm.HsModuleOutBuf.OutPtr));
+  memcpy(VarsComm.HsModuleOutBuf.Buf, IOMapComm.HsOutBuf.Buf, IOMapComm.HsOutBuf.InPtr);
+  VarsComm.HsModuleOutBuf.InPtr = IOMapComm.HsOutBuf.InPtr;
+  dHiSpeedSendData(VarsComm.HsModuleOutBuf.Buf, VarsComm.HsModuleOutBuf.InPtr);
+//  IOMapComm.HsOutBuf.OutPtr = IOMapComm.HsOutBuf.InPtr;
 }
 
 void cCommReceivedHiSpeedData(void)
@@ -1561,9 +1578,10 @@ void cCommReceivedHiSpeedData(void)
         {
           IOMapComm.HsOutBuf.Buf[0] = HS_ADDRESS_ALL; // reply is sent to "all"
           IOMapComm.HsOutBuf.InPtr++;
-          cCommSendHiSpeedData();
-          IOMapComm.HsOutBuf.InPtr = 0;
           IOMapComm.HsOutBuf.OutPtr = 0;
+          // send the data the next time cCommCtrl is called
+          IOMapComm.HsState = HS_SEND_DATA;
+          IOMapComm.HsFlags = HS_UPDATE;
         }
       }
     }

@@ -73,7 +73,8 @@ enum
   HS_SEND_DATA,
   HS_DISABLE,
   HS_ENABLE,
-  HS_DEFAULT
+  HS_DEFAULT,
+  HS_BYTES_REMAINING = 0x10
 };
 
 // Constants reffering to hi-speed control syscall function
@@ -104,6 +105,14 @@ enum
   HS_BAUD_460800,
   HS_BAUD_921600
 };
+
+
+// HsMode UART mode (RS232 or RS485)
+#define HS_MODE_UART_RS232 0x1
+#define HS_MODE_UART_RS485 0x0
+
+#define HS_MODE_MASK 0xFFF0
+#define HS_UART_MASK 0x000F
 
 // constants referring to HsMode (number of bits)
 #define HS_MODE_5_DATA 0x0000

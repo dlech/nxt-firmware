@@ -19,7 +19,7 @@
 #define   STARTOFFILETABLE              (0x140000L - (FILETABLE_SIZE*4))
 #define   FILEPTRTABLE                  ((const ULONG*)(0x140000L - (FILETABLE_SIZE*4)))
 #ifndef STRIPPED
-#define   STARTOFUSERFLASH              (0x125800L)//(0x124600L) 1.31 == (0x122100L)
+#define   STARTOFUSERFLASH              (0x125C00L)//(0x124600L) 1.31 == (0x122100L)
 #else
 #define   STARTOFUSERFLASH              (0x122400L)//(0x124600L) 1.31 == (0x122100L)
 #endif

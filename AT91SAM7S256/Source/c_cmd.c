@@ -7364,7 +7364,7 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
           (Arg1 == OPARR_SUMSQR) || (Arg1 == OPARR_STD)) 
       {
         pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
-        if (TypeCode3 == TC_FLOAT)
+        if (TypeCode2 == TC_FLOAT)
         {
           fval = 0;
           for (i = 0; i < MinCount; i++)
@@ -7380,7 +7380,7 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
           else if (Arg1 != OPARR_STD)
             cCmdSetValFlt(pArg2, TypeCode2, fval);
         }
-        else if (IS_SIGNED_TYPE(TypeCode3) && (Arg1 != OPARR_SUMSQR))
+        else if (IS_SIGNED_TYPE(TypeCode2) && (Arg1 != OPARR_SUMSQR))
         {
           sval = 0;
           for (i = 0; i < MinCount; i++)
@@ -7400,7 +7400,7 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
           for (i = 0; i < MinCount; i++)
           {
             pArg3 = cCmdResolveDataArg(INC_ID(Arg3), ARRAY_ELEM_OFFSET(DVIndex3, ArgVal4 + i), NULL);
-            if (IS_SIGNED_TYPE(TypeCode3)) 
+            if (IS_SIGNED_TYPE(TypeCode2)) 
             {
               // this can only be the SUMSQR operation (given the IF statement above)
               svaltmp = cCmdGetVal(pArg3, TypeCode3);
@@ -7423,9 +7423,9 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
         if (Arg1 == OPARR_STD) 
         {
           float avg, delta, sumSqr;
-          if (TypeCode3 == TC_FLOAT)
+          if (TypeCode2 == TC_FLOAT)
             avg = fval/numElements;
-          else if (IS_SIGNED_TYPE(TypeCode3)) 
+          else if (IS_SIGNED_TYPE(TypeCode2)) 
             avg = (float)sval/numElements;
           else
             avg = (float)uval/numElements;
@@ -7433,18 +7433,18 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
           for (i = 0; i < MinCount; i++)
           {
             pArg3 = cCmdResolveDataArg(INC_ID(Arg3), ARRAY_ELEM_OFFSET(DVIndex3, ArgVal4 + i), NULL);
-            if (TypeCode3 == TC_FLOAT)
+            if (TypeCode2 == TC_FLOAT)
               delta = cCmdGetValFlt(pArg3, TypeCode3) - avg;              
-            if (IS_SIGNED_TYPE(TypeCode3))
+            else if (IS_SIGNED_TYPE(TypeCode2))
               delta = (float)(SLONG)cCmdGetVal(pArg3, TypeCode3) - avg;
             else // unsigned types
               delta = (float)cCmdGetVal(pArg3, TypeCode3) - avg;
             sumSqr += (delta*delta);
           }
           delta = sqrtf(sumSqr / (numElements - (float)1.0));
-          if (TypeCode3 == TC_FLOAT)
+          if (TypeCode2 == TC_FLOAT)
             cCmdSetValFlt(pArg2, TypeCode2, delta);
-          else if (IS_SIGNED_TYPE(TypeCode3))
+          else if (IS_SIGNED_TYPE(TypeCode2))
             cCmdSetVal(pArg2, TypeCode2, (SLONG)delta);
           else
             cCmdSetVal(pArg2, TypeCode2, (ULONG)delta);
@@ -7453,7 +7453,7 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
       else if ((Arg1 == OPARR_MIN) || (Arg1 == OPARR_MAX)) 
       {
         pArg2 = cCmdResolveDataArg(Arg2, 0, &TypeCode2);
-        if (TypeCode3 == TC_FLOAT)
+        if (TypeCode2 == TC_FLOAT)
         {
           if (Arg1 == OPARR_MIN)
             fval = FLT_MAX;
@@ -7469,7 +7469,7 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
           }
           cCmdSetValFlt(pArg2, TypeCode2, fval);
         }
-        else if (IS_SIGNED_TYPE(TypeCode3))
+        else if (IS_SIGNED_TYPE(TypeCode2))
         {
           if (Arg1 == OPARR_MIN)
             sval = LONG_MAX;
@@ -9531,13 +9531,26 @@ NXT_STATUS cCmdWrapCommHSControl(UBYTE * ArgV[])
   return (NO_ERR);
 }
 
+//cCmdHSCalcBytesReady
+//Calculate true number of bytes available in the inbound HS buffer
+UBYTE cCmdHSCalcBytesReady()
+{
+  SWORD Tmp = pMapComm->HsInBuf.InPtr - pMapComm->HsInBuf.OutPtr;
+  if (Tmp < 0)
+    Tmp = (pMapComm->HsInBuf.InPtr + (SIZE_OF_HSBUF - pMapComm->HsInBuf.OutPtr));
+  return (UBYTE)(Tmp);
+}
+
 //cCmdWrapCommHSCheckStatus
 //ArgV[0]: SendingData, UBYTE out
 //ArgV[1]: DataAvailable, UBYTE out
 NXT_STATUS cCmdWrapCommHSCheckStatus(UBYTE * ArgV[])
 {
-  *(ArgV[0]) = (pMapComm->HsOutBuf.InPtr != pMapComm->HsOutBuf.OutPtr) || (pMapComm->HsState == HS_SEND_DATA);
-  *(ArgV[1]) = (pMapComm->HsInBuf.InPtr != pMapComm->HsInBuf.OutPtr);
+  *(ArgV[0]) = (pMapComm->HsState > HS_BYTES_REMAINING) ? 
+                 (pMapComm->HsState - HS_BYTES_REMAINING) : 
+                 0;
+  *(ArgV[1]) = cCmdHSCalcBytesReady();
+
   return (NO_ERR);
 }
 
@@ -9581,13 +9594,7 @@ NXT_STATUS cCmdWrapCommHSWrite(UBYTE * ArgV[])
 //ArgV[1]: Buffer, out
 NXT_STATUS cCmdWrapCommHSRead(UBYTE * ArgV[])
 {
-  //Normally, bytes available is a simple difference.
-  SLONG Tmp = pMapComm->HsInBuf.InPtr - pMapComm->HsInBuf.OutPtr;
-
-  //If InPtr is actually behind OutPtr, circular buffer has wrapped.  Account for wrappage...
-  if (Tmp < 0)
-    Tmp = (pMapComm->HsInBuf.InPtr + (SIZE_OF_HSBUF - pMapComm->HsInBuf.OutPtr));
-    
+  UBYTE Tmp = cCmdHSCalcBytesReady();
   //Resolve array arguments
   // output buffer
   DV_INDEX DVIndex = *(DV_INDEX *)(ArgV[1]);
@@ -9596,10 +9603,9 @@ NXT_STATUS cCmdWrapCommHSRead(UBYTE * ArgV[])
   if (IS_ERR(Status))
     return Status;
   UBYTE* pBuf = cCmdDVPtr(DVIndex);
-  ArgV[1] = pBuf;
 
   //If the bytes we want to read wrap around the end, we must first read the end, then reset back to the beginning
-  UBYTE BytesToRead = (UBYTE)Tmp;
+  UBYTE BytesToRead = Tmp;
   if (pMapComm->HsInBuf.OutPtr + BytesToRead >= SIZE_OF_HSBUF)
   {
     BytesToRead = SIZE_OF_HSBUF - pMapComm->HsInBuf.OutPtr;
@@ -9609,8 +9615,10 @@ NXT_STATUS cCmdWrapCommHSRead(UBYTE * ArgV[])
     BytesToRead = Tmp - BytesToRead;
   }
 
-  memcpy(pBuf, pMapComm->HsInBuf.Buf + pMapComm->HsInBuf.OutPtr, BytesToRead);
-  pMapComm->HsInBuf.OutPtr += BytesToRead;
+  if (BytesToRead > 0) {
+    memcpy(pBuf, pMapComm->HsInBuf.Buf + pMapComm->HsInBuf.OutPtr, BytesToRead);
+    pMapComm->HsInBuf.OutPtr += BytesToRead;
+  }
 
   return (NO_ERR);
 }

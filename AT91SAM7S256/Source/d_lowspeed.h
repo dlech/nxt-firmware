@@ -24,5 +24,6 @@ void      dLowSpeedReceiveData(UBYTE ChannelNumber, UBYTE *DataInBuffer, UBYTE B
 UBYTE     dLowSpeedComTxStatus(UBYTE ChannelNumber);
 UBYTE     dLowSpeedComRxStatus(UBYTE ChannelNumber);
 void      dLowSpeedExit(void);
+SBYTE     dLowSpeedFastI2C(UBYTE port, UBYTE address, UBYTE *write_data, UBYTE write_len, UBYTE *pReadLen, UBYTE *data_out);
 
 #endif

@@ -236,9 +236,9 @@ static pSysCall SysCallFuncs[SYSCALL_COUNT] =
   cCmdWrapUndefinedSysCall, 
   cCmdWrapUndefinedSysCall, // 75
   cCmdWrapUndefinedSysCall, 
-  cCmdWrapUndefinedSysCall, 
 // enhanced NBC/NXC
-  cCmdWrapIOMapReadByID, // 78
+  cCmdWrapInputPinFunction, // 77
+  cCmdWrapIOMapReadByID,
   cCmdWrapIOMapWriteByID,
   cCmdWrapDisplayExecuteFunction, // 80
   cCmdWrapCommExecuteFunction,
@@ -941,7 +941,9 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
 
       case RC_LS_WRITE:
       {
-        i = pInBuf[1];
+        i = (pInBuf[1] & 0x03);
+        UBYTE NoRestartOnRead = (pInBuf[1] & 0x04);
+        UBYTE bFast = (pInBuf[1] & 0x08);
         Count = pInBuf[2];
 
         //Don't do anything if illegal port specification is made
@@ -951,7 +953,7 @@ UWORD cCmdHandleRemoteCommands(UBYTE * pInBuf, UBYTE * pOutBuf, UBYTE * pLen)
           break;
         }
 
-        RCStatus = cCmdLSWrite(i, Count, &(pInBuf[4]), pInBuf[3], 0);
+        RCStatus = cCmdLSWrite(i, Count, &(pInBuf[4]), pInBuf[3], NoRestartOnRead, bFast);
       }
       break;
 
@@ -3703,7 +3705,7 @@ NXT_STATUS cCmdColorSensorRead (UBYTE Port, SWORD * SensorValue, UWORD * RawArra
 
 UBYTE cCmdIsDSElementIDSane(DS_ELEMENT_ID Index)
 {
-  if (Index < VarsCmd.DataspaceCount)
+  if ((Index & DATA_ARG_IMM_MASK) < VarsCmd.DataspaceCount)
     return TRUE;
   else
     return FALSE;
@@ -3964,8 +3966,12 @@ void* cCmdDSPtr(DS_ELEMENT_ID DSElementID, UWORD Offset)
   void * pDSItem;
   DV_INDEX DVIndex;
   TYPE_CODE TypeCode;
+  UBYTE bPointer = (DSElementID & 0x8000) != 0;
 
   NXT_ASSERT(cCmdIsDSElementIDSane(DSElementID));
+  
+  DSElementID &= DATA_ARG_IMM_MASK;
+  // pointers are only valid if the type is UWORD
 
   TypeCode = cCmdDSType(DSElementID);
   if (TypeCode == TC_ARRAY)
@@ -3987,8 +3993,17 @@ void* cCmdDSPtr(DS_ELEMENT_ID DSElementID, UWORD Offset)
     pDSItem = cCmdDSPtr(INC_ID(DSElementID), Offset);
   }
   else
-    pDSItem = (VarsCmd.pDataspace + VarsCmd.pDataspaceTOC[DSElementID].DSOffset + Offset);
-
+  {
+    if (bPointer && (TypeCode == TC_UWORD))
+    {
+      pDSItem = (VarsCmd.pDataspace + VarsCmd.pDataspaceTOC[DSElementID].DSOffset + Offset);
+      DSElementID = cCmdGetVal(pDSItem, TypeCode);
+      pDSItem = cCmdDSPtr(DSElementID, Offset);
+    }
+    else
+      pDSItem = (VarsCmd.pDataspace + VarsCmd.pDataspaceTOC[DSElementID].DSOffset + Offset);
+  }
+  
   NXT_ASSERT((UBYTE*)pDSItem < POOL_SENTINEL);
 
   return pDSItem;
@@ -7702,7 +7717,7 @@ UBYTE cCmdLSCalcBytesReady(UBYTE Port)
 
 //cCmdLSWrite
 //Write BufLength bytes into specified port's lowspeed buffer and kick off comm process to device
-NXT_STATUS cCmdLSWrite(UBYTE Port, UBYTE BufLength, UBYTE *pBuf, UBYTE ResponseLength, UBYTE NoRestartOnRead)
+NXT_STATUS cCmdLSWrite(UBYTE Port, UBYTE BufLength, UBYTE *pBuf, UBYTE ResponseLength, UBYTE NoRestartOnRead, UBYTE bFast)
 {
   if (Port >= NO_OF_LOWSPEED_COM_CHANNEL)
   {
@@ -7734,9 +7749,13 @@ NXT_STATUS cCmdLSWrite(UBYTE Port, UBYTE BufLength, UBYTE *pBuf, UBYTE ResponseL
     *pChState = LOWSPEED_INIT;
     pMapLowSpeed->State |= (COM_CHANNEL_ONE_ACTIVE << Port);
     if (NoRestartOnRead)
-      pMapLowSpeed->NoRestartOnRead |= (0x01 << Port);
+      pMapLowSpeed->NoRestartOnRead |= (COM_CHANNEL_NO_RESTART_1 << Port);
     else
-      pMapLowSpeed->NoRestartOnRead &= ~(0x01 << Port);
+      pMapLowSpeed->NoRestartOnRead &= ~(COM_CHANNEL_NO_RESTART_1 << Port);
+    if (bFast)
+      pMapLowSpeed->Speed |= (COM_CHANNEL_ONE_FAST << Port);
+    else
+      pMapLowSpeed->Speed &= ~(COM_CHANNEL_ONE_FAST << Port);
 
     return (NO_ERR);
   }
@@ -8202,10 +8221,12 @@ NXT_STATUS cCmdWrapReadButton(UBYTE * ArgV[])
 NXT_STATUS cCmdWrapCommLSWrite(UBYTE * ArgV[])
 {
   SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);
-  UBYTE Port = *(ArgV[1]);
+  UBYTE Port = (*(ArgV[1]) & 0x03); // 0..3 are valid port numbers
   UBYTE * pBuf;
   UWORD BufLength;
   UBYTE ResponseLength = *(ArgV[3]);
+  UBYTE NoRestartOnRead = (*(ArgV[1]) & 0x04);
+  UBYTE bFast = (*(ArgV[1]) & 0x08);
   DV_INDEX DVIndex;
 
   //Resolve array arguments
@@ -8213,7 +8234,11 @@ NXT_STATUS cCmdWrapCommLSWrite(UBYTE * ArgV[])
   pBuf = cCmdDVPtr(DVIndex);
   BufLength = DV_ARRAY[DVIndex].Count;
 
-  *pReturnVal = cCmdLSWrite(Port, (UBYTE)BufLength, pBuf, ResponseLength, 0);
+  *pReturnVal = cCmdLSWrite(Port, (UBYTE)BufLength, pBuf, ResponseLength, NoRestartOnRead, bFast);
+  if (bFast && (*pReturnVal == NO_ERR))
+    *pReturnVal = pMapLowSpeed->pFunc(Port);
+  if (*pReturnVal >= NO_ERR)
+    *pReturnVal = NO_ERR; // returning a positive value causes problems in NXC API code that expects 0 (success) or non-zero error
 
   return (NO_ERR);
 }
@@ -8589,8 +8614,8 @@ NXT_STATUS cCmdWrapCommBTWrite(UBYTE * ArgV[])
 //
 //cCmdWrapCommBTRead
 //ArgV[0]: (return) Status byte, SBYTE
-//ArgV[1]: Count to read
-//ArgV[2]: Buffer
+//ArgV[1]: Buffer
+//ArgV[2]: Count to read
 //
 NXT_STATUS cCmdWrapCommBTRead(UBYTE * ArgV[])
 {
@@ -9589,35 +9614,78 @@ NXT_STATUS cCmdWrapCommHSWrite(UBYTE * ArgV[])
   return (NO_ERR);
 }
 
+//cCmdHSRead
+//Read BufLength bytes from the hispeed buffer
+NXT_STATUS cCmdHSRead(UBYTE BufLength, UBYTE * pBuf)
+{
+  UBYTE BytesReady, BytesToRead;
+
+  if (BufLength > SIZE_OF_HSBUF)
+  {
+    return (ERR_INVALID_SIZE);
+  }
+
+  BytesReady = cCmdHSCalcBytesReady();
+
+  if (BufLength > BytesReady)
+  {
+    return (ERR_COMM_CHAN_NOT_READY);
+  }
+
+  BytesToRead = BufLength;
+
+  HSBUF * pInBuf = &(pMapComm->HsInBuf);
+
+  //If the bytes we want to read wrap around the end, we must first read the end, then reset back to the beginning
+  if (pInBuf->OutPtr + BytesToRead >= SIZE_OF_HSBUF)
+  {
+    BytesToRead = SIZE_OF_HSBUF - pInBuf->OutPtr;
+    memcpy(pBuf, pInBuf->Buf + pInBuf->OutPtr, BytesToRead);
+    pInBuf->OutPtr = 0;
+    pBuf += BytesToRead;
+    BytesToRead = BufLength - BytesToRead;
+  }
+  if (BytesToRead > 0) {
+    memcpy(pBuf, pInBuf->Buf + pInBuf->OutPtr, BytesToRead);
+    pInBuf->OutPtr += BytesToRead;
+  }
+
+  return (NO_ERR);
+}
+
 //cCmdWrapCommHSRead
 //ArgV[0]: (return) Status byte, SBYTE
 //ArgV[1]: Buffer, out
+//ArgV[2]: BufferLength, UBYTE, specifies size of buffer requested
 NXT_STATUS cCmdWrapCommHSRead(UBYTE * ArgV[])
 {
-  UBYTE Tmp = cCmdHSCalcBytesReady();
-  //Resolve array arguments
-  // output buffer
+  SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);
   DV_INDEX DVIndex = *(DV_INDEX *)(ArgV[1]);
-  //Size Buffer to Length
-  NXT_STATUS Status = cCmdDVArrayAlloc(DVIndex, (UWORD)Tmp);
-  if (IS_ERR(Status))
-    return Status;
-  UBYTE* pBuf = cCmdDVPtr(DVIndex);
+  UBYTE BufLength = *(ArgV[2]);
+  UBYTE BytesToRead;
+  NXT_STATUS Status;
+  UBYTE * pBuf;
 
-  //If the bytes we want to read wrap around the end, we must first read the end, then reset back to the beginning
-  UBYTE BytesToRead = Tmp;
-  if (pMapComm->HsInBuf.OutPtr + BytesToRead >= SIZE_OF_HSBUF)
+  BytesToRead = cCmdHSCalcBytesReady();
+
+  if (BytesToRead > 0)
   {
-    BytesToRead = SIZE_OF_HSBUF - pMapComm->HsInBuf.OutPtr;
-    memcpy(pBuf, pMapComm->HsInBuf.Buf + pMapComm->HsInBuf.OutPtr, BytesToRead);
-    pMapComm->HsInBuf.OutPtr = 0;
-    pBuf += BytesToRead;
-    BytesToRead = Tmp - BytesToRead;
-  }
+    //Limit buffer to available data
+    if (BufLength > BytesToRead)
+      BufLength = BytesToRead;
 
-  if (BytesToRead > 0) {
-    memcpy(pBuf, pMapComm->HsInBuf.Buf + pMapComm->HsInBuf.OutPtr, BytesToRead);
-    pMapComm->HsInBuf.OutPtr += BytesToRead;
+    Status = cCmdDVArrayAlloc(DVIndex, BufLength);
+    if (IS_ERR(Status))
+      return (Status);
+
+    pBuf = cCmdDVPtr(DVIndex);
+    *pReturnVal = cCmdHSRead(BufLength, pBuf);
+  }
+  else
+  {
+    Status = cCmdDVArrayAlloc(DVIndex, 0);
+    if (IS_ERR(Status))
+      return (Status);
   }
 
   return (NO_ERR);
@@ -9628,16 +9696,18 @@ NXT_STATUS cCmdWrapCommHSRead(UBYTE * ArgV[])
 //ArgV[1]: Port specifier, UBYTE
 //ArgV[2]: Buffer to send, UBYTE array, only SIZE_OF_LSBUF bytes will be used
 //ArgV[3]: ResponseLength, UBYTE, specifies expected bytes back from slave device
-//ArgV[4]: NoRestartOnRead, UBYTE, specifies whether or not to restart before the read
+//ArgV[4]: Options, UBYTE, specifies whether or not to restart before the read and whether to use fast mode or not
 //
 NXT_STATUS cCmdWrapCommLSWriteEx(UBYTE * ArgV[])
 {
+/*
   SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);
   UBYTE Port = *(ArgV[1]);
   UBYTE * pBuf;
   UWORD BufLength;
   UBYTE ResponseLength = *(ArgV[3]);
-  UBYTE NoRestartOnRead = *(ArgV[4]);
+  UBYTE NoRestartOnRead = *(ArgV[4]) & 0x01;
+  UBYTE bFast = *(ArgV[4]) & 0x02;
   DV_INDEX DVIndex;
 
   //Resolve array arguments
@@ -9645,8 +9715,8 @@ NXT_STATUS cCmdWrapCommLSWriteEx(UBYTE * ArgV[])
   pBuf = cCmdDVPtr(DVIndex);
   BufLength = DV_ARRAY[DVIndex].Count;
 
-  *pReturnVal = cCmdLSWrite(Port, (UBYTE)BufLength, pBuf, ResponseLength, NoRestartOnRead);
-
+  *pReturnVal = cCmdLSWrite(Port, (UBYTE)BufLength, pBuf, ResponseLength, NoRestartOnRead, bFast);
+*/
   return (NO_ERR);
 }
 
@@ -9799,6 +9869,27 @@ NXT_STATUS cCmdWrapRandomEx(UBYTE * ArgV[])
 
   return NO_ERR;
 }
+
+
+//
+//cCmdWrapInputPinFunction
+//ArgV[0]: (return) Result word, UWORD
+//ArgV[1]: UBYTE Cmd
+//ArgV[2]: UBYTE Port
+//ArgV[3]: UBYTE Pin
+//ArgV[4]: UBYTE pData
+//
+NXT_STATUS cCmdWrapInputPinFunction(UBYTE * ArgV[])
+{
+  *(UWORD*)(ArgV[0]) = 
+     pMapInput->pFunc(*(UBYTE*)(ArgV[1]), 
+                      *(UBYTE*)(ArgV[2]),
+                      *(UBYTE*)(ArgV[3]),
+                       (UBYTE*)(ArgV[4])
+                      );
+  return (NO_ERR);
+}
+
 
 NXT_STATUS cCmdWrapUndefinedSysCall(UBYTE * ArgV[])
 {

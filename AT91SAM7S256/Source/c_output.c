@@ -47,10 +47,10 @@ void      cOutputInit(void* pHeader)
   {
     OUTPUT * pOut = &(IOMapOutput.Outputs[Tmp]);
     pOut->Mode  = 0x00;
-	  pOut->Speed = 0x00;
-	  pOut->ActualSpeed = 0x00;
-	  pOut->TachoCnt = 0x00;
-	  pOut->RunState = 0x00;
+    pOut->Speed = 0x00;
+    pOut->ActualSpeed = 0x00;
+    pOut->TachoCnt = 0x00;
+    pOut->RunState = 0x00;
     pOut->TachoLimit = 0x00;
     pOut->RegPParameter = DEFAULT_P_GAIN_FACTOR;
     pOut->RegIParameter = DEFAULT_I_GAIN_FACTOR;

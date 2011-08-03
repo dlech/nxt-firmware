@@ -15,6 +15,8 @@
 
 #ifdef    SAM7S256
 
+void      rInputWaitUS(UBYTE usec);
+
 void      rInputWait2uS(void);
 void      rInputWait20uS(void);
 void      rInputWait30uS(void);
@@ -175,8 +177,6 @@ static    ULONG ColorTimer[NO_OF_INPUTS];
                                           CHECKColorState(Port, Status);              \
                                         }
 
-#define   SETClkHi(Port)                INPUTClkHigh(Port)                            \
-
 #define   COLORTx(Port, Data)           {                                             \
                                           UBYTE BitCnt;                               \
                                           BitCnt = 0;                                 \
@@ -282,6 +282,14 @@ void    GetAdVals(COLORSTRUCT *pColStruct, UBYTE Color, UBYTE Status)
       pColStruct[ChCnt].ADRaw[Color]  = (pColStruct[ChCnt].ADRaw[Color])>>1;
     }
   }
+}
+
+void      rInputWaitUS(UBYTE usec)
+{
+  // OSC = 48054850L
+  ULONG Count = (OSC/16)/(1000000L/usec);
+  ULONG PitTmr = (*AT91C_PITC_PIIR);
+  while (((*AT91C_PITC_PIIR) - PitTmr) < Count);
 }
 
 void      rInputWait2uS(void)

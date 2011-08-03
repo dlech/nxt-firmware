@@ -827,7 +827,7 @@ float cCmdGetValFlt(void * pVal, TYPE_CODE TypeCode);
 
 NXT_STATUS cCmdLSCheckStatus(UBYTE Port);
 UBYTE cCmdLSCalcBytesReady(UBYTE Port);
-NXT_STATUS cCmdLSWrite(UBYTE Port, UBYTE BufLength, UBYTE *pBuf, UBYTE ResponseLength, UBYTE NoRestartOnRead);
+NXT_STATUS cCmdLSWrite(UBYTE Port, UBYTE BufLength, UBYTE *pBuf, UBYTE ResponseLength, UBYTE NoRestartOnRead, UBYTE bFast);
 NXT_STATUS cCmdLSRead(UBYTE Port, UBYTE BufLength, UBYTE * pBuf);
 
 //
@@ -892,6 +892,7 @@ NXT_STATUS cCmdWrapWriteSemData(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapUpdateCalibCacheInfo(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapComputeCalibValue(UBYTE * ArgV[]);
 
+NXT_STATUS cCmdWrapInputPinFunction(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapIOMapReadByID(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapIOMapWriteByID(UBYTE * ArgV[]);
 NXT_STATUS cCmdWrapDisplayExecuteFunction(UBYTE * ArgV[]);

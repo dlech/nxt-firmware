@@ -44,5 +44,7 @@ void      dInputSetColorClkInput(void);
 void      dInputClearColor100msTimer(UBYTE No);
 UBYTE     dInputChkColor100msTimer(UBYTE No);
 
+void      dInputWaitUS(UBYTE usec);
+
 
 #endif

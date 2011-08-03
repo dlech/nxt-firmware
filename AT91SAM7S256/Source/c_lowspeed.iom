@@ -64,7 +64,12 @@ enum
   LOWSPEED_NO_ERROR = 0,
   LOWSPEED_CH_NOT_READY,
   LOWSPEED_TX_ERROR,
-  LOWSPEED_RX_ERROR  
+  LOWSPEED_RX_ERROR,
+  LOWSPEED_FAST_INVALID_PORT = -1,
+  LOWSPEED_FAST_BUSY = -2,
+  LOWSPEED_FAST_FAULT = -3,
+  LOWSPEED_FAST_INVALID_LEN = -4,
+  LOWSPEED_FAST_BUS_BUSY = -5  
 };
 
 // Constants referring to NoRestartOnRead
@@ -79,7 +84,17 @@ enum
   COM_CHANNEL_NO_RESTART_MASK = 0x10
 };
 
-
+// Constants referring to Speed
+enum
+{
+  COM_CHANNEL_NONE_FAST  = 0x00,
+  COM_CHANNEL_ONE_FAST   = 0x01,
+  COM_CHANNEL_TWO_FAST   = 0x02,
+  COM_CHANNEL_THREE_FAST = 0x04,
+  COM_CHANNEL_FOUR_FAST  = 0x08,
+  COM_CHANNEL_ALL_FAST   = 0x0F,
+  COM_CHANNEL_SPEED_MASK = 0x10
+};
 
 typedef   struct
 {
@@ -99,6 +114,8 @@ typedef   struct
   UBYTE   State;
   UBYTE   Speed;  
   UBYTE   NoRestartOnRead;
+  UBYTE   Spare1;
+  SBYTE   (*pFunc)(UBYTE);
 }IOMAPLOWSPEED;
 
 

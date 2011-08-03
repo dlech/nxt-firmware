@@ -17,6 +17,7 @@
 #include  "modules.h"
 #include  "c_input.h"
 #include  "d_input.h"
+#include  "c_cmd.iom"
 #include  "c_output.iom"
 #include  "c_loader.iom"
 #include  <string.h>
@@ -150,9 +151,11 @@ void      cInputSetupCustomSensor(UBYTE Port);
 void      cInputCalcSensorValues(UBYTE No);
 UBYTE     cInputInitColorSensor(UBYTE Port, UBYTE *pInitStatus);
 void      cInputCalibrateColor(COLORSTRUCT *pC, UWORD *pNewVals);
+UBYTE     cInputPinFunc(UBYTE Cmd, UBYTE Port, UBYTE Pin, UBYTE *pData);
 
 void      cInputInit(void* pHeader)
 {
+  IOMapInput.pFunc = &cInputPinFunc;
   UBYTE   Tmp;
 
   memset(IOMapInput.Colors, 0, sizeof(IOMapInput.Colors));
@@ -161,19 +164,20 @@ void      cInputInit(void* pHeader)
   /* Init IO map */
   for (Tmp = 0; Tmp < NO_OF_INPUTS; Tmp++)
   {
-    IOMapInput.Inputs[Tmp].SensorType         = NO_SENSOR;
-    IOMapInput.Inputs[Tmp].SensorMode         = RAWMODE;
-    IOMapInput.Inputs[Tmp].SensorRaw          = 0;
-    IOMapInput.Inputs[Tmp].SensorValue        = 0;
-    IOMapInput.Inputs[Tmp].SensorBoolean      = 0;
-    IOMapInput.Inputs[Tmp].InvalidData        = INVALID_DATA;
-    IOMapInput.Inputs[Tmp].DigiPinsDir        = 0;
-    IOMapInput.Inputs[Tmp].DigiPinsOut        = 0;
-    IOMapInput.Inputs[Tmp].CustomActiveStatus = CUSTOMINACTIVE;
-    IOMapInput.Inputs[Tmp].CustomZeroOffset   = 0;
-    IOMapInput.Inputs[Tmp].CustomPctFullScale = 0;
-    dInputRead0(Tmp, &(IOMapInput.Inputs[Tmp].DigiPinsIn));
-    dInputRead1(Tmp, &(IOMapInput.Inputs[Tmp].DigiPinsIn));
+    INPUTSTRUCT * pIn = &(IOMapInput.Inputs[Tmp]);
+    pIn->SensorType         = NO_SENSOR;
+    pIn->SensorMode         = RAWMODE;
+    pIn->SensorRaw          = 0;
+    pIn->SensorValue        = 0;
+    pIn->SensorBoolean      = 0;
+    pIn->InvalidData        = INVALID_DATA;
+    pIn->DigiPinsDir        = 0;
+    pIn->DigiPinsOut        = 0;
+    pIn->CustomActiveStatus = CUSTOMINACTIVE;
+    pIn->CustomZeroOffset   = 0;
+    pIn->CustomPctFullScale = 0;
+    dInputRead0(Tmp, &(pIn->DigiPinsIn));
+    dInputRead1(Tmp, &(pIn->DigiPinsIn));
 
     VarsInput.EdgeCnt[Tmp]       = 0;
     VarsInput.InputDebounce[Tmp] = 0;
@@ -226,7 +230,8 @@ void      cInputCtrl(void)
 
   for (Tmp = 0; Tmp < NO_OF_INPUTS; Tmp++)
   {
-    UBYTE sType = IOMapInput.Inputs[Tmp].SensorType;
+    INPUTSTRUCT * pIn = &(IOMapInput.Inputs[Tmp]);
+    UBYTE sType = pIn->SensorType;
     UBYTE oldType = VarsInput.OldSensorType[Tmp];
 
     if (sType != oldType)
@@ -248,12 +253,12 @@ void      cInputCtrl(void)
            oldType == COLOREXIT))
       {
         VarsInput.InvalidTimer[Tmp] = INVALID_RELOAD_COLOR;
-        IOMapInput.Inputs[Tmp].SensorType = COLOREXIT;
+        pIn->SensorType = COLOREXIT;
         sType = COLOREXIT;
       }
       /* Setup the pins for the new sensortype */
       cInputSetupType(Tmp, sType, oldType);
-      IOMapInput.Inputs[Tmp].InvalidData = INVALID_DATA;
+      pIn->InvalidData = INVALID_DATA;
       VarsInput.OldSensorType[Tmp]       = sType;
     }
     else
@@ -278,7 +283,7 @@ void      cInputCtrl(void)
         {
 
           /* Time elapsed - data are now valid */
-          IOMapInput.Inputs[Tmp].InvalidData &= ~INVALID_DATA;
+          pIn->InvalidData &= ~INVALID_DATA;
         }
       }
       else
@@ -286,11 +291,11 @@ void      cInputCtrl(void)
 
         /* The invalid bit could have been set by the VM due to Mode change    */
         /* but input module needs to be called once to update the values       */
-        IOMapInput.Inputs[Tmp].InvalidData &= ~INVALID_DATA;
+        pIn->InvalidData &= ~INVALID_DATA;
       }
     }
 
-    if (!(INVALID_DATA & (IOMapInput.Inputs[Tmp].InvalidData)))
+    if (!(INVALID_DATA & (pIn->InvalidData)))
     {
       cInputCalcSensorValues(Tmp);
     }
@@ -300,7 +305,8 @@ void      cInputCtrl(void)
 
 void      cInputCalcSensorValues(UBYTE No)
 {
-  UBYTE sType = IOMapInput.Inputs[No].SensorType;
+  INPUTSTRUCT * pIn = &(IOMapInput.Inputs[No]);
+  UBYTE sType = pIn->SensorType;
 
   switch(sType)
   {
@@ -319,12 +325,12 @@ void      cInputCalcSensorValues(UBYTE No)
       if (sType == CUSTOM) {
         /* Setup and read digital IO */
         cInputSetupCustomSensor(No);
-        dInputRead0(No, &(IOMapInput.Inputs[No].DigiPinsIn));
-        dInputRead1(No, &(IOMapInput.Inputs[No].DigiPinsIn));
+        dInputRead0(No, &(pIn->DigiPinsIn));
+        dInputRead1(No, &(pIn->DigiPinsIn));
       }
       
       dInputGetRawAd(&InputVal, No);
-      IOMapInput.Inputs[No].ADRaw = InputVal;
+      pIn->ADRaw = InputVal;
       
       if (sType == REFLECTION)
       {
@@ -350,27 +356,30 @@ void      cInputCalcSensorValues(UBYTE No)
       }
       else if (sType == CUSTOM)
       {
-        cInputCalcFullScale(&InputVal, IOMapInput.Inputs[No].CustomZeroOffset, IOMapInput.Inputs[No].CustomPctFullScale, FALSE);
+        cInputCalcFullScale(&InputVal, pIn->CustomZeroOffset, pIn->CustomPctFullScale, FALSE);
       }
       cInputCalcSensorValue(  InputVal,
-                            &(IOMapInput.Inputs[No].SensorRaw),
-                            &(IOMapInput.Inputs[No].SensorValue),
-                            &(IOMapInput.Inputs[No].SensorBoolean),
+                            &(pIn->SensorRaw),
+                            &(pIn->SensorValue),
+                            &(pIn->SensorBoolean),
                             &(VarsInput.InputDebounce[No]),
                             &(VarsInput.SampleCnt[No]),
                             &(VarsInput.LastAngle[No]),
                             &(VarsInput.EdgeCnt[No]),
-                            ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
-                            ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
+                            ((pIn->SensorMode) & SLOPEMASK),
+                            ((pIn->SensorMode) & MODEMASK));
 
     }
     break;
 
-    /* Tripple case intended */
+    /* Triple case intended */
     case LOWSPEED:
     case LOWSPEED_9V:
     case HIGHSPEED:
     {
+      UWORD InputVal;
+      dInputGetRawAd(&InputVal, No);
+      pIn->ADRaw = InputVal;
     }
     break;
 
@@ -380,9 +389,10 @@ void      cInputCalcSensorValues(UBYTE No)
     case COLORBLUE:
     case COLORNONE:
     {
+      COLORSTRUCT * pC = &(IOMapInput.Colors[No]);
 
       UWORD InputVal;
-      switch (IOMapInput.Colors[No].CalibrationState)
+      switch (pC->CalibrationState)
       {
         case SENSOROFF:
         {
@@ -392,7 +402,7 @@ void      cInputCalcSensorValues(UBYTE No)
 
             /* Sensor has been attached now get cal data */
             VarsInput.VarsColor[No].ColorInitState = 0;
-            (IOMapInput.Colors[No].CalibrationState) = SENSORCAL;
+            (pC->CalibrationState) = SENSORCAL;
           }
         }
         break;
@@ -404,7 +414,7 @@ void      cInputCalcSensorValues(UBYTE No)
           {
 
             /* Color sensor has been removed during calibration */
-            (IOMapInput.Colors[No].CalibrationState) = SENSOROFF;
+            (pC->CalibrationState) = SENSOROFF;
           }
 
           if (TRUE == Status)
@@ -412,30 +422,30 @@ void      cInputCalcSensorValues(UBYTE No)
 
             /* Use clock to detect errors */
             dInputSetDirInDigi0(No);
-            (IOMapInput.Colors[No].CalibrationState) = 0;
+            (pC->CalibrationState) = 0;
           }
         }
         break;
         default:
         {
-          if (dInputGetColor(No, &(IOMapInput.Inputs[No].ADRaw)))
+          if (dInputGetColor(No, &(pIn->ADRaw)))
           {
-            InputVal = IOMapInput.Inputs[No].ADRaw;
+            InputVal = pIn->ADRaw;
             cInputCalcFullScale(&InputVal, COLORSENSORBGMIN, COLORSENSORBGPCTDYN, FALSE);
             cInputCalcSensorValue(InputVal,
-                                  &(IOMapInput.Inputs[No].SensorRaw),
-                                  &(IOMapInput.Inputs[No].SensorValue),
-                                  &(IOMapInput.Inputs[No].SensorBoolean),
+                                  &(pIn->SensorRaw),
+                                  &(pIn->SensorValue),
+                                  &(pIn->SensorBoolean),
                                   &(VarsInput.InputDebounce[No]),
                                   &(VarsInput.SampleCnt[No]),
                                   &(VarsInput.LastAngle[No]),
                                   &(VarsInput.EdgeCnt[No]),
-                                  ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
-                                  ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
+                                  ((pIn->SensorMode) & SLOPEMASK),
+                                  ((pIn->SensorMode) & MODEMASK));
           }
           else
           {
-            IOMapInput.Colors[No].CalibrationState = SENSOROFF;
+            pC->CalibrationState = SENSOROFF;
           }
         }
         break;
@@ -444,7 +454,8 @@ void      cInputCalcSensorValues(UBYTE No)
     break;
     case COLORFULL:
     {
-      switch (IOMapInput.Colors[No].CalibrationState)
+      COLORSTRUCT * pC = &(IOMapInput.Colors[No]);
+      switch (pC->CalibrationState)
       {
         case SENSOROFF:
         {
@@ -454,7 +465,7 @@ void      cInputCalcSensorValues(UBYTE No)
 
             /* Sensor has been attached now get cal data */
             VarsInput.VarsColor[No].ColorInitState = 0;
-            (IOMapInput.Colors[No].CalibrationState) = SENSORCAL;
+            (pC->CalibrationState) = SENSORCAL;
           }
         }
         break;
@@ -466,7 +477,7 @@ void      cInputCalcSensorValues(UBYTE No)
           {
 
             /* Color sensor has been removed during calibration */
-            (IOMapInput.Colors[No].CalibrationState) = SENSOROFF;
+            (pC->CalibrationState) = SENSOROFF;
             VarsInput.ColorStatus &= ~(0x01<<No);
           }
 
@@ -474,7 +485,7 @@ void      cInputCalcSensorValues(UBYTE No)
           {
 
             /* Initialization finished with success recalc the values*/
-            (IOMapInput.Colors[No].CalibrationState) = 0;
+            (pC->CalibrationState) = 0;
 
             /* Calculate Calibration factor */
             VarsInput.ColorStatus |= (0x01<<No);
@@ -492,10 +503,6 @@ void      cInputCalcSensorValues(UBYTE No)
             UWORD NewSensorVals[NO_OF_COLORS];
             UBYTE ColorCount;
 
-            COLORSTRUCT *pC;
-
-            pC = &(IOMapInput.Colors[No]);
-
             /* Check if sensor is deteched */
             if (dInputCheckColorStatus(No))
             {
@@ -508,28 +515,28 @@ void      cInputCalcSensorValues(UBYTE No)
 
                 /* Calculate color sensor values */
                 cInputCalcSensorValue(NewSensorVals[ColorCount],
-                                      &(IOMapInput.Colors[No].SensorRaw[ColorCount]),
-                                      &(IOMapInput.Colors[No].SensorValue[ColorCount]),
-                                      &(IOMapInput.Colors[No].Boolean[ColorCount]),
+                                      &(pC->SensorRaw[ColorCount]),
+                                      &(pC->SensorValue[ColorCount]),
+                                      &(pC->Boolean[ColorCount]),
                                       &(VarsInput.VarsColor[No].ColorInputDebounce[ColorCount]),
                                       &(VarsInput.VarsColor[No].ColorSampleCnt[ColorCount]),
                                       &(VarsInput.VarsColor[No].ColorLastAngle[ColorCount]),
                                       &(VarsInput.VarsColor[No].ColorEdgeCnt[ColorCount]),
-                                      ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
-                                      ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
+                                      ((pIn->SensorMode) & SLOPEMASK),
+                                      ((pIn->SensorMode) & MODEMASK));
               }
 
               /* Calculate background sensor values */
               cInputCalcSensorValue(NewSensorVals[BLANK],
-                                    &(IOMapInput.Colors[No].SensorRaw[BLANK]),
-                                    &(IOMapInput.Colors[No].SensorValue[BLANK]),
-                                    &(IOMapInput.Colors[No].Boolean[BLANK]),
+                                    &(pC->SensorRaw[BLANK]),
+                                    &(pC->SensorValue[BLANK]),
+                                    &(pC->Boolean[BLANK]),
                                     &(VarsInput.VarsColor[No].ColorInputDebounce[BLANK]),
                                     &(VarsInput.VarsColor[No].ColorSampleCnt[BLANK]),
                                     &(VarsInput.VarsColor[No].ColorLastAngle[BLANK]),
                                     &(VarsInput.VarsColor[No].ColorEdgeCnt[BLANK]),
-                                    ((IOMapInput.Inputs[No].SensorMode) & SLOPEMASK),
-                                    ((IOMapInput.Inputs[No].SensorMode) & MODEMASK));
+                                    ((pIn->SensorMode) & SLOPEMASK),
+                                    ((pIn->SensorMode) & MODEMASK));
 
               /* Color Sensor values has been calculated -                */
               /* now calculate the color and put it in Sensor value       */
@@ -541,14 +548,14 @@ void      cInputCalcSensorValues(UBYTE No)
                 if (((pC->SensorRaw[RED])   < 65) ||
                     (((pC->SensorRaw[BLANK]) < 40) && ((pC->SensorRaw[RED])  < 110)))
                 {
-                  IOMapInput.Inputs[No].SensorValue = BLACKCOLOR;
+                  pIn->SensorValue = BLACKCOLOR;
                 }
                 else
                 {
                   if (((((pC->SensorRaw[BLUE]) >> 2)  + ((pC->SensorRaw[BLUE]) >> 3) + (pC->SensorRaw[BLUE])) < (pC->SensorRaw[GREEN])) &&
                       ((((pC->SensorRaw[GREEN]) << 1)) > (pC->SensorRaw[RED])))
                   {
-                    IOMapInput.Inputs[No].SensorValue = YELLOWCOLOR;
+                    pIn->SensorValue = YELLOWCOLOR;
                   }
                   else
                   {
@@ -556,7 +563,7 @@ void      cInputCalcSensorValues(UBYTE No)
                     if ((((pC->SensorRaw[GREEN]) << 1) - ((pC->SensorRaw[GREEN]) >> 2)) < (pC->SensorRaw[RED]))
                     {
 
-                      IOMapInput.Inputs[No].SensorValue = REDCOLOR;
+                      pIn->SensorValue = REDCOLOR;
                     }
                     else
                     {
@@ -565,11 +572,11 @@ void      cInputCalcSensorValues(UBYTE No)
                           ((pC->SensorRaw[GREEN]) < 70)) ||
                          (((pC->SensorRaw[BLANK]) < 140) && ((pC->SensorRaw[RED]) < 140)))
                       {
-                        IOMapInput.Inputs[No].SensorValue = BLACKCOLOR;
+                        pIn->SensorValue = BLACKCOLOR;
                       }
                       else
                       {
-                        IOMapInput.Inputs[No].SensorValue = WHITECOLOR;
+                        pIn->SensorValue = WHITECOLOR;
                       }
                     }
                   }
@@ -587,20 +594,20 @@ void      cInputCalcSensorValues(UBYTE No)
                   if (((pC->SensorRaw[GREEN])  < 40) ||
                       (((pC->SensorRaw[BLANK]) < 30) && ((pC->SensorRaw[GREEN])  < 70)))
                   {
-                    IOMapInput.Inputs[No].SensorValue = BLACKCOLOR;
+                    pIn->SensorValue = BLACKCOLOR;
                   }
                   else
                   {
                     if ((((pC->SensorRaw[BLUE]) << 1)) < (pC->SensorRaw[RED]))
                     {
-                      IOMapInput.Inputs[No].SensorValue = YELLOWCOLOR;
+                      pIn->SensorValue = YELLOWCOLOR;
                     }
                     else
                     {
                       if ((((pC->SensorRaw[RED]) + ((pC->SensorRaw[RED])>>2)) < (pC->SensorRaw[GREEN])) ||
                           (((pC->SensorRaw[BLUE]) + ((pC->SensorRaw[BLUE])>>2)) < (pC->SensorRaw[GREEN])))
                       {
-                        IOMapInput.Inputs[No].SensorValue = GREENCOLOR;
+                        pIn->SensorValue = GREENCOLOR;
                       }
                       else
                       {
@@ -608,11 +615,11 @@ void      cInputCalcSensorValues(UBYTE No)
                             ((pC->SensorRaw[BLUE]) < 70)) ||
                             (((pC->SensorRaw[BLANK]) < 140) && ((pC->SensorRaw[GREEN]) < 140)))
                         {
-                          IOMapInput.Inputs[No].SensorValue = BLACKCOLOR;
+                          pIn->SensorValue = BLACKCOLOR;
                         }
                         else
                         {
-                          IOMapInput.Inputs[No].SensorValue = WHITECOLOR;
+                          pIn->SensorValue = WHITECOLOR;
                         }
                       }
                     }
@@ -627,7 +634,7 @@ void      cInputCalcSensorValues(UBYTE No)
                   if (((pC->SensorRaw[BLUE])   < 48) ||
                       (((pC->SensorRaw[BLANK]) < 25) && ((pC->SensorRaw[BLUE])  < 85)))
                   {
-                    IOMapInput.Inputs[No].SensorValue = BLACKCOLOR;
+                    pIn->SensorValue = BLACKCOLOR;
                   }
                   else
                   {
@@ -637,7 +644,7 @@ void      cInputCalcSensorValues(UBYTE No)
                         (((((pC->SensorRaw[RED])   * 58) >> 5) < (pC->SensorRaw[BLUE])) ||
                          ((((pC->SensorRaw[GREEN]) * 58) >> 5) < (pC->SensorRaw[BLUE]))))
                     {
-                      IOMapInput.Inputs[No].SensorValue = BLUECOLOR;
+                      pIn->SensorValue = BLUECOLOR;
                     }
                     else
                     {
@@ -647,18 +654,18 @@ void      cInputCalcSensorValues(UBYTE No)
                           ((pC->SensorRaw[GREEN]) < 60)) ||
                          (((pC->SensorRaw[BLANK]) < 110) && ((pC->SensorRaw[BLUE]) < 120)))
                       {
-                        IOMapInput.Inputs[No].SensorValue = BLACKCOLOR;
+                        pIn->SensorValue = BLACKCOLOR;
                       }
                       else
                       {
                         if ((((pC->SensorRaw[RED])  + ((pC->SensorRaw[RED])   >> 3)) < (pC->SensorRaw[BLUE])) ||
                             (((pC->SensorRaw[GREEN]) + ((pC->SensorRaw[GREEN]) >> 3)) < (pC->SensorRaw[BLUE])))
                         {
-                          IOMapInput.Inputs[No].SensorValue = BLUECOLOR;
+                          pIn->SensorValue = BLUECOLOR;
                         }
                         else
                         {
-                          IOMapInput.Inputs[No].SensorValue = WHITECOLOR;
+                          pIn->SensorValue = WHITECOLOR;
                         }
                       }
                     }
@@ -668,7 +675,7 @@ void      cInputCalcSensorValues(UBYTE No)
             }
             else
             {
-              IOMapInput.Colors[No].CalibrationState = SENSOROFF;
+              pC->CalibrationState = SENSOROFF;
               VarsInput.ColorStatus &= ~(0x01<<No);
             }
           }
@@ -684,7 +691,7 @@ void      cInputCalcSensorValues(UBYTE No)
       VarsInput.ColorStatus &= ~(0x01<<No);
       if (FALSE == cInputInitColorSensor(No, &Status))
       {
-        IOMapInput.Inputs[No].SensorType = NO_SENSOR;
+        pIn->SensorType = NO_SENSOR;
       }
 
       if (TRUE == Status)
@@ -692,7 +699,7 @@ void      cInputCalcSensorValues(UBYTE No)
 
         /* Initialization finished with success recalc the values*/
         (IOMapInput.Colors[No].CalibrationState) = 0;
-        IOMapInput.Inputs[No].SensorType = NO_SENSOR;
+        pIn->SensorType = NO_SENSOR;
         VarsInput.OldSensorType[No]      = NO_SENSOR;
       }
     }
@@ -1363,3 +1370,63 @@ void      cInputExit(void)
   dInputExit();
 }
 
+UBYTE cInputPinFunc(UBYTE Cmd, UBYTE Port, UBYTE Pin, UBYTE *pData)
+{
+  UBYTE ReturnState = NO_ERR;
+  if (IOMapInput.Inputs[Port].SensorType != CUSTOM)
+    return (UBYTE)ERR_INVALID_PORT;
+  
+  UBYTE WaitUSEC = (Cmd&0xFC)>>2;
+  UBYTE Dir = (Pin&0xFC)>>2;
+  Pin &= 0x03;
+
+  switch(Cmd&0x03)
+  {
+    case PINDIR:
+    {
+      if (Pin & DIGI0)
+      {
+        if (Dir)
+          dInputSetDirInDigi0(Port);
+        else
+          dInputSetDirOutDigi0(Port);
+      }
+      if (Pin & DIGI1)
+      {
+        if (Dir)
+          dInputSetDirInDigi1(Port);
+        else
+          dInputSetDirOutDigi1(Port);
+      }
+    }
+    break;
+    case SETPIN:
+    {
+      if (Pin & DIGI0)
+        dInputSetDigi0(Port);
+      if (Pin & DIGI1)
+        dInputSetDigi1(Port);
+    }
+    break;
+    case CLEARPIN:
+    {
+      if (Pin & DIGI0)
+        dInputClearDigi0(Port);
+      if (Pin & DIGI1)
+        dInputClearDigi1(Port);
+    }
+    break;
+    case READPIN:
+    {
+      if (Pin & DIGI0)
+        dInputRead0(Port, pData);
+      if (Pin & DIGI1)
+        dInputRead1(Port, pData);
+    }
+    break;
+  }
+  if (WaitUSEC)
+    dInputWaitUS(WaitUSEC);
+  
+  return (ReturnState);
+}

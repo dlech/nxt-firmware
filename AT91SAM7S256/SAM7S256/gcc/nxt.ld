@@ -51,6 +51,13 @@ SECTIONS
 		PROVIDE(__dtors_end__ = .);
 	} >CODE
 
+	__exidx_start = . ;
+	.ARM.exidx :
+	{
+		*(.ARM.exidx* .gnu.linkonce.armexidx.*)
+	} >CODE
+	__exidx_end = . ;
+
 	. = ALIGN(4);
 
 	_etext = . ;

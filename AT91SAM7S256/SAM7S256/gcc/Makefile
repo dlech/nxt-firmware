@@ -14,7 +14,7 @@ THUMB_SOURCES = c_button.c c_cmd.c c_comm.c c_display.c c_input.c c_ioctrl.c \
 		d_ioctrl.c d_loader.c d_lowspeed.c d_output.c d_sound.c \
 		d_timer.c d_usb.c \
 		m_sched.c \
-		errno.c sbrk.c strtod.c sscanf.c \
+		abort.c errno.c sbrk.c strtod.c sscanf.c \
 		Cstartup_SAM7.c
 
 ASM_ARM_SOURCE = Cstartup.S

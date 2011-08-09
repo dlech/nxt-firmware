@@ -36,8 +36,8 @@ OPTIMIZE = -Os -fno-strict-aliasing \
 	   -ffunction-sections -fdata-sections
 WARNINGS = -Wall -W -Wundef -Wno-unused -Wno-format
 THUMB_INTERWORK = -mthumb-interwork
-CFLAGS = -mcpu=$(MCU) $(THUMB) $(THUMB_INTERWORK) $(WARNINGS) $(OPTIMIZE)
-ASFLAGS = -mcpu=$(MCU) $(THUMB) $(THUMB_INTERWORK)
+CFLAGS = -g -mcpu=$(MCU) $(THUMB) $(THUMB_INTERWORK) $(WARNINGS) $(OPTIMIZE)
+ASFLAGS = -g -mcpu=$(MCU) $(THUMB) $(THUMB_INTERWORK)
 CPPFLAGS = $(INCLUDES) $(DEFINES) -MMD
 LDSCRIPT = nxt.ld
 LDFLAGS = -nostdlib -T $(LDSCRIPT) -Wl,--gc-sections

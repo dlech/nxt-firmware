@@ -1539,7 +1539,7 @@ void cCommReceivedHiSpeedData(void)
       {
         IOMapComm.HsInBuf.Buf[IOMapComm.HsInBuf.InPtr] = VarsComm.HsModuleInBuf.Buf[Tmp];
         IOMapComm.HsInBuf.InPtr++;
-        if (IOMapComm.HsInBuf.InPtr > (SIZE_OF_HSBUF - 1))
+        if (IOMapComm.HsInBuf.InPtr >= SIZE_OF_HSBUF)
         {
           IOMapComm.HsInBuf.InPtr = 0;
         }

@@ -3760,9 +3760,14 @@ void cCmdSetValFlt(void * pVal, TYPE_CODE TypeCode, float NewVal)
     switch (TypeCode)
     {
       case TC_ULONG:
+      {
+        *(ULONG*)pVal = (ULONG)NewVal;
+      }
+      break;
+
       case TC_SLONG:
       {
-        *(ULONG*)pVal = NewVal;
+        *(SLONG*)pVal = (SLONG)NewVal;
       }
       break;
 
@@ -9582,6 +9587,7 @@ NXT_STATUS cCmdWrapCommHSCheckStatus(UBYTE * ArgV[])
 //cCmdWrapCommHSWrite
 //ArgV[0]: (return) Status byte, SBYTE
 //ArgV[1]: Buffer
+//ArgV[2]: BufferLength -- not used for Write
 NXT_STATUS cCmdWrapCommHSWrite(UBYTE * ArgV[])
 {
   SBYTE * pReturnVal = (SBYTE*)(ArgV[0]);

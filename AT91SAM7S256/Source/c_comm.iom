@@ -111,7 +111,7 @@ enum
 #define HS_MODE_UART_RS232 0x1
 #define HS_MODE_UART_RS485 0x0
 
-#define HS_MODE_MASK 0xFFF0
+#define HS_MODE_MASK 0x3EC0
 #define HS_UART_MASK 0x000F
 
 // constants referring to HsMode (number of bits)

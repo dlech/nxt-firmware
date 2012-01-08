@@ -256,6 +256,8 @@ void      cCommCtrl(void)
     {
       case HS_INITIALISE:
       {
+        // 0 == NORMAL mode (aka RS232 mode)
+        // 1 == RS485 mode
         dHiSpeedSetupUart(IOMapComm.HsSpeed, 
                           IOMapComm.HsMode & HS_MODE_MASK, 
                           IOMapComm.HsMode & HS_UART_MASK ? 0 : 1);

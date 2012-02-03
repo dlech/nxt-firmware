@@ -1,0 +1,29 @@
+#!/bin/sh
+# If using Apple's python, use the following to enable 32-bit python
+# arch -i386 does not work reliably except with specific python versions
+# python2.6 and python2.7 is known to work with 'arch -i386'
+#
+# Apple recommends the use of the following Environment Variable to control
+# 32-bit vs. 64-bit python selection
+# export VERSIONER_PYTHON_PREFER_32_BIT="yes"
+
+DARWIN=`uname`
+PYTHON=python
+PYTHONVER=`$PYTHON --version`
+
+GDBSERVER=../armdebug/Host/nxt-gdb-server.py
+if [ $DARWIN == "Darwin" ]; then
+	echo "$PYTHONVER Running on Mac OSX Platform!"
+	EXP="export VERSIONER_PYTHON_PREFER_32_BIT=yes"
+	ARCH="arch -i386"
+else
+	echo "$PYTHONVER Running on Default Platform!"
+	EXP=
+	ARCH=
+fi
+# Debugging Info
+# echo "dirname:" `dirname $0`
+# echo "basename:" `basename $0`
+cd `dirname $0`
+#echo $EXP; $ARCH $PYTHON $GDBSERVER $*
+$EXP; $ARCH $PYTHON $GDBSERVER $*

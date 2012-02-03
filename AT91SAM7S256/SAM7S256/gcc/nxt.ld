@@ -87,6 +87,30 @@ SECTIONS
 	__STARTOFUSERFLASH_FROM_LINKER =
 		ALIGN (LOADADDR (.data) + SIZEOF (.data), 0x100);
 
+	/*
+	 * The various debugger stacks.
+	 */
+	.stack  : ALIGN(8) {
+		/* abort stack */
+		__abort_stack_bottom__ = . ;
+		. += 0x80; /* 128 byte abort mode stack. */
+		__abort_stack__ = . ;
+		__abort_stack_top__ = . ;
+
+		/* debugger state */
+		__debugger_stack_bottom__ = . ;
+		. += 0x48;	/* 16 user mode registers + SPSR + UNDEF Next Instruction Address */
+		__debugger_stack__ = . ;
+		__debugger_stack_top__ = . ;
+
+		/* breakpoints */
+		__breakpoints_start__ = . ;
+		. += 0x40;	/* Single Stepping Breakpoint + 7 Breakpoints */
+		__breakpoints_end__ = . ;
+	} > DATA
+
+	__breakpoints_num__ = (__breakpoints_end__ - __breakpoints_start__) / 8;
+
 	/* .bss section which is used for uninitialized data */
 	.bss (NOLOAD) :
 	{

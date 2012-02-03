@@ -1,0 +1,41 @@
+# Ignore tag
+MASTER-REPO_DO-NOT-DELETE
+*.lst
+*.objdump
+.DS_Store
+
+# Generally annoying things.
+*.[oa]
+*.pyc
+*.bin
+*.elf
+*.rxe
+*.map
+*.orig
+*.log
+*~
+*.swp
+\#*\#
+.\#*
+
+# Python distutils creates this when building.
+pynxt/build/
+
+# XCode build stuff
+FantomModule/build/
+*mode1v3
+*pbxuser
+
+# SCons cruft
+.sconsign.dblite
+.sconf_temp
+build_flags.py
+
+# Precommit hooks drop a commit.msg file if they fail.
+commit.msg
+
+# The option-cache
+scons.options
+
+# pyfantom related
+pyfantom.py

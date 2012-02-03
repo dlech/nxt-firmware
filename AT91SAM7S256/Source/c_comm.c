@@ -26,6 +26,9 @@
 #include  "d_bt.h"
 #include  <string.h>
 #include  <ctype.h>
+#ifdef __ARMDEBUG__
+#include  "debug_stub.h"
+#endif
 
 enum
 {
@@ -421,6 +424,17 @@ UWORD     cCommInterprete(UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pLength, UBYTE C
         *pLength = 0;
       }
       break;
+
+#ifdef __ARMDEBUG__
+      case DEBUG_CMD:
+      {
+        ReturnStatus = cCommHandleDebug(&(pInBuf[0]), CmdBit, MsgLength);	/* Pass everything (incl. message command byte) to function */
+        /* Check that Debug Command does not expect reply */
+        ReturnStatus = (0 == ((pInBuf[0]) & NO_REPLY_BIT));
+        *pLength = 0;
+      }
+      break;
+#endif
 
       default:
       {

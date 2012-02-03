@@ -136,16 +136,22 @@ FIQ_Handler_Entry:
 /* end of fiqhandler */
 
 Reset_Addr:       .word     InitReset
-Undef_Addr:       .word     Undef_Handler
+Undef_Addr:       .word     undef_handler		/* BKPT instruction trap */
 SWI_Addr:         .word     SWI_Handler
 /*SWI_Addr:         .word     SoftwareInterruptASM*/ /*in swi_handler.S */
-PAbt_Addr:        .word     PAbt_Handler
-DAbt_Addr:        .word     DAbt_Handler
+PAbt_Addr:        .word     prefetch_abort_handler
+DAbt_Addr:        .word     data_abort_handler
 IRQ_Addr:         .word     IRQ_Handler_Entry
-  
+
+        .global default_undef_handler
+default_undef_handler:
 Undef_Handler:  B       Undef_Handler
 SWI_Handler:    B       SWI_Handler
+        .global default_prefetch_abort_handler
+default_prefetch_abort_handler:
 PAbt_Handler:   B       PAbt_Handler
+        .global default_data_abort_handler
+default_data_abort_handler:
 DAbt_Handler:   B       DAbt_Handler
 
 
@@ -255,6 +261,7 @@ already_remapped:
           .EQU		ARM_MODE_FIQ,       0x11
           .EQU		ARM_MODE_IRQ,       0x12
           .EQU		ARM_MODE_SVC,       0x13
+          .EQU		ARM_MODE_ABT,       0x17
 
           .EQU		I_BIT,              0x80
           .EQU		F_BIT,              0x40
@@ -263,6 +270,10 @@ already_remapped:
 //*- Setup the stack for each mode
 //*-------------------------------*/
                 mov     r0, sp /* see (**) */
+
+/*- Set up Abort Mode Stack for Debugger*/
+                msr     CPSR_c, #ARM_MODE_ABT | I_BIT | F_BIT
+                ldr     sp, =__abort_stack_top__
 
 /*- Set up Fast Interrupt Mode and set FIQ Mode Stack*/
                 msr     CPSR_c, #ARM_MODE_FIQ | I_BIT | F_BIT

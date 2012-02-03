@@ -1,0 +1,16 @@
+Introduction
+============
+armdebug is an ARM Assembly Language Instruction debugger for the NXT.
+It is intended for embedding in the NXT firmware (e.g. NXT Improved Firmware),
+as well as for use with NxOS.
+
+Contents
+========
+The various folders contents are as follows:
+Debugger: GDB client driver for NXT (need to be embedded in firmware code)
+Host:     GDB Server for PC Host
+
+LICENSES
+========
+The armdebug code is dual-licensed. Please see COPYING for more details.
+Other projects included in this repository have their respective licenses.

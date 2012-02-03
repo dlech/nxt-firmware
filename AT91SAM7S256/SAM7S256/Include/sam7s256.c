@@ -11,6 +11,9 @@
 //
 // Platform        C
 //
+#ifdef __ARMDEBUG__
+#include "debug_stub.h"
+#endif
 
 void main(void)
 {
@@ -18,6 +21,9 @@ void main(void)
   {
     HARDWAREInit;
     mSchedInit();
+#ifdef __ARMDEBUG__
+    dbg__bkpt_init();
+#endif
     while(TRUE == mSchedCtrl())
     {
       OSWatchdogWrite;

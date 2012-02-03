@@ -1,0 +1,21 @@
+The nxt-gdb-server.py script is initially developed by Nicolas Schodet.
+
+It depends on the following libraries:
+ - nxt-python v2.1.x http://code.google.com/p/nxt-python/
+ - pyusb v0.4x http://pyusb.wiki.sourceforge.net
+ - libusb v0.1.x http://libusb.org/
+
+Currently, it does not work with libusb v1.x, on Mac OSX, it causes segfaults.
+ 
+ Installation
+ ============
+ 
+ There is no specific installation requirements (at this moment). Just run the python script
+ in a terminal window.
+ 
+ Usage
+ =====
+ 
+ 1. Connect the USB cable from the PC Host to the NXT
+ 2. start nxt-gdb-server.py
+ 3. start arm-none-eabi-gdb, configured as remote for port 2828 (default)

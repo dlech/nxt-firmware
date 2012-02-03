@@ -1,0 +1,43 @@
+# This file contains hand coded GDB commands for testing the GDB Server <-> NXT interface
+
+# Display all Registers
+$g#67
+
+# Display R0
+$p0#A0
+
+# Display R1
+$p1#A1
+
+# Display PC
+$pF#B6
+
+# Display FPSCR (dummy)
+$p18#D9
+
+# Display User CPSR
+$p19#DA
+
+# Query Status
+$?#3F
+
+# Query Thread
+$qC#B4
+
+# Set R1 to 0xAA
+$P1=000000AA#60
+
+# Read 16 bytes of Memory from 0x00201d74 (padding bytes after debug_mode + 4 bytes of debug_InUSBBuf)
+$m00201D74,0010#FC
+
+# Write 2 bytes of memory to 0x00201d74 (padding bytes after debug_mode)
+$M00201D74,0002:AA55#03
+
+# Write 2 bytes of memory to 0x00201d74 (padding bytes after debug_mode)
+$M00201D74,0002:9966#F5
+
+# GDB Read Instruction at Address (PC)
++$m1001de,4#58
+
+# Continue Execution
+$c#63

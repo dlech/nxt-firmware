@@ -93,19 +93,19 @@ SECTIONS
 	.stack  : ALIGN(8) {
 		/* abort stack */
 		__abort_stack_bottom__ = . ;
-		. += 0x80; /* 128 byte abort mode stack. */
+		KEEP(*(.stack.abort))
 		__abort_stack__ = . ;
 		__abort_stack_top__ = . ;
 
 		/* debugger state */
 		__debugger_stack_bottom__ = . ;
-		. += 0x48;	/* 16 user mode registers + SPSR + UNDEF Next Instruction Address */
+		KEEP(*(.stack.debugger))
 		__debugger_stack__ = . ;
 		__debugger_stack_top__ = . ;
 
 		/* breakpoints */
 		__breakpoints_start__ = . ;
-		. += 0x40;	/* Single Stepping Breakpoint + 7 Breakpoints */
+		KEEP(*(.breakpoints))
 		__breakpoints_end__ = . ;
 	} > DATA
 

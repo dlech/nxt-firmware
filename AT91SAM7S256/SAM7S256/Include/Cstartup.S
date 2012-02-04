@@ -460,5 +460,18 @@ AT91F_Spurious_handler:
         .size   AT91F_Spurious_handler, . - AT91F_Spurious_handler
         .endfunc
 
+/*------------------------------------------------------------------------------
+//*- Various debugger stacks.
+//*-------------------------------*/
+
+#ifdef ARMDEBUG
+.section .stack.abort, "aw", %nobits
+        .space 0x80; /* 128 byte abort mode stack. */
+.section .stack.debugger, "aw", %nobits
+        .space 0x48; /* 16 user mode registers + SPSR + UNDEF Next Instruction Address */
+.section .breakpoints, "aw", %nobits
+        .space 0x40; /* Single Stepping Breakpoint + 7 Breakpoints */
+#endif
+
         .end
 

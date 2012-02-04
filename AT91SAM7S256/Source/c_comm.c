@@ -26,7 +26,7 @@
 #include  "d_bt.h"
 #include  <string.h>
 #include  <ctype.h>
-#ifdef __ARMDEBUG__
+#ifdef ARMDEBUG
 #include  "debug_stub.h"
 #endif
 
@@ -425,7 +425,7 @@ UWORD     cCommInterprete(UBYTE *pInBuf, UBYTE *pOutBuf, UBYTE *pLength, UBYTE C
       }
       break;
 
-#ifdef __ARMDEBUG__
+#ifdef ARMDEBUG
       case DEBUG_CMD:
       {
         ReturnStatus = cCommHandleDebug(&(pInBuf[0]), CmdBit, MsgLength);	/* Pass everything (incl. message command byte) to function */

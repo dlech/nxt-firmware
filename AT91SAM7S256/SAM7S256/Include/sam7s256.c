@@ -11,7 +11,7 @@
 //
 // Platform        C
 //
-#ifdef __ARMDEBUG__
+#ifdef ARMDEBUG
 #include "debug_stub.h"
 #endif
 
@@ -21,7 +21,7 @@ void main(void)
   {
     HARDWAREInit;
     mSchedInit();
-#ifdef __ARMDEBUG__
+#ifdef ARMDEBUG
     dbg__bkpt_init();
 #endif
     while(TRUE == mSchedCtrl())

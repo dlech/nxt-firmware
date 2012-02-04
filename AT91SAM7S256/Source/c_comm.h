@@ -67,7 +67,7 @@ enum
   DIRECT_CMD    = 0x00,
   SYSTEM_CMD    = 0x01,
   REPLY_CMD     = 0x02,
-#ifdef __ARMDEBUG__
+#ifdef ARMDEBUG
   DEBUG_CMD     = 0x0d,
 #endif
   NO_REPLY_BIT  = 0x80

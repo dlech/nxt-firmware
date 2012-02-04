@@ -136,11 +136,20 @@ FIQ_Handler_Entry:
 /* end of fiqhandler */
 
 Reset_Addr:       .word     InitReset
+#ifdef ARMDEBUG
 Undef_Addr:       .word     undef_handler		/* BKPT instruction trap */
+#else
+Undef_Addr:       .word     Undef_Handler
+#endif
 SWI_Addr:         .word     SWI_Handler
 /*SWI_Addr:         .word     SoftwareInterruptASM*/ /*in swi_handler.S */
+#ifdef ARMDEBUG
 PAbt_Addr:        .word     prefetch_abort_handler
 DAbt_Addr:        .word     data_abort_handler
+#else
+PAbt_Addr:        .word     PAbt_Handler
+DAbt_Addr:        .word     DAbt_Handler
+#endif
 IRQ_Addr:         .word     IRQ_Handler_Entry
 
         .global default_undef_handler
@@ -271,9 +280,11 @@ already_remapped:
 //*-------------------------------*/
                 mov     r0, sp /* see (**) */
 
+#ifdef ARMDEBUG
 /*- Set up Abort Mode Stack for Debugger*/
                 msr     CPSR_c, #ARM_MODE_ABT | I_BIT | F_BIT
                 ldr     sp, =__abort_stack_top__
+#endif
 
 /*- Set up Fast Interrupt Mode and set FIQ Mode Stack*/
                 msr     CPSR_c, #ARM_MODE_FIQ | I_BIT | F_BIT

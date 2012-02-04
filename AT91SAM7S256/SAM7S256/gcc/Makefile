@@ -8,6 +8,9 @@ CUSTOM_FIRMWAREVERSION = $(GIT_VERSION)
 
 TARGET = nxt_firmware
 
+# Set to 'y' to enable embedded debuger.
+ARMDEBUG = n
+
 ARM_SOURCES =
 THUMB_SOURCES = c_button.c c_cmd.c c_comm.c c_display.c c_input.c c_ioctrl.c \
 		c_loader.c c_lowspeed.c c_output.c c_sound.c c_ui.c \
@@ -18,23 +21,21 @@ THUMB_SOURCES = c_button.c c_cmd.c c_comm.c c_display.c c_input.c c_ioctrl.c \
 		abort.c errno.c sbrk.c strtod.c sscanf.c \
 		Cstartup_SAM7.c
 
-ASM_ARM_SOURCE = Cstartup.S abort_handler.S undef_handler.S debug_hexutils.S \
-		debug_stub.S debug_comm.S debug_opcodes.S debug_runlooptasks.S
+ASM_ARM_SOURCE = Cstartup.S
 ASM_THUMB_SOURCE =
 
 vpath %.c $(SRCDIR)
 vpath %.c $(CPUINCDIR)
 vpath %.c lib
-vpath %.S $(CPUINCDIR) $(DBGDIR)
+vpath %.S $(CPUINCDIR)
 
-INCLUDES = -I../../armdebug/Debugger
+INCLUDES =
 
 MCU = arm7tdmi
-DEBUG_DEFINES = -D__ARMDEBUG__
 STARTOFUSERFLASH_DEFINES = -DSTARTOFUSERFLASH_FROM_LINKER=1
 VERSION_DEFINES = -DCUSTOM_FIRMWAREVERSION=\"$(CUSTOM_FIRMWAREVERSION)\"
 DEFINES = -DPROTOTYPE_PCB_4 -DNEW_MENU -DROM_RUN -DVECTORS_IN_RAM \
-	  $(STARTOFUSERFLASH_DEFINES) $(VERSION_DEFINES) $(DEBUG_DEFINES)
+	  $(STARTOFUSERFLASH_DEFINES) $(VERSION_DEFINES)
 OPTIMIZE = -Os -fno-strict-aliasing \
 	   -ffunction-sections -fdata-sections
 WARNINGS = -Wall -W -Wundef -Wno-unused -Wno-format
@@ -45,6 +46,15 @@ CPPFLAGS = $(INCLUDES) $(DEFINES) -MMD
 LDSCRIPT = nxt.ld
 LDFLAGS = -nostdlib -T $(LDSCRIPT) -Wl,--gc-sections
 LDLIBS = -lc -lm -lgcc
+
+ifeq ($(ARMDEBUG),y)
+ASM_ARM_SOURCE += abort_handler.S undef_handler.S debug_hexutils.S \
+                  debug_stub.S debug_comm.S debug_opcodes.S \
+                  debug_runlooptasks.S
+vpath %.S $(DBGDIR)
+DEFINES += -DARMDEBUG
+INCLUDES += -I../../armdebug/Debugger
+endif
 
 CROSS_COMPILE = arm-none-eabi-
 CC = $(CROSS_COMPILE)gcc

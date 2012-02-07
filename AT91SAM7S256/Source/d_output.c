@@ -126,8 +126,6 @@ void      dOutputInit(void)
   ENABLECaptureMotorA;
   ENABLECaptureMotorB;
   ENABLECaptureMotorC;
-  
-  RegulationTime = REGULATION_TIME;
 
   for (Temp = 0; Temp < 3; Temp++)
   {

@@ -1329,7 +1329,7 @@ void      cUiCtrl(void)
 
       pMapDisplay->EraseMask                          =  SCREEN_BIT(SCREEN_BACKGROUND);
 #ifndef STRIPPED
-      pMapDisplay->pBitmaps[BITMAP_1]                 =  (BMPMAP*)Intro[VarsUi.Pointer];
+      pMapDisplay->pBitmaps[BITMAP_1]                 =  CONFIG_INTRO ? (BMPMAP*)Intro[VarsUi.Pointer] : RCXintro_16;
 #endif
       pMapDisplay->UpdateMask                         =  BITMAP_BIT(BITMAP_1);
       pMapDisplay->Flags                             |=  DISPLAY_ON;
@@ -1442,6 +1442,7 @@ void      cUiCtrl(void)
     }
     break;
 #endif /* CONFIG_INTRO */
+
 #ifndef STRIPPED
     case INIT_WAIT :
     {

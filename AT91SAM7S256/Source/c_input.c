@@ -171,7 +171,6 @@ void      cInputCtrl(void)
   for (Tmp = 0; Tmp < NO_OF_INPUTS; Tmp++)
   {
     UBYTE sType = IOMapInput.Inputs[Tmp].SensorType;
-    UBYTE *pType = &IOMapInput.Inputs[Tmp].SensorType;
     UBYTE oldType = VarsInput.OldSensorType[Tmp];
 
     if (sType != oldType)
@@ -197,8 +196,7 @@ void      cInputCtrl(void)
         sType = COLOREXIT;
       }
       /* Setup the pins for the new sensortype */
-      cInputSetupType(Tmp, pType, oldType);
-      sType = *pType;
+      cInputSetupType(Tmp, sType, oldType);
       IOMapInput.Inputs[Tmp].InvalidData = INVALID_DATA;
       VarsInput.OldSensorType[Tmp]       = sType;
     }

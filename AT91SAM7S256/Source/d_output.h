@@ -99,6 +99,5 @@ void      dOutputMotorIdleControl(UBYTE MotorNr);
 void      dOutputSyncTachoLimitControl(UBYTE MotorNr);
 void      dOutputMotorSyncStatus(UBYTE MotorNr, UBYTE *SyncMotorOne, UBYTE *SyncMotorTwo);
 void      dOutputResetSyncMotors(UBYTE MotorNr);
-void      dOutputUpdateRegulationTime(UBYTE rt);
 
 #endif

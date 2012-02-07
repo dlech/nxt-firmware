@@ -605,7 +605,459 @@ __ramfunc void LowSpeedPwmIrqHandler(void)
 											     }\
                                                }
 
+typedef enum {
+  I2C_DISABLED = 0,
+  I2C_IDLE,
+  I2C_ACTIVEIDLE,
+  I2C_COMPLETE,
+  I2C_BEGIN,
+  I2C_NEWRESTART,
+  I2C_NEWSTART,
+  I2C_NEWREAD,
+  I2C_START1,
+  I2C_START2,
+  I2C_DELAY,
+  I2C_RXDATA1,
+  I2C_RXDATA2,
+  I2C_RXDATA3,
+  I2C_RXENDACK,
+  I2C_RXACK1,
+  I2C_RXACK2,
+  I2C_TXDATA1,
+  I2C_TXDATA2,
+  I2C_TXACK1,
+  I2C_TXACK2,
+  I2C_STOP1,
+  I2C_STOP2,
+  I2C_STOP3,
+  I2C_ENDLEGO1,
+  I2C_ENDLEGO2,
+  I2C_END,
+  I2C_ENDSTOP1,
+  I2C_ENDSTOP2,
+  I2C_ENDSTOP3,
+  I2C_FAULT,
+  I2C_RELEASE,
+} i2c_port_state;
 
+struct i2c_partial_transaction {
+  i2c_port_state  state; // Initial state for this transaction
+  UWORD nbits;	// N bits to transfer
+  UBYTE * data;	// Data buffer
+};
+
+#define I2C_ERR_INVALID_PORT -1
+#define I2C_ERR_BUSY -2
+#define I2C_ERR_FAULT -3
+#define I2C_ERR_INVALID_LENGTH -4
+#define I2C_ERR_BUS_BUSY -5
+
+#define I2C_BUF_SIZE 16
+#define I2C_HS_CLOCK 125000
+#define I2C_MAX_PARTIAL_TRANSACTIONS 5
+// Fast pulse stretch
+#define I2C_CLOCK_RETRY 5
+// Timeout for pulse stretch
+#define I2C_MAX_STRETCH 100
+#define I2C_N_PORTS 4
+
+#define TIME4US ((OSC/16)/250000L)
+
+#define IO_COMPLETE_MASK 0xf
+#define BUS_FREE_MASK 0xf00
+#define BUS_FREE_SHIFT 8
+
+// Take the clock line high but allow slave devices to extend the low clock
+// state by pulling the clock line low.
+static int rPulseStretch(ULONG scl_pin, SWORD * pDelay, i2c_port_state * pState)
+{
+  // Allow pulse stretching, make clock line float
+  *AT91C_PIOA_ODR = scl_pin;
+  // Has the pulse been stretched too much? If so report an error
+  *pDelay -= 1;
+  if (*pDelay <= 0)
+  {
+    *pState = I2C_FAULT;
+    return 1;
+  }
+  // Implement a fast wait routine, to avoid having to wait for an entire
+  // clock cycle.
+  int i = 0;
+  while(!(*AT91C_PIOA_PDSR & scl_pin))
+    if (i++ >= I2C_CLOCK_RETRY)
+      return 1;
+  return 0;
+}
+
+// Start a transaction. 
+SBYTE rI2CFastStart(UBYTE port, UBYTE address, UBYTE *write_data, UBYTE write_len, UBYTE *pReadLen, UBYTE *data_out)
+{ 
+  if (port >= I2C_N_PORTS)
+    return -1;
+  ULONG p_scl_pin;
+  ULONG p_sda_pin;
+  ULONG p_ready_mask;
+  UBYTE p_buffer[I2C_BUF_SIZE+2];
+  struct i2c_partial_transaction p_partial_transaction[I2C_MAX_PARTIAL_TRANSACTIONS];
+  struct i2c_partial_transaction *p_current_pt;
+  i2c_port_state p_state;
+  UBYTE *p_data;
+  ULONG p_nbits;
+  SWORD p_delay;
+  UBYTE p_bits;
+  UBYTE p_fault;
+  UBYTE p_lego_mode = FALSE;
+  UBYTE p_always_active = FALSE;
+  UBYTE p_no_release = FALSE;
+  UBYTE p_high_speed = TRUE;
+
+  ULONG pinmask;
+
+  // enable the port in hi speed mode
+  {
+    p_scl_pin = CLK_PINS[port];
+    p_sda_pin = DATA_PINS[port];
+    pinmask = p_scl_pin | p_sda_pin;
+    p_state = I2C_IDLE;
+    // Set data & clock to be enabled for output with
+    // pullups disabled.
+
+    *AT91C_PIOA_SODR  = pinmask;
+    *AT91C_PIOA_OER   = pinmask;
+    *AT91C_PIOA_PPUDR = pinmask;
+//    // If we are always active, we never drop below the ACTIVEIDLE state 
+//    p_lego_mode = ((mode & I2C_LEGO_MODE) ? 1 : 0);
+//    p_no_release = ((mode & I2C_NO_RELEASE) ? 1 : 0);
+//    p_always_active = ((mode & I2C_ALWAYS_ACTIVE) ? 1 : 0);
+    if (p_always_active)
+      p_state = I2C_ACTIVEIDLE;
+
+    // Select which lines to test to see if the bus is busy.
+    // If the clock line is being driven by us we do not test it.
+    if (p_lego_mode || p_no_release)
+      p_ready_mask = p_sda_pin;
+    else
+      p_ready_mask = pinmask;
+    // Release whichever lines we can
+    *AT91C_PIOA_ODR = p_ready_mask;
+  }  
+  
+  struct i2c_partial_transaction *pt;
+  UBYTE *data;
+
+  // check buffer size
+  if (*pReadLen > I2C_BUF_SIZE) return I2C_ERR_INVALID_LENGTH;
+  if (write_len > I2C_BUF_SIZE) return I2C_ERR_INVALID_LENGTH;   
+  // must have some data to transfer
+  if (*pReadLen + write_len <= 0) return I2C_ERR_INVALID_LENGTH;
+
+  pt = p_partial_transaction;
+  p_current_pt = pt;
+  data = p_buffer;
+  
+  // process the write data (if any)
+  if (write_len > 0){
+    *data++ = address; // This is a write
+    pt->nbits = (write_len + 1)*8;
+    // copy the write data
+    memcpy(data, write_data, write_len);
+    data += write_len;
+    pt->data = p_buffer;
+    pt->state = I2C_NEWSTART;
+    // We add an extra stop for the odd Lego i2c sensor, but only on a read
+    if (*pReadLen > 0 && p_lego_mode) {
+      pt++;
+      pt->state = I2C_STOP1;
+    }
+    pt++;
+  }
+  // now add the read transaction (if any)
+  if (*pReadLen > 0)
+  {
+    // first we have to write the device address
+    pt->state = (data != p_buffer ? I2C_NEWRESTART : I2C_NEWSTART);
+    pt->data = data;
+    *data++ = address |  1; // this is a read
+    pt->nbits = 8;
+    pt++;
+    // now we have the read
+    pt->state = I2C_NEWREAD;
+    pt->data = p_buffer;
+    pt->nbits = (*pReadLen)*8;
+    pt++;
+  }
+  // define what happens at the end of the operation
+  if (p_lego_mode)
+    pt->state = (*pReadLen > 0 ? I2C_ENDLEGO1 : I2C_ENDSTOP1);
+  else
+    pt->state = (p_no_release ? I2C_END : I2C_ENDSTOP1);
+//  // We save the number of bytes to read for completion
+//  p->read_len = read_len;
+  // Start the transaction
+  p_state = I2C_BEGIN;
+//  if (!p_always_active)
+//    build_active_list();
+  while(p_state != I2C_COMPLETE)
+  {
+    ULONG PitTmr = (*AT91C_PITC_PIIR);
+    // The main i2c state machine. Move the port state from one step to another
+    // toggling the clock line on alternate calls.
+    switch (p_state) {
+    default:
+    case I2C_DISABLED:
+    case I2C_IDLE:		// Not in a transaction
+    case I2C_ACTIVEIDLE:	// Not in a transaction but active
+    case I2C_COMPLETE:          // Transaction completed
+      break;
+    case I2C_BEGIN:		
+      // Start new transaction
+      *AT91C_PIOA_OER = p_sda_pin|p_scl_pin;
+      p_fault = 0;
+      p_state = p_current_pt->state;
+      break;
+    case I2C_NEWRESTART:		
+      // restart a new partial transaction
+      // Take the clock low
+      *AT91C_PIOA_CODR = p_scl_pin;
+      // FALLTHROUGH
+    case I2C_NEWSTART:		
+      // Start the current partial transaction
+      p_data = p_current_pt->data;
+      p_nbits = p_current_pt->nbits;
+      p_bits = *(p_data);
+      p_state = I2C_START1;
+      p_delay = I2C_MAX_STRETCH;
+      *AT91C_PIOA_SODR = p_sda_pin;
+      *AT91C_PIOA_OER = p_sda_pin;
+      break;
+    case I2C_START1:
+      // SDA high, take SCL high
+      if (p_high_speed && rPulseStretch(p_scl_pin, &p_delay, &p_state))
+        break;
+      *AT91C_PIOA_SODR = p_scl_pin;
+      *AT91C_PIOA_OER = p_scl_pin;
+      p_state = I2C_START2;
+      break;
+    case I2C_START2:		
+      // Take SDA low while SCL is high
+      *AT91C_PIOA_CODR = p_sda_pin;
+      p_state = I2C_TXDATA1;
+      break;
+    case I2C_DELAY:
+      if (p_delay == 0)
+        p_state = I2C_RXDATA1;
+      else
+        p_delay--;
+      break;
+    case I2C_TXDATA1:
+      // Take SCL low
+      *AT91C_PIOA_CODR = p_scl_pin;
+      p_delay = I2C_MAX_STRETCH;
+      p_state = I2C_TXDATA2;
+      break;
+    case I2C_TXDATA2:
+      // set the data line
+      if (p_bits & 0x80)
+        *AT91C_PIOA_SODR = p_sda_pin;
+      else
+        *AT91C_PIOA_CODR = p_sda_pin;
+      *AT91C_PIOA_OER = p_sda_pin;
+      if (p_high_speed && rPulseStretch(p_scl_pin, &p_delay, &p_state))
+        break;
+      p_bits <<= 1;
+      p_nbits--;
+      if((p_nbits & 7) == 0) 
+        p_state = I2C_TXACK1;
+      else
+        p_state = I2C_TXDATA1;
+      // Take SCL high
+      *AT91C_PIOA_SODR = p_scl_pin;
+      *AT91C_PIOA_OER = p_scl_pin;
+      break;
+    case I2C_TXACK1:
+      // Take SCL low
+      *AT91C_PIOA_CODR = p_scl_pin;
+      p_state = I2C_TXACK2;
+      // release the data line
+      *AT91C_PIOA_ODR = p_sda_pin;
+      break;
+    case I2C_TXACK2:
+      // Take SCL High
+      *AT91C_PIOA_SODR = p_scl_pin;
+      if(*AT91C_PIOA_PDSR & p_sda_pin)
+        p_state = I2C_FAULT;
+      else if (p_nbits == 0)
+      {
+        p_current_pt++;
+        p_state = p_current_pt->state;
+      }
+      else
+      {
+        p_data++;
+        p_bits = *(p_data);
+        p_state = I2C_TXDATA1;
+      }
+      break;
+    case I2C_NEWREAD:		
+      // Start the read partial transaction
+      p_data = p_current_pt->data;
+      p_nbits = p_current_pt->nbits;
+      p_bits = 0;
+      // Take SCL Low
+      *AT91C_PIOA_CODR = p_scl_pin;
+      p_state = I2C_RXDATA1;
+      // get ready to read
+      *AT91C_PIOA_ODR = p_sda_pin;
+      break;
+    case I2C_RXDATA1:
+      p_delay = I2C_MAX_STRETCH;
+      p_state = I2C_RXDATA2;
+      // Fall through
+    case I2C_RXDATA2:
+      if (p_high_speed && rPulseStretch(p_scl_pin, &p_delay, &p_state))
+        break;
+      // Take SCL High
+      *AT91C_PIOA_SODR = p_scl_pin;
+      *AT91C_PIOA_OER = p_scl_pin;
+      p_state = I2C_RXDATA3;
+      break;
+    case I2C_RXDATA3:
+      // Receive a bit.
+      p_bits <<= 1;
+      if(*AT91C_PIOA_PDSR & p_sda_pin)
+        p_bits |= 1;
+      // Take SCL Low
+      *AT91C_PIOA_CODR = p_scl_pin;
+      p_nbits--;
+      if((p_nbits & 7) == 0){
+        *(p_data) = p_bits;
+        if (p_nbits)
+          p_state = I2C_RXACK1;
+        else
+          p_state = I2C_RXENDACK;
+      }
+      else
+        p_state = I2C_RXDATA1;
+      break;
+    case I2C_RXACK1:
+      // take data low
+      *AT91C_PIOA_CODR = p_sda_pin;
+      *AT91C_PIOA_OER = p_sda_pin;
+      // Move on to next byte
+      p_data++;
+      p_bits = 0;
+      p_state = I2C_RXACK2;
+      // Clock high
+      *AT91C_PIOA_SODR = p_scl_pin;
+      break;
+    case I2C_RXACK2:
+      // Take SCL Low
+      *AT91C_PIOA_CODR = p_scl_pin;
+      p_state = I2C_RXDATA1;
+      // get ready to read
+      *AT91C_PIOA_ODR = p_sda_pin;
+      break;
+    case I2C_RXENDACK:
+      // take data high
+      *AT91C_PIOA_SODR = p_sda_pin;
+      *AT91C_PIOA_OER = p_sda_pin;
+      // get ready to move to the next state
+      p_current_pt++;
+      p_state = p_current_pt->state;
+      // Clock high data is already high
+      *AT91C_PIOA_SODR = p_scl_pin;
+      break;
+    case I2C_STOP1:
+      // Issue a Stop state
+      // SCL is high, take it low
+      *AT91C_PIOA_CODR = p_scl_pin;
+      p_state = I2C_STOP2;
+      *AT91C_PIOA_CODR = p_sda_pin;
+      *AT91C_PIOA_OER = p_sda_pin;
+      break;
+    case I2C_STOP2:
+      // Take SCL high
+      *AT91C_PIOA_SODR = p_scl_pin;
+      p_state = I2C_STOP3;
+      break;  
+    case I2C_STOP3:
+      // Take SDA pin high while the clock is high
+      *AT91C_PIOA_SODR = p_sda_pin;
+      // and move to the next state
+      p_current_pt++;
+      p_state = p_current_pt->state;
+      break;
+    case I2C_ENDLEGO1:
+      // Lego mode end case, does not issue stop. Used at end of rx
+      // Clock low data is already high, release the data line
+      *AT91C_PIOA_CODR = p_scl_pin;
+      p_state = I2C_ENDLEGO2;
+      *AT91C_PIOA_ODR = p_sda_pin;
+      break;
+    case I2C_ENDLEGO2:
+      // Clock high, data is already high and we are done
+      *AT91C_PIOA_SODR = p_scl_pin;
+      p_state = I2C_RELEASE;
+      break;
+    case I2C_END:
+      // End the transaction but hold onto the bus, keeping the clock low
+      // Clock low and keep it active
+      *AT91C_PIOA_CODR = p_scl_pin;
+      p_state = I2C_RELEASE;
+      break;
+    case I2C_ENDSTOP1:
+      // Issue a Stop state
+      // SCL is high, take it low
+      *AT91C_PIOA_CODR = p_scl_pin;
+      p_delay = I2C_MAX_STRETCH;
+      p_state = I2C_ENDSTOP2;
+      *AT91C_PIOA_CODR = p_sda_pin;
+      *AT91C_PIOA_OER = p_sda_pin;
+      break;
+    case I2C_ENDSTOP2:
+      if (p_high_speed && rPulseStretch(p_scl_pin, &p_delay, &p_state))
+        break;
+      // Take SCL high
+      *AT91C_PIOA_SODR = p_scl_pin;
+      *AT91C_PIOA_OER = p_scl_pin;
+      p_state = I2C_ENDSTOP3;
+      break;  
+    case I2C_ENDSTOP3:
+      // Take SDA pin high while the clock is high
+      *AT91C_PIOA_SODR = p_sda_pin;
+      p_state = I2C_RELEASE;
+      break;
+    case I2C_FAULT:
+      p_fault = 1;
+      p_state = I2C_ENDSTOP1;
+      break;
+    case I2C_RELEASE:
+      // Release whichever lines we can
+      *AT91C_PIOA_ODR = p_ready_mask;
+      // All done
+      p_state = I2C_COMPLETE;
+      break;
+    }
+    while (((*AT91C_PITC_PIIR) - PitTmr) < TIME4US);
+  }
+  
+  if (!p_always_active)
+    p_state = I2C_IDLE;
+  else
+    p_state = I2C_ACTIVEIDLE;
+  if (p_fault)
+    return I2C_ERR_FAULT;
+  if (*pReadLen > 0)
+  {
+    *pReadLen = (UBYTE)(p_data - p_buffer + 1);
+    if (data_out)
+      memcpy(data_out, p_buffer, *pReadLen);
+  }
+  return *pReadLen;
+  
+}
+
+        
 #endif
 
 #ifdef    PCWIN

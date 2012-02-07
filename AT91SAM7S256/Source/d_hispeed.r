@@ -52,7 +52,7 @@ static    UBYTE  InBufOutCnt;
                                           *AT91C_PIOA_CODR	= HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;	 /* Set output low */\
                                         }
 
-#define   HIGHSPEEDSetupUart(_baud, _mode) {\
+#define   HIGHSPEEDSetupUart(_spd, _baud, _mode, _umode) {\
                                           UBYTE Tmp;\
                                           InBufInPtr = 0;\
                                           for(Tmp = 0; Tmp < NO_OF_INBUFFERS; Tmp++)\
@@ -65,11 +65,11 @@ static    UBYTE  InBufOutCnt;
                                           *AT91C_PIOA_ASR = HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;; /* Enable Per. A on PA5, PA6 & PA7 */\
                                           *AT91C_US0_CR   = AT91C_US_RSTSTA;                       /* Resets pins on UART0 */\
                                           *AT91C_US0_CR   = AT91C_US_STTTO;                        /* Start timeout functionality after 1 byte */\
-                                          *AT91C_US0_RTOR = ((_baud)/400);                         /* Approxitely 20 mS,x times bit time with 115200 bit pr s */\
+                                          *AT91C_US0_RTOR = 2400+((15-(_spd))*4200);               /* Approxitely 20 mS,x times bit time with 115200 bit pr s */\
                                           *AT91C_US0_IDR  = AT91C_US_TIMEOUT;                      /* Disable interrupt on timeout */\
                                           *AT91C_AIC_IDCR = UART0_INQ;                             /* Disable UART0 interrupt */\
                                           *AT91C_AIC_ICCR = UART0_INQ;                             /* Clear interrupt register */\
-                                          *AT91C_US0_MR   = AT91C_US_USMODE_RS485;                 /* Set UART to RUN RS485 Mode*/\
+                                          *AT91C_US0_MR   = (_umode);                              /* Set UART to RUN RS485 Mode*/\
                                           *AT91C_US0_MR  &= ~AT91C_US_SYNC;                        /* Set UART in asynchronous mode */\
                                           *AT91C_US0_MR  |= AT91C_US_CLKS_CLOCK;                   /* Clock setup MCK*/\
                                           *AT91C_US0_MR  |= AT91C_US_OVER;                         /* UART is using over sampling mode */\
@@ -157,14 +157,11 @@ static    UBYTE  InBufOutCnt;
                                         
 #define HIGHSPEEDSendDmaData(OutputBuffer, BytesToSend)\
                                         {\
-                                          UWORD Avail, Cnt;\
+                                          UWORD Avail;\
                                           AVAILOutBuf(Avail);\
-                                          if (BytesToSend < (Avail - 1))\
+                                          if (BytesToSend < ((SWORD)Avail - 1))\
                                           {\
-                                            for (Cnt = 0; Cnt < BytesToSend; Cnt++)\
-                                            {\
-                                              OutDma[DmaBufPtr][Cnt] = OutputBuffer[Cnt];\
-                                            }\
+                                            memcpy((PSZ)&(OutDma[DmaBufPtr][0]), OutputBuffer, BytesToSend);\
                                             *AT91C_US0_TNPR = (unsigned int)&(OutDma[DmaBufPtr][0]);\
                                             *AT91C_US0_TNCR = BytesToSend;\
                                             DmaBufPtr = (DmaBufPtr + 1) % NO_OF_DMA_OUTBUFFERS;\
@@ -180,6 +177,11 @@ static    UBYTE  InBufOutCnt;
                                         }
 
 
+#define   BYTESToSend(Bts)            {\
+                                        (Bts) = *AT91C_US0_TNCR;\
+                                        (Bts) += *AT91C_US0_TCR;\
+                                      }
+                                        
 #endif
 
 #ifdef    PCWIN

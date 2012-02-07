@@ -15,6 +15,7 @@
 #include  "stdconst.h"
 #include  "m_sched.h"
 #include  "d_lowspeed.h"
+#include <string.h>
 #include  "d_lowspeed.r"
 
 
@@ -74,4 +75,9 @@ UBYTE dLowSpeedComRxStatus(UBYTE ChannelNumber)
 void      dLowSpeedExit(void)
 {
   LOWSpeedExit;
+}
+
+SBYTE dLowSpeedFastI2C(UBYTE port, UBYTE address, UBYTE *write_data, UBYTE write_len, UBYTE *pReadLen, UBYTE *data_out)
+{
+  return rI2CFastStart(port, address, write_data, write_len, pReadLen, data_out);
 }

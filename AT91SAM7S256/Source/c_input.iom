@@ -78,6 +78,15 @@ enum
   INVALID_DATA      = 0x01
 };
 
+/* Constants related to calling cInputPinFunc */
+enum
+{
+  PINDIR,
+  SETPIN,
+  CLEARPIN,
+  READPIN
+};
+
 /* Constants related to Colorstruct */
 enum
 {
@@ -167,6 +176,7 @@ typedef   struct
 {
   INPUTSTRUCT   Inputs[NO_OF_INPUTS];
   COLORSTRUCT   Colors[NO_OF_INPUTS];
+  UBYTE   (*pFunc)(UBYTE, UBYTE, UBYTE, UBYTE *);
 }IOMAPINPUT;
 
 #endif

@@ -150,3 +150,17 @@ void      dInputExit(void)
   INPUTExit;
 }
 
+void      dInputClockHigh(UBYTE Port)
+{
+  INPUTClkHigh(Port);
+}
+
+void      dInputClockLow(UBYTE Port)
+{
+  INPUTClkLow(Port);
+}
+
+void      dInputWaitUS(UBYTE usec)
+{
+  rInputWaitUS(usec);
+}

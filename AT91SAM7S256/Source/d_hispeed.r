@@ -65,7 +65,7 @@ static    UBYTE  InBufOutCnt;
                                           *AT91C_PIOA_ASR = HIGHSPEED_TX_PIN | HIGHSPEED_RTS_PIN | HIGHSPEED_RX_PIN;; /* Enable Per. A on PA5, PA6 & PA7 */\
                                           *AT91C_US0_CR   = AT91C_US_RSTSTA;                       /* Resets pins on UART0 */\
                                           *AT91C_US0_CR   = AT91C_US_STTTO;                        /* Start timeout functionality after 1 byte */\
-                                          *AT91C_US0_RTOR = 2400+((15-(_spd))*4200);               /* Approxitely 20 mS,x times bit time with 115200 bit pr s */\
+                                          *AT91C_US0_RTOR = 2400;                                  /* Approxitely 20 mS,x times bit time with 115200 bit pr s */\
                                           *AT91C_US0_IDR  = AT91C_US_TIMEOUT;                      /* Disable interrupt on timeout */\
                                           *AT91C_AIC_IDCR = UART0_INQ;                             /* Disable UART0 interrupt */\
                                           *AT91C_AIC_ICCR = UART0_INQ;                             /* Clear interrupt register */\

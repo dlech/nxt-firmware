@@ -2116,11 +2116,11 @@ NXT_STATUS cCmdActivateProgram(UBYTE * pFileName)
               if((!isString2 || !isString3) || t1 == TC_ARRAY) // allow strings to go scalar, don't let through element compares of bytes or Bools
                 isScalarBinop= FALSE;
             }
-            else if(opCode == OP_BRCMP)
+            else if(opCode == OP_BRCMP || opCode == OP_BRCMPABSVAR)
               isScalarBinop= FALSE;
           }
         }
-        else if(InstrSize == 6 && isT2Agg && (opCode == OP_NOT || opCode == OP_BRTST))
+        else if(InstrSize == 6 && isT2Agg && (opCode == OP_NOT || opCode == OP_BRTST || opCode == OP_BRTSTABSVAR))
           isScalarUnop2= FALSE;
       }
       pInstr += InstrSize/2;
@@ -4741,6 +4741,7 @@ afterCompaction:
 
 NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
 {
+  CLUMP_REC* pClumpRec = &(VarsCmd.pAllClumps[VarsCmd.RunQ.Head]);
   NXT_STATUS Status = NO_ERR;
   UBYTE opCode;
   DATA_ARG Arg1;
@@ -4756,6 +4757,14 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
     case OP_JMP:
     {
       gPCDelta= (SWORD)Arg1;
+      Status = NO_ERR;
+    }
+    break;
+
+    case OP_JMPABSVAR:
+    {
+      CODE_INDEX pc = (CODE_INDEX)(pClumpRec->PC-pClumpRec->CodeStart);
+      gPCDelta = (SWORD)Arg1-(SWORD)pc;
       Status = NO_ERR;
     }
     break;
@@ -4796,9 +4805,18 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
     break;
 
     case OP_FINCLUMPIMMED:
+    case OP_FINCLUMPVAR:
     {
         CLUMP_ID Clump= VarsCmd.RunQ.Head; // DeQ changes Head, use local val
         cCmdDeQClump(&(VarsCmd.RunQ), Clump); //Dequeue finalized clump
+        if (opCode == OP_FINCLUMPVAR)
+        {
+          // indirect clump reference
+          if (cCmdDSType(Arg1) <= TC_LAST_INT_SCALAR)
+            Arg1 = cCmdGetScalarValFromDataArg(Arg1, 0);
+          else
+            return (ERR_INSTR);
+        }
         cCmdSchedDependent(Clump, (CLUMP_ID)Arg1);  // Use immediate form
 
         Status = CLUMP_DONE;
@@ -4838,15 +4856,32 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
     break;
 
     case OP_STOPCLUMPIMMED:
+    case OP_STOPCLUMPVAR:
     {
+        if (opCode == OP_STOPCLUMPVAR)
+        {
+          // indirect clump reference
+          if (cCmdDSType(Arg1) <= TC_LAST_INT_SCALAR)
+            Arg1 = cCmdGetScalarValFromDataArg(Arg1, 0);
+          else
+            return (ERR_INSTR);
+        }
         // Release any mutexes that the clump we are stopping owns
-        CLUMP_ID Clump = (CLUMP_ID)Arg1;
-        cCmdStopClump(Clump);
+        cCmdStopClump((CLUMP_ID)Arg1);
     }
     break;
     
     case OP_STARTCLUMPIMMED:
+    case OP_STARTCLUMPVAR:
     {
+        if (opCode == OP_STARTCLUMPVAR)
+        {
+          // indirect clump reference
+          if (cCmdDSType(Arg1) <= TC_LAST_INT_SCALAR)
+            Arg1 = cCmdGetScalarValFromDataArg(Arg1, 0);
+          else
+            return (ERR_INSTR);
+        }
         CLUMP_ID Clump = (CLUMP_ID)Arg1;
         // only enqueue the clump if it is not already on one of the queues
         // otherwise this is a no-op
@@ -4875,6 +4910,7 @@ NXT_STATUS cCmdInterpUnop1(CODE_WORD * const pCode)
 ULONG scalarNots= 0, scalarBrtst= 0, scalarUn2Other= 0, scalarUn2Dispatch= 0, polyUn2Dispatch= 0;
 NXT_STATUS cCmdInterpScalarUnop2(CODE_WORD * const pCode)
 {
+  CLUMP_REC* pClumpRec = &(VarsCmd.pAllClumps[VarsCmd.RunQ.Head]);
   NXT_STATUS Status;
   UBYTE opCode;
 
@@ -4898,7 +4934,7 @@ NXT_STATUS cCmdInterpScalarUnop2(CODE_WORD * const pCode)
     Status = NO_ERR;
     scalarNots ++;
   }
-  else if(opCode == OP_BRTST)
+  else if(opCode == OP_BRTST || opCode == OP_BRTSTABSVAR)
   {
     ULONG Branch, compare= COMP_CODE(pCode);
     ULONG TypeCode;
@@ -4931,8 +4967,12 @@ NXT_STATUS cCmdInterpScalarUnop2(CODE_WORD * const pCode)
               || (compare == OPCC1_GTEQ && SVal1 >= 0));
       }
     }
-    if (Branch)
-      gPCDelta =  (SWORD)Arg1;
+    if (Branch) {
+      if (opCode == OP_BRTST)
+        gPCDelta =  (SWORD)Arg1;
+      else
+        gPCDelta =  (UWORD)Arg1 - (pClumpRec->PC-pClumpRec->CodeStart);
+    }
     else
       gPCDelta= 3;
     Status = NO_ERR;
@@ -4947,6 +4987,7 @@ NXT_STATUS cCmdInterpScalarUnop2(CODE_WORD * const pCode)
 
 NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
 {
+  CLUMP_REC* pClumpRec = &(VarsCmd.pAllClumps[VarsCmd.RunQ.Head]);
   NXT_STATUS Status = NO_ERR;
   UBYTE opCode;
   DATA_ARG Arg1;
@@ -5004,6 +5045,7 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
     break;
 
     case OP_BRTST:
+    case OP_BRTSTABSVAR:
     {
         //!!!BDUGGAN BRTST w/ Float?
       ULONG Branch, compare= COMP_CODE(pCode);
@@ -5026,7 +5068,10 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
       if (Branch)
 
       {
-        gPCDelta =  (SWORD)Arg1;
+        if (opCode == OP_BRTST)
+          gPCDelta =  (SWORD)Arg1;
+        else
+          gPCDelta =  (UWORD)Arg1 - (pClumpRec->PC-pClumpRec->CodeStart);
         Status = NO_ERR;
       }
     }
@@ -5055,7 +5100,15 @@ NXT_STATUS cCmdInterpUnop2(CODE_WORD * const pCode)
     break;
 
     case OP_SUBCALL:
+    case OP_SUBCALLVAR:
     {
+      if (opCode == OP_SUBCALLVAR)
+      {
+        if (cCmdDSType(Arg1) <= TC_LAST_INT_SCALAR)
+          Arg1 = cCmdGetScalarValFromDataArg(Arg1, 0);
+        else
+          return (ERR_INSTR);
+      }
       NXT_ASSERT(cCmdIsClumpIDSane((CLUMP_ID)Arg1));
       NXT_ASSERT(!cCmdIsClumpOnQ(&(VarsCmd.RunQ), (CLUMP_ID)Arg1));
 
@@ -5607,6 +5660,7 @@ NXT_STATUS cCmdIOGetSet(ULONG opCode, DATA_ARG Arg1, DATA_ARG Arg2, DATA_ARG Arg
 ULONG scalarCmp= 0, scalarFloatCmp= 0, recursiveCmp= 0, PolyScalarCmp= 0, polyPolyCmp= 0, scalarOther= 0, scalarBinopDispatch= 0, polyBinopDispatch= 0;
 NXT_STATUS cCmdInterpScalarBinop(CODE_WORD * const pCode)
 {
+  CLUMP_REC* pClumpRec = &(VarsCmd.pAllClumps[VarsCmd.RunQ.Head]);
   NXT_STATUS Status;
   UBYTE opCode;
   UBYTE CmpBool;
@@ -5650,7 +5704,7 @@ NXT_STATUS cCmdInterpScalarBinop(CODE_WORD * const pCode)
       scalarFloatCmp++;
     }
   }
-  else if(opCode == OP_BRCMP) { // t2 and t3 guaranteed scalar
+  else if(opCode == OP_BRCMP || opCode == OP_BRCMPABSVAR) { // t2 and t3 guaranteed scalar
       TYPE_CODE TypeCode2, TypeCode3;
       ULONG ArgVal2, ArgVal3;
 
@@ -5663,10 +5717,14 @@ NXT_STATUS cCmdInterpScalarBinop(CODE_WORD * const pCode)
       ArgVal3= cCmdGetScalarValFromDataArg(Arg3, 0);
       CmpBool= cCmdCompare(COMP_CODE(pCode), ArgVal2, ArgVal3, TypeCode2, TypeCode3);
 
-      if (CmpBool)
-        gPCDelta =  (SWORD)Arg1;
-  else
-        gPCDelta= 4;
+      if (CmpBool) {
+        if (opCode == OP_BRCMP)
+          gPCDelta = (SWORD)Arg1;
+        else
+          gPCDelta = (UWORD)Arg1-(pClumpRec->PC-pClumpRec->CodeStart);
+      }
+      else
+        gPCDelta = 4;
       Status= NO_ERR;
     }
   else if(opCode >= OP_SETIN && opCode <= OP_GETOUT) {
@@ -5686,6 +5744,7 @@ NXT_STATUS cCmdInterpScalarBinop(CODE_WORD * const pCode)
 
 NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
 {
+  CLUMP_REC* pClumpRec = &(VarsCmd.pAllClumps[VarsCmd.RunQ.Head]);
   NXT_STATUS Status = NO_ERR;
   UBYTE opCode;
   DATA_ARG Arg1, Arg2, Arg3;
@@ -5743,6 +5802,7 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
     break;
 
     case OP_BRCMP:
+    case OP_BRCMPABSVAR:
     {
       TYPE_CODE TypeCode2= cCmdDSType(Arg2), TypeCode3= cCmdDSType(Arg3);
       if(TypeCode2 <= TC_LAST_INT_SCALAR && TypeCode3 <= TC_LAST_INT_SCALAR) {
@@ -5756,6 +5816,8 @@ NXT_STATUS cCmdInterpBinop(CODE_WORD * const pCode)
 
       if (CmpBool)
           gPCDelta =  (SWORD)Arg1;
+      else
+          gPCDelta =  (UWORD)Arg1 - (pClumpRec->PC-pClumpRec->CodeStart);
     }
     break;
 
@@ -7325,10 +7387,16 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
 
       // array operation
       if (Arg1 == OPARR_SORT) {
-        // source must be an array of non-aggregate type
+        // destination must be an array of non-aggregate type
         NXT_ASSERT(cCmdDSType(Arg2) == TC_ARRAY);
         TypeCode2 = cCmdDSType(INC_ID(Arg2));
         NXT_ASSERT(!IS_AGGREGATE_TYPE(TypeCode2));
+      }
+      else if (Arg1 == OPARR_TOUPPER || Arg1 == OPARR_TOLOWER) {
+        // destination must be an array of ubyte type
+        NXT_ASSERT(cCmdDSType(Arg2) == TC_ARRAY);
+        TypeCode2 = cCmdDSType(INC_ID(Arg2));
+        NXT_ASSERT(TypeCode2 == TC_UBYTE);
       }
       else {
         // destination must be a non-aggregate type
@@ -7556,6 +7624,33 @@ NXT_STATUS cCmdInterpOther(CODE_WORD * const pCode)
           shell_sort_u4(pArg2, MinCount);
         else if (TypeCode2 == TC_FLOAT)
           shell_sort_flt(pArg2, MinCount);
+      }
+      else if (Arg1 == OPARR_TOUPPER || Arg1 == OPARR_TOLOWER)
+      {
+        NXT_ASSERT((cCmdDSType(Arg3) == TC_ARRAY) && (cCmdDSType(INC_ID(Arg3)) == TC_UBYTE));
+        //Allocate Dst array
+        Status = cCmdDSArrayAlloc(Arg2, 0, MinCount);
+        if (IS_ERR(Status))
+          return Status;
+
+        UBYTE *pDst = cCmdResolveDataArg(Arg2, 0, NULL);
+        UBYTE *pSrc = cCmdResolveDataArg(Arg3, 0, NULL);
+
+        //Move src to dst
+        for (i = 0; i < ArrayCount3; i++)
+        {
+          UBYTE ch = *pSrc;
+          if ((i >= ArgVal4) && (i <= ArgVal4+MinCount))
+          {
+            if ((Arg1 == OPARR_TOUPPER) && (ch >= 'a') && (ch <= 'z'))
+              ch -= 0x20;
+            else if ((Arg1 == OPARR_TOLOWER) && (ch >= 'A') && (ch <= 'Z'))
+              ch += 0x20;
+          }
+          *pDst = ch;
+          pDst++;
+          pSrc++;
+        }
       }
       else
       {

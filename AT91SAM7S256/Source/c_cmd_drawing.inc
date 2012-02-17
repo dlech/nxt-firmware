@@ -1629,13 +1629,18 @@ void cCmdClearScreenIfNeeded(ULONG DrawOptions)
 void cCmdDrawString(UBYTE *pString, ULONG X, ULONG Y, UBYTE InvertMode, UBYTE LogicalMode, UBYTE FillMode)    //JJR
 {
   UBYTE   *pSource;
-  UBYTE   *pDestination;
+  UBYTE   *pDestination1;
+  UBYTE   *pDestination2;
   UBYTE   a;
   FONT    *pFont;
   ULONG   FontWidth;
   ULONG   Items;
   ULONG   Item;
-  ULONG   Line;
+  SLONG   Line;
+  UBYTE   offset;
+  UWORD   a2;
+  UWORD   mask;
+  UWORD   font;
 
   //Get current font information
   pFont = pMapDisplay->pFont;
@@ -1643,14 +1648,30 @@ void cCmdDrawString(UBYTE *pString, ULONG X, ULONG Y, UBYTE InvertMode, UBYTE Lo
 
   //Invert Y coordinate to match display buffer
   Y = TRANSLATE_Y(Y);
-  Line = (Y & 0xF8) / 8;
+  Line = (Y & 0xF8) / 8; // truncates down to nearest multiple of 8
+  offset = (Y-7) % 8; // how many bits is the content shifted?
+  if (offset)
+    Line--;
+    
+  mask = ~(0x00ff << offset);
 
   //If text line is out of bounds, do nothing.
   if (Line >= TEXTLINES)
     return;
 
   //Calculate pointer to first byte of drawing destination
-  pDestination = &(DISP_BUFFER_P[Line * DISPLAY_WIDTH + X]);
+  if (Line >= TEXTLINE_1)
+    pDestination1 = &(DISP_BUFFER_P[Line * DISPLAY_WIDTH + X]);
+  else
+    pDestination1 = NULL;
+  if (offset && (Line < TEXTLINE_8))
+    pDestination2 = &(DISP_BUFFER_P[(Line+1) * DISPLAY_WIDTH + X]);
+  else
+    pDestination2 = NULL;
+
+  // bail out early if neither destination is valid
+  if (pDestination1 == NULL && pDestination2 == NULL)
+    return;
 
   while (*pString)
   {
@@ -1669,7 +1690,6 @@ void cCmdDrawString(UBYTE *pString, ULONG X, ULONG Y, UBYTE InvertMode, UBYTE Lo
       while (FontWidth--)
       {
 //JJR
-//        *pDestination = *pSource;
 
           //Fetch a byte from the source bitmap:
           //If fill mode is on, pretend the source bitmap is solid:
@@ -1680,26 +1700,39 @@ void cCmdDrawString(UBYTE *pString, ULONG X, ULONG Y, UBYTE InvertMode, UBYTE Lo
             
           //Implement bitmap invert mode:
           if (InvertMode==DRAW_BITMAP_INVERT) a = ~a;
+
+          // grab data from 1 or 2 lines 
+          a2 = (pDestination2 ? ((UWORD)(*pDestination2) << 8) : 0x0000) |
+               (pDestination1 ? (UWORD)(*pDestination1) : 0x0000);
+
+          font = (UWORD) a << offset;
           
           //Implement bitmap logical mode when writing on screen:
           switch (LogicalMode)
           {
             case DRAW_LOGICAL_OR:
-              *pDestination |= a;
+              a2 |= font;
               break;
             case DRAW_LOGICAL_AND:
-              *pDestination &= a;
+              a2 &= font | mask;
               break;
             case DRAW_LOGICAL_XOR:
-              *pDestination ^= a;
+              a2 ^= font;
               break;
             case DRAW_LOGICAL_COPY:
             default:
-              *pDestination = a;
+              a2 = (a2 & mask) | font;
               break;
           }
 //JJR
-        pDestination++;
+        if (pDestination1) {
+          *pDestination1 = (UBYTE)(a2 & 0xFF);
+          pDestination1++;
+        }
+        if (pDestination2) {
+          *pDestination2 = ((UBYTE)(a2>>8) & 0xFF);
+          pDestination2++;
+        }
         pSource++;
       }
     }

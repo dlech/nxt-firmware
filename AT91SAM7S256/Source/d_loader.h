@@ -20,7 +20,7 @@
 #define   FILEPTRTABLE                  ((const ULONG*)(0x140000L - (FILETABLE_SIZE*4)))
 #ifndef STARTOFUSERFLASH_FROM_LINKER
 #ifndef STRIPPED
-#define   STARTOFUSERFLASH              (0x126000L)//(0x124600L) 1.31 == (0x122100L)
+#define   STARTOFUSERFLASH              (0x126400L)//(0x124600L) 1.31 == (0x122100L)
 #else
 #define   STARTOFUSERFLASH              (0x122C00L)//(0x124600L) 1.31 == (0x122100L)
 #endif

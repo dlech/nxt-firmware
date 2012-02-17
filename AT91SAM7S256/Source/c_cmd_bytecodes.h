@@ -137,17 +137,25 @@
 // misc other JCH additions
 #define OP_ADDROF   0x89  // dest, src, rel
 
-// additional string opcodes
+#define OP_FINCLUMPVAR   0x90 // clumpID
+#define OP_SUBCALLVAR    0x91 // subroutine, callerID
+#define OP_STOPCLUMPVAR  0x92 // clumpID
+#define OP_STARTCLUMPVAR 0x93 // clumpID
 
+#define OP_JMPABSVAR     0x94 // pcvar
+#define OP_BRCMPABSVAR   0x95 // pcvar, src1, src2
+#define OP_BRTSTABSVAR   0x96 // pcvar, src
 
 // array operation definitions
-#define OPARR_SUM    0x00
-#define OPARR_MEAN   0x01
-#define OPARR_SUMSQR 0x02
-#define OPARR_STD    0x03
-#define OPARR_MIN    0x04
-#define OPARR_MAX    0x05
-#define OPARR_SORT   0x06
+#define OPARR_SUM     0x00
+#define OPARR_MEAN    0x01
+#define OPARR_SUMSQR  0x02
+#define OPARR_STD     0x03
+#define OPARR_MIN     0x04
+#define OPARR_MAX     0x05
+#define OPARR_SORT    0x06
+#define OPARR_TOUPPER 0x07
+#define OPARR_TOLOWER 0x08
 
 // condition code definitions
 #define OPCC1_LT   0x00

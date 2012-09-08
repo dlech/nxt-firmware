@@ -390,4 +390,6 @@ ENUM_VAL(DISP_ABORT_SPURIOUS)               /**< Spurious IRQ. */
 ENUM_VAL(DISP_ABORT_ILLEGAL)                /**< Illegal Instruction. */
 ENUM_END(abort_type_t)
 
+/*@}*/
+
 #endif /* __DEBUG_INTERNALS_H__ */

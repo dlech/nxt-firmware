@@ -18,15 +18,15 @@
 
 
 
-/** @addtogroup debug_macros */
+
 /*@{*/
 
-/* _dbg_jumpTableHandler
+/** _dbg_jumpTableHandler
  *      Call Jump Table Routine based on Index
  *	On entry:
- *	  jumptableaddr is the address (constant) of the Jump Table
- *	  jumpreg is the register used to perform the indirect jump
- *	  indexreg contains jump table index value
+ *	  @param jumptableaddr is the address (constant) of the Jump Table
+ *	  @param jumpreg is the register used to perform the indirect jump
+ *	  @param indexreg contains jump table index value
  */
 	.macro  _dbg_jumpTableHandler   jumptableaddr, jumpreg, indexreg
 
@@ -37,13 +37,13 @@
 	.endm
 
 
-/* _dbg_thumbDecodeEntry
+/** _dbg_thumbDecodeEntry
  *      Load Thumb Instruction Decoder Entry
  *      On entry:
- *        instrreg is the register to load the instruction into
- *        instrmask is the register to load the instruction mask into
- *        codehandler is the register to load the code handling routine into
- *        indexreg contains decode table index value
+ *        @param instrreg is the register to load the instruction into
+ *        @param instrmask is the register to load the instruction mask into
+ *        @param codehandler is the register to load the code handling routine into
+ *        @param indexreg contains decode table index value
  *      NOTE: instrreg, instrmask, codehandler must be in increasing register number order
  */
         .macro  _dbg_thumbDecodeEntry   instrreg, instrmask, codehandler, indexreg
@@ -56,13 +56,13 @@
         mov      \instrreg, \instrreg, lsr #16                          /* Keep HLFWORD0 containing instruction */
         .endm
 
-/* _dbg_armDecodeEntry
+/** _dbg_armDecodeEntry
  *      Load ARM Instruction Decoder Entry
  *      On entry:
- *        instrreg is the register to load the instruction into
- *        instrmask is the register to load the instruction mask into
- *        codehandler is the register to load the code handling routine into
- *        indexreg contains decode table index value
+ *        @param instrreg is the register to load the instruction into
+ *        @param instrmask is the register to load the instruction mask into
+ *        @param codehandler is the register to load the code handling routine into
+ *        @param indexreg contains decode table index value
  *      NOTE: instrreg, instrmask, codehandler must be in increasing register number order
  */
         .macro  _dbg_armDecodeEntry   instrreg, instrmask, codehandler, indexreg
@@ -73,7 +73,7 @@
         ldm      \instrmask, {\instrreg, \instrmask, \codehandler}
         .endm
 
-/* _asciiz
+/** _asciiz
  *	Terminate string given string buffer pointer in \strptr
  *	scratchreg is used as a scratch register (destroyed)
  *
@@ -84,7 +84,7 @@
  	.endm
 
 
-/* _dbg_stpcpy
+/** _dbg_stpcpy
  *	_dbg_stpcpy macro
  *	On entry:
  *	  deststrptr: Destination string
@@ -103,7 +103,7 @@
 	sub	 \deststrptr, \deststrptr, #1	/* Adjust Destination string pointer to point at ASCIIZ character */
 	.endm
 
-/* _dbg_memcpy
+/** _dbg_memcpy
  *      _dbg_stpcpy macro
  *      On entry:
  *        deststrptr: Destination string
@@ -122,7 +122,7 @@
         bne      1b
         .endm
 
-/* _dbg_CopyMsg2OutputBuf
+/** _dbg_CopyMsg2OutputBuf
  *      Copies source message to output buffer
  *      On entry:
  *        R2: source message buffer (ASCIIZ terminated)
@@ -135,7 +135,7 @@
         _dbg_stpcpy     r0, r2, r3
         .endm
 
-/* _dbg_CopyMsg2OutputBuf_withParam
+/** _dbg_CopyMsg2OutputBuf_withParam
  *  Internal Routine called to output message with parameters
  *      Return Message with byte-sized parameter
  *      On entry:
@@ -151,7 +151,7 @@
         _asciiz r0, r1
         .endm
 
-/* _dbg_outputAckOnlyFlag
+/** _dbg_outputAckOnlyFlag
  *      Return Flag ('+') for Continue or Step
  *      On exit:
  *        R0: Pointer to Output Buffer ASCIIZ location
@@ -163,7 +163,7 @@
         .endm
 
 
-/* _dbg_outputRetransmitFlag
+/** _dbg_outputRetransmitFlag
  *      Return Flag ('-') for Checksum Error (retransmission needed)
  *      On exit:
  *        R0: Pointer to Output Buffer ASCIIZ location
@@ -174,7 +174,7 @@
         _dbg_CopyMsg2OutputBuf
         .endm
 
-/* _dbg_outputMsgValidResponse
+/** _dbg_outputMsgValidResponse
  *	Return Message with valid response ('+$')
  *	On exit:
  *	  R0: Pointer to Output Buffer next character slot location
@@ -185,7 +185,7 @@
         _dbg_CopyMsg2OutputBuf
 	.endm
 
-/* _dbg_outputMsgStatusOk
+/** _dbg_outputMsgStatusOk
  *	Return Message with Ok ('+$OK') status
  *	On exit:
  *        R0: Pointer to Output Buffer ASCIIZ location
@@ -196,7 +196,7 @@
         _dbg_CopyMsg2OutputBuf
 	.endm
 
-/* _dbg_outputMsgCurrTID
+/** _dbg_outputMsgCurrTID
  *      Return Message with Default Thread ID ('+$QC0')
  *      On exit:
  *        R0: Pointer to Output Buffer ASCIIZ location
@@ -207,7 +207,7 @@
         _dbg_CopyMsg2OutputBuf
         .endm
 
-/* _dbg_outputMsgFirstThreadInfo
+/** _dbg_outputMsgFirstThreadInfo
  *      Return Message with Default Current Thread ID ('+$m0')
  *      On exit:
  *        R0: Pointer to Output Buffer ASCIIZ location
@@ -218,7 +218,7 @@
         _dbg_CopyMsg2OutputBuf
         .endm
 
-/* _dbg_outputMsgSubsequentThreadInfo
+/** _dbg_outputMsgSubsequentThreadInfo
  *      Return Message with Default Current Thread ID ('+$m0')
  *      On exit:
  *        R0: Pointer to Output Buffer ASCIIZ location
@@ -229,7 +229,7 @@
         _dbg_CopyMsg2OutputBuf
         .endm
 
-/* _dbg_outputMsgStatusErr
+/** _dbg_outputMsgStatusErr
  *	Return Message with Error ('+$ENN') status
  *	On entry:
  *	  R1: error code
@@ -242,7 +242,7 @@
 	_dbg_CopyMsg2OutputBuf_withParam
 	.endm
 
-/* _dbg_outputMsgStatusErrCode
+/** _dbg_outputMsgStatusErrCode
  *	Return Message with Error ('+$ENN') status
  *	On exit:
  *        R0: Pointer to Output Buffer ASCIIZ location
@@ -253,7 +253,7 @@
 	_dbg_outputMsgStatusErr
 	.endm
 
-/* _dbg_outputMsgStatusSig
+/** _dbg_outputMsgStatusSig
  *	Return Message with Signal ('+$SNN') status
  *	On entry:
  *	  R1: signal code
@@ -266,7 +266,7 @@
         _dbg_CopyMsg2OutputBuf_withParam
 	.endm
 
-/* _dbg_outputMsgStatusSigCode
+/** _dbg_outputMsgStatusSigCode
  *	Return Message with Signal ('+$SNN') status
  *	On exit:
  *        R0: Pointer to Output Buffer ASCIIZ location
@@ -278,103 +278,103 @@
 	.endm
 
 
-/* _regenum2index
+/** _regenum2index
  *      Convert register enum to debugger stack index
  *
  *      On entry:
- *        indexenum: enum representing Register to access
- *        indexreg: register to be used to store the debugger stack index value (0-max index)
+ *        @param indexenum: enum representing Register to access
+ *        @param indexreg: register to be used to store the debugger stack index value (0-max index)
  *      On exit:
- *        indexreg contains debugger stack index value (0-max index)
+ *        @param indexreg contains debugger stack index value (0-max index)
  */
 	.macro	_regenum2index indexenum, indexreg
     add     \indexreg, \indexenum, #DBGSTACK_USERREG_INDEX /* Convert register index to Debug Stack index */
     .endm
 
-/* _getdbgregisterfromindex
+/** _getdbgregisterfromindex
  *      Retrieve register contents from debugger stack given index
  *
  *      On entry:
- *        indexreg contains debugger stack index value (0-max index)
+ *        @param indexreg contains debugger stack index value (0-max index)
  *      On exit:
- *        indexreg: Breakpoint index (preserved)
- *        contentsreg: Register Contents for given index
+ *        @param indexreg: Breakpoint index (preserved)
+ *        @param contentsreg: Register Contents for given index
  */
         .macro  _getdbgregisterfromindex  indexreg, contentsreg
         ldr      \contentsreg, =__debugger_stack_bottom__
         ldr      \contentsreg, [\contentsreg, \indexreg, lsl #2]
         .endm
 
-/* _setdbgregisterfromindex
+/** _setdbgregisterfromindex
  *      Store register contents to debugger stack given index
  *
  *      On entry:
- *        indexreg contains debugger stack index value (0-max index)
- *        contentsreg: Register Contents for given index
- *        addressreg: Scratch register for address pointer
+ *        @param indexreg contains debugger stack index value (0-max index)
+ *        @param contentsreg: Register Contents for given index
+ *        @param addressreg: Scratch register for address pointer
  *      On exit:
- *        indexreg: Breakpoint index (preserved)
- *        contentsreg: Register Contents for given index
+ *        @param indexreg: Breakpoint index (preserved)
+ *        @param contentsreg: Register Contents for given index
  */
         .macro  _setdbgregisterfromindex  indexreg, contentsreg, addressreg
         ldr      \addressreg, =__debugger_stack_bottom__
         str      \contentsreg, [\addressreg, \indexreg, lsl #2]
         .endm
 
-/* _getdbgregister
+/** _getdbgregister
  *      Retrieve register contents from debugger stack given immediate index value
  *
  *      On entry:
- *        indexval contains debugger stack index value (0-max index)
+ *        @param indexval contains debugger stack index value (0-max index)
  *      On exit:
- *        contentsreg: Register Contents for given index
+ *        @param contentsreg: Register Contents for given index
  */
         .macro  _getdbgregister  indexval, contentsreg
         ldr      \contentsreg, =__debugger_stack_bottom__
         ldr      \contentsreg, [\contentsreg, #(\indexval << 2)]
         .endm
 
-/* _setdbgregister
+/** _setdbgregister
  *      Store register contents to debugger stack given immediate index value
  *
  *      On entry:
- *        indexval contains debugger stack index value (0-max index)
- *        contentsreg: Register Contents for given index
- *        addressreg: Scratch register for address pointer
+ *        @param indexval contains debugger stack index value (0-max index)
+ *        @param contentsreg: Register Contents for given index
+ *        @param addressreg: Scratch register for address pointer
  *      On exit:
- *        contentsreg: Register Contents for given index
- *        addressreg: Destroyed
+ *        @param contentsreg: Register Contents for given index
+ *        @param addressreg: Destroyed
  */
         .macro  _setdbgregister  indexval, contentsreg, addressreg
         ldr      \addressreg, =__debugger_stack_bottom__
         str      \contentsreg, [\addressreg, #(\indexval << 2)]
         .endm
 
-/* _index2bkptindex_addr
+/** _index2bkptindex_addr
  *	Convert Breakpoint index to breakpoing entry address
  *
  *	On entry:
- *	  indexreg contains breakpoint index value
+ *	  @param indexreg contains breakpoint index value
  *	On exit:
- *	  indexreg: Breakpoint index (preserved)
- *	  addrreg: Breakpoint Entry Address
+ *	  @param indexreg: Breakpoint index (preserved)
+ *	  @param addrreg: Breakpoint Entry Address
  */
 	.macro _index2bkptindex_addr indexreg, addrreg
 	ldr	 \addrreg, =__breakpoints_start__
 	add	 \addrreg, \addrreg, \indexreg, lsl #3	   /* Calculate Breakpoint Entry Address */
 	.endm
 
-/* _dbg_getstate
+/** _dbg_getstate
  *	Get Debugger State
  *	On exit:
- *	  reg: Debugger State enum
+ *	  @param reg: Debugger State enum
  */
 	.macro _dbg_getstate	reg
 	ldr	 \reg, =debug_state
 	ldrb     \reg, [\reg]
 	.endm
 
-/* _dbg_setstate
+/** _dbg_setstate
  *	Set Debugger State to given value
  *	On exit:
  *	  r0, r1: destroyed
@@ -385,17 +385,17 @@
 	strb     r0, [r1]
 	.endm
 
-/* _dbg_getmode
+/** _dbg_getmode
  *	Get Debugger Mode
  *	On exit:
- *	  reg: Debugger Mode (Boolean)
+ *	  @param reg: Debugger Mode (Boolean)
  */
 	.macro _dbg_getmode	reg
 	ldr	 \reg, =debug_mode
 	ldrb     \reg, [\reg]
 	.endm
 
-/* _dbg_setmode
+/** _dbg_setmode
  *	Set Debugger Mode to given value
  *	On exit:
  *	  r0, r1: destroyed
@@ -406,20 +406,20 @@
 	strb     r0, [r1]
 	.endm
 
-/* _dbg_get_bkpt_type
+/** _dbg_get_bkpt_type
  *      Get Breakpoint Type
  *      On exit:
- *        reg: Breakpoint Type
+ *        @param reg: Breakpoint Type
  */
         .macro _dbg_get_bkpt_type     reg
         ldr      \reg, =debug_bkpt_type
         ldrb     \reg, [\reg]
         .endm
 
-/* _dbg_set_bkpt_type
+/** _dbg_set_bkpt_type
  *      Set Breakpoint Type using value in reg
  *      On exit:
- *        reg: destroyed
+ *        @param reg: destroyed
  *        r1: destroyed
  */
 		.macro _dbg_set_bkpt_type     reg
@@ -427,7 +427,7 @@
 		strb     \reg, [r1]
 		.endm
 
-/* _dbg_set_bkpt_type_val
+/** _dbg_set_bkpt_type_val
  *      Set Breakpoint Type to given value
  *      On exit:
  *        r0, r1: destroyed
@@ -438,17 +438,17 @@
         strb     r0, [r1]
         .endm
 
-/* _dbg_getcurrbkpt_index
+/** _dbg_getcurrbkpt_index
  *	Get current breakpoint index
  *	On exit:
- *	  reg: Breakpoint index
+ *	  @param reg: Breakpoint index
  */
 	.macro _dbg_getcurrbkpt_index   reg
 	ldr	 \reg, =debug_curr_breakpoint
 	ldrb \reg, [\reg]
 	.endm
 
-/* _dbg_setcurrbkpt_index
+/** _dbg_setcurrbkpt_index
  *	Set current breakpoint index
  *	On exit:
  *	  r1: destroyed

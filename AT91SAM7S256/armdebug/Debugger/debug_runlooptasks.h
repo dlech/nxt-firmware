@@ -47,15 +47,33 @@
   .extern		dUsbRead
   .extern		dUsbIsConfigured
   .extern		dBtSendMsg
+  /**
+   * True value used by Thumb mode in NXT
+   */
   .equ			nxt_UBYTE_TRUE,		1
+  /**
+   * False value used by Thumb mode in NXT
+   */
   .equ			nxt_UBYTE_FALSE,	0
+  /**
+   * USB Command Indicator
+   */
   .equ			USB_CMD_READY,		0x01			/* From c_comm.iom */
+  /**
+   * BT Command Indicator
+   */
   .equ			BT_CMD_READY,		0x02			/* From c_comm.iom */
 
   .extern		dIOCtrlSetPower
   .extern		dIOCtrlSetPwm
   .extern		dIOCtrlTransfer
+  /**
+   * NXT Boot Magic Value
+   */
   .equ			BOOT, 0xA55A                                  /* from c_ioctrl.iom */
+  /**
+   * NXT Powerdown Magic Value
+   */
   .equ			POWERDOWN, 0x5A00                             /* from c_ioctrl.iom */
 
 #endif

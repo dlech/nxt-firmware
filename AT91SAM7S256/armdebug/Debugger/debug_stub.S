@@ -370,8 +370,7 @@ debug_cmdJumpTable:
  *		On exit:
  *			r0-r3: destroyed
  */
- 	.global dbg__bkpt_init
-dbg__bkpt_init:
+ 	dbg_interwork dbg__bkpt_init
     push    {lr}
 	bl		_dbg__clear_breakpoints
 	mov		r2, #0
@@ -415,8 +414,7 @@ _dbg__switch2undefmode:
  *		On exit:
  *			routine does not 'exit' in the normal sense
  */
-	.global	dbg__abort_exception_handler
-dbg__abort_exception_handler:
+	dbg_interwork dbg__abort_exception_handler
 	_dbg_set_bkpt_type r0			/* Set Breakpoint Type given value in R0 */
 	b	dbg__bkpt_waitCMD
 
@@ -427,8 +425,7 @@ dbg__abort_exception_handler:
  *		On exit:
  *			routine does not 'exit' in the normal sense
  */
-	.global	dbg__thumb_bkpt_handler
-dbg__thumb_bkpt_handler:
+	dbg_interwork dbg__thumb_bkpt_handler
 	/* On entry, r0 contains breakpoint index value */
 	_dbg_setcurrbkpt_index r0			/* keep current breakpoint index in memory */
 	ldr		r1, =BKPT16_MANUAL_BKPT
@@ -450,8 +447,7 @@ _process_normal_breakpoint_thumb:
  *		On exit:
  *			routine does not 'exit' in the normal sense
  */
-	.global	dbg__arm_bkpt_handler
-dbg__arm_bkpt_handler:
+	dbg_interwork dbg__arm_bkpt_handler
 	/* On entry, r0 contains breakpoint index value */
 	_dbg_setcurrbkpt_index r0			/* keep current breakpoint index in memory */
 	ldr		r1, =BKPT32_MANUAL_BKPT
@@ -479,7 +475,6 @@ dbg__bkpt_inactive:
 dbg__bkpt_offset_outofrange:
 /*	b	dbg__bkpt_waitCMD */
 
-	.global	dbg__bkpt_waitCMD
 /* dbg__bkpt_waitCMD
  *		GDB Stub Remote Command Handler
  */
@@ -489,7 +484,7 @@ dbg__bkpt_offset_outofrange:
  * GDB Server Command Processing Routines
  *
  ****************************************************************************/
-dbg__bkpt_waitCMD:
+	dbg_interwork dbg__bkpt_waitCMD
 	/* We enter this code section when a Breakpoint Triggers */
     _dbg_setmode TRUE                       /* Debug Mode = True */
 	msr	cpsr_c, #(MODE_ABT)					/* Re-enable Interrupts */
@@ -1395,7 +1390,6 @@ _dbg__clear_breakpoints:
 	blo		3b
 	ldmfd	sp!, {pc}
 
-	.global dbg__install_singlestep
 /* dbg__install_singlestep
  *		Install the Single Step Breakpoint
  *
@@ -1407,7 +1401,7 @@ _dbg__clear_breakpoints:
  *			R2: Breakpoint Instruction
  *			R3: Breakpoint Entry address
  */
-dbg__install_singlestep:
+	dbg_interwork dbg__install_singlestep
 	mov		r0, #0
 /*	b		_dbg__install_one_breakpoint */
 
@@ -1486,7 +1480,6 @@ _dbg__restore_breakpoints:
 	ldr		r6, =_dbg__restore_one_breakpoint
 	b		__dbg__iterate_breakpoint_array
 
-	.global dbg__activate_singlestep
 /* dbg__activate_singlestep
  *		Activate the single step breakpoint to memory
  *
@@ -1495,7 +1488,7 @@ _dbg__restore_breakpoints:
  *		On exit:
  *			R0-R3: Destroyed
  */
-dbg__activate_singlestep:
+	dbg_interwork dbg__activate_singlestep
 	mov		r0, #0						/* single step breakpoint index */
 	_index2bkptindex_addr	r0, r1		/* Calculate Single Step Breakpoint Entry Address */
 	ldm		r1, {r1, r2}				/* r1: Breakpoint Address, r2: Breakpoint Instruction */

@@ -146,7 +146,6 @@ nxt_commcmd_header:
  *					 in the last segment)
  */
 
- 	.global dbg__comm_init
 /* dbg__comm_init
  *      Initialize communications channel.
  *      On Entry:
@@ -154,7 +153,7 @@ nxt_commcmd_header:
  *          R1: MSG Tx Buf Pointer
  */
 
-dbg__comm_init:
+	dbg_interwork dbg__comm_init
 	stmfd	sp!, {lr}
 	ldr     r2, =debug_msgRxBufPtr
 	stmia   r2!, {r0, r1}          /* debug_msgRxBufPtr and debug_msgTxBufPtr */
@@ -172,7 +171,6 @@ _dbg__comm_readbuf_reset:
     str     r0, [r1]                            /* Clear Received Comm Message Length */
 	bx		lr
 
-    .global dbg__copyNxtDebugMsg
 /* dbg__copyNxtDebugMsg
  *      Copy NXT Debug Message to our own Buffers, indicate Msg Received status.
  *		Note: This routine is now used by both NXT Firmware and NxOS
@@ -183,7 +181,7 @@ _dbg__comm_readbuf_reset:
  *      On Exit:
  *          R0-R3: Destroyed
  */
-dbg__copyNxtDebugMsg:
+	dbg_interwork dbg__copyNxtDebugMsg
     ldr     r3, =debug_nxtMsgLength
     str     r1, [r3, #NXTCOMMCHANNEL_OFFSET]	/* save Communications Channel first */
     ldr		r1, [r3]							/* Check if there's an unread message in the buffer */
@@ -307,7 +305,6 @@ _msgbuf_checksum:
     and     r1, #BYTE0                          /* Modulo 256 */
     mov     pc, lr
 
-    .global dbg__getDebugMsg
 /* dbg__getDebugMsg
  *      Retrieve pending Debugger Message if available (Non-Blocking).
  *      On entry:
@@ -319,7 +316,7 @@ _msgbuf_checksum:
  *          r2, r3: Destroyed
  *      Note: If GDB Message were returned, it is ASCIIZ terminated, does not include '#' and checksum
  */
-dbg__getDebugMsg:
+	dbg_interwork dbg__getDebugMsg
     stmfd   sp!, {r4,r5,lr}
     bl      _dbg__commHasMsg                     /* r0: message length, r1: segment number */
     teq     r0, #0
@@ -468,7 +465,6 @@ _exit_copy_msg_to_commbuf:
     sub     r0, r5, r6                          /* Return calculated cummulative message length (R0) */
     ldmfd   sp!, {r1,r4,r5,r6,pc}               /* Return segment number in R1 */
 
-	.global dbg__putDebugMsg
 /* dbg__putDebugMsg
  *		Sends Debugger Message from calling routine after appending checksum (Blocking) .
  *		On entry:
@@ -478,7 +474,7 @@ _exit_copy_msg_to_commbuf:
  *      Note: GDB Message to be sent must be ASCIIZ terminated, does not include '#' and checksum
  *            Response packets start with '+' followed by '$' (2 bytes prefix)
  */
-dbg__putDebugMsg:
+	dbg_interwork dbg__putDebugMsg
 	stmfd	sp!, {r4,r5,lr}
 	/* Perform Checksum Calculation */
     ldr     r5, =debug_msgTxBufPtr              /* R5: data structure base pointer */
@@ -527,7 +523,6 @@ exit_dbg__putMsgError:
 exit_dbg__putDebugMsg:
 	ldmfd	sp!, {r4,r5,pc}
 
-	.global dbg__sendAckOrNak
 /* dbg__sendAckOrNak
  *		Send Ack (for successful receipt of message)
  *			or Nak (for Retransmission due to received message Checksum error) (Blocking) .
@@ -539,7 +534,7 @@ exit_dbg__putDebugMsg:
  *      Note: An Ack Or Nak is indicated by '+' or '-', which is prepended with the Comm header and sent (without checksum)
  *			  Sending Ack is only done for Continue and Step commands, where GDB does not expect any replies.
  */
-dbg__sendAckOrNak:
+	dbg_interwork dbg__sendAckOrNak
 	stmfd	sp!, {lr}
     ldr     r1, =debug_msgTxBufPtr              /* R2: data structure base pointer */
     ldr     r0, [r1]                            /* Tx buffer Start Address */

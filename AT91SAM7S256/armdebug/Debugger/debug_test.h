@@ -24,10 +24,22 @@
 /** @defgroup debug_public */
 /*@{*/
 
+/**
+ * Insert ARM Breakpoint instruction into code stream
+ */
 FUNCDEF void dbg__test_arm_bkpt(void);
+/**
+ * Insert Thumb Breakpoint instruction into code stream
+ */
 FUNCDEF void dbg__test_thumb_bkpt(void);
 
+/**
+ * Dummy function for testing ARM instruction stepping
+ */
 FUNCDEF void dbg__test_arm_instrstep(void);
+/**
+ * Dummy function for testing Thumb instruction stepping
+ */
 FUNCDEF void dbg__test_thumb_instrstep(void);
 
  /*@}*/

@@ -145,6 +145,20 @@ static inline void dbg_breakpoint_thumb(void) { asm volatile (".hword 0xBE7F" /*
  	.hword	(BKPT16_INSTR | BKPT16_MANUAL_BKPT)
  	.endm
 
+/** Macro to declare Interworking ARM Routine
+ *
+ *      dbg_interwork   <arm_routine_name>
+ *
+ *		Note: declared as a private macro since ARMDEBUG is also used by NIF
+ */
+    .macro dbg_interwork arm_routine
+    .align 4
+    .arm
+    .type \arm_routine, %function   @ Needed by new binutils (>2.21)
+    .global \arm_routine
+\arm_routine:
+    .endm
+
 #endif
  /*@}*/
 

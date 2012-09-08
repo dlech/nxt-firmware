@@ -23,8 +23,7 @@
  * dbg__test_arm_bkpt Test Routine
  *
  */
-	.global dbg__test_arm_bkpt
-dbg__test_arm_bkpt:
+	dbg_interwork dbg__test_arm_bkpt
 	stmfd sp!,{lr}
 	dbg__bkpt_arm                  /* Trigger ARM Manual Breakpoint */
     ldmfd sp!,{pc}
@@ -38,8 +37,7 @@ dbg__test_arm_bkpt:
  *	In addition, conditional instructions are also evaluated.
  *
  */
-	.global dbg__test_arm_instrstep
-dbg__test_arm_instrstep:
+	dbg_interwork dbg__test_arm_instrstep
 	stmfd	sp!, {lr}
 	bl		dbg__test_arm_instr_sub1
 	ldr		r1, =test_arm_3			/* R1: pointer to test_arm_3 */
@@ -85,8 +83,7 @@ dbg__test_arm_instr_sub2:
  * dbg__test_thumb_bkpt Test Routine
  *
  */
-	.global dbg__test_thumb_bkpt
-dbg__test_thumb_bkpt:
+	dbg_interwork dbg__test_thumb_bkpt
 	stmfd sp!,{lr}
 /*	ldr r0, =_thumb_entry
 	orr	r0, r0, #1					@ Set Thumb mode
@@ -97,7 +94,8 @@ dbg__test_thumb_bkpt:
 	ldmfd sp!,{pc}
 
 .code 16
-.thumb_func
+	.thumb_func
+	.type _thumb_entry, %function
 _thumb_entry:
 	dbg__bkpt_thumb
 	bx	lr
@@ -109,7 +107,8 @@ _thumb_entry:
  *
  */
 	.global dbg__test_thumb_instrstep
-.thumb_func
+	.thumb_func
+	.type dbg__test_thumb_instrstep, %function
 dbg__test_thumb_instrstep:
 	push	{lr}
 	bl		dbg__test_thumb_instr_sub1
@@ -145,12 +144,14 @@ exit_dbg__test_thumb_instrstep:
 	pop		{r1}
 	bx		r1
 
-.thumb_func
+	.thumb_func
+	.type dbg__test_thumb_instr_sub1, %function
 dbg__test_thumb_instr_sub1:
 	mov		r0, #0x0F
 	bx		lr
 
-.thumb_func
+	.thumb_func
+	.type dbg__test_thumb_instr_sub2, %function
 dbg__test_thumb_instr_sub2:
 	push	{lr}
 	mov		r1, #FALSE

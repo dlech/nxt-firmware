@@ -148,7 +148,7 @@ class NXTGDBServer:
                        assert segno == prev_segno + 1, "segno = %s, prev_segno = %s" % (segno, prev_segno)
                     prev_segno = segno
                     msg += s               
-            except usb.USBError as e:
+            except IOError as e:
                 # Some pyusb are buggy, ignore some "errors".
                 if e.args != ('No error', ):
                     raise e
@@ -198,7 +198,7 @@ class NXTGDBServer:
                         for seg in segments:
                             try:
                                 self.brick.sock.send (seg)
-                            except usb.USBError as e:
+                            except IOError as e:
                                 # Some pyusb are buggy, ignore some "errors".
                                 if e.args != ('No error', ):
                                     raise e

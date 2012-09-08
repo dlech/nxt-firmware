@@ -55,10 +55,8 @@
 	.extern default_prefetch_abort_handler
 	.extern default_data_abort_handler
 
-	.global prefetch_abort_handler
-	.global data_abort_handler
 
-prefetch_abort_handler:
+	dbg_interwork prefetch_abort_handler
   		ldr		sp, =__debugger_stack__
  		stmfd 	sp, {r0-r15}^			/* Save workspace, previous mode's pc via 'S' flag, R13-R15: placeholders */
 		mov		r2, #PREFETCH_OFFSET
@@ -66,7 +64,7 @@ prefetch_abort_handler:
 		mov		r5, #DBG_ABORT_PREFETCH	/* Debugger Abort Type */
 		b		_common_abort_handler
 
-data_abort_handler:
+	dbg_interwork data_abort_handler
   		ldr		sp, =__debugger_stack__
  		stmfd 	sp, {r0-r15}^			/* Save workspace, previous mode's pc via 'S' flag, R13-R15: placeholders */
 		mov		r2, #DATA_OFFSET

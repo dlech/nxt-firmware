@@ -78,10 +78,6 @@
 
 	.code 32
 	.align 4
-    .global dbg__runloopTasks
-	.global	dbg__reboot
-	.global dbg__display_abort_info
- 	.global dbg__sendCommMsg
 
 #ifdef __NXOS__
 /****************************************************************************
@@ -89,7 +85,7 @@
  * NxOS Run Loop
  *
  ****************************************************************************/
-dbg__runloopTasks:
+	dbg_interwork dbg__runloopTasks
 /* Currently, there's nothing that needs to be done in the NxOS Run Loop */
 	push	{lr}
 	mov		r0, #1				/* 1 ms delay */
@@ -102,7 +98,7 @@ dbg__runloopTasks:
  * NXT Firmware Run Loop
  *
  ****************************************************************************/
-dbg__runloopTasks:
+	dbg_interwork dbg__runloopTasks
     push    {lr}
     /* FIXME: Add necessary cXXXCtrl calls here */
     bl      cCommCtrl
@@ -116,7 +112,7 @@ dbg__runloopTasks:
  * NxOS Reboot Routine
  *
  ****************************************************************************/
- dbg__reboot:
+	dbg_interwork dbg__reboot
 #ifdef REBOOT_POWERDOWN
 	b	    nx_core_halt		/* Shutdown Brick, won't return */
 #else
@@ -129,7 +125,7 @@ dbg__runloopTasks:
  * NXT Firmware Reboot Routine
  *
  ****************************************************************************/
-dbg__reboot:
+	dbg_interwork dbg__reboot
 	/* Powerdown Sequence
       	dIOCtrlSetPower((POWERDOWN>>8));
 		dIOCtrlTransfer();
@@ -180,7 +176,7 @@ _dbg__reboot_wait:
  *		On exit:
  *			r0-r3: destroyed
  */
-dbg__display_abort_info:
+	dbg_interwork dbg__display_abort_info
 	push	{lr}
     _getdbgregister DBGSTACK_USERPC_INDEX, r1           /* Retrieve User PC into R2 */
     _getdbgregister DBGSTACK_USERCPSR_INDEX, r2         /* Retrieve User CPSR into R2 */
@@ -193,7 +189,7 @@ dbg__display_abort_info:
  * NXT Firmware Abort Info LCD Display Routine
  *
  ****************************************************************************/
-dbg__display_abort_info:
+	dbg_interwork dbg__display_abort_info
 /* FIXME: Inteface with NXT Firmware LCD Display routines */
     push    {lr}
     pop     {pc}
@@ -214,7 +210,7 @@ dbg__display_abort_info:
  *           R0: Tx Status (TRUE if data sent)
  *			 R1-R3: Destroyed
  */
-dbg__sendCommMsg:
+	dbg_interwork dbg__sendCommMsg
     stmfd   sp!, {r4, lr}
     mov     r4, r0                              /* Keep Comm Buffer length in R4 */
     /* Check USB bus status, transmit message if possible */
@@ -258,7 +254,7 @@ exit_dbg__sendCommMsg:
  *      On exit:
             R0: Tx Status (TRUE if data sent)
  */
-dbg__sendCommMsg:
+	dbg_interwork dbg__sendCommMsg
     stmfd   sp!, {r4, lr}
     mov     r4, r0                              /* Keep Comm Buffer length in R4 */
     ldr     r0, =debug_nxtCommChannel
@@ -311,7 +307,6 @@ exit_dbg__sendCommMsg:
 	.extern dbg__install_singlestep
 	.extern dbg__activate_singlestep
 	.extern irq_stack_frame_address
-	.global nxos__handleDebug
 /* nxos__handleDebug
  * 		Prepare to switch to Debug Mode
  * int nxos__handleDebug(U8 *buffer, comm_chan_t channel, U32 length);
@@ -330,7 +325,7 @@ exit_dbg__sendCommMsg:
  * If we're operating in normal NxOS mode, return True (!0)
  * If we're already in Debugger Mode, return False (0)
  */
-nxos__handleDebug:
+	dbg_interwork nxos__handleDebug
 		push {lr}
 		/* This routine is called from nx__irq_handler() via fantom_filter_packet().
 		 * The operating mode should already have been configured by the IRQ interrupt handler.
@@ -379,6 +374,7 @@ exit_nxos__handleDebug:
     .extern dbg__copyNxtDebugMsg
     .global cCommHandleDebug
     .thumb_func
+    .type cCommHandleDebug, %function
 /* cCommHandleDebug
  * Switch Mode to Debugger.
  *      Used by NXT Firmware only

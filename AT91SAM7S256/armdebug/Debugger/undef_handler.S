@@ -21,16 +21,14 @@
 	.extern dbg__arm_bkpt_handler
 	.extern default_undef_handler
 
-	.global undef_handler
-
-undef_handler:
 /* Remote GDB Debugger relies on BKPT instruction being trapped here
  * In ARMv4t, it is an Illegal (Undefined) Instruction.
  * On triggering, lr (R14) contains the previous mode's pc (R15).
  * Based on example in Hohl, "ARM Assembly Language: Fundamentals and Techniques"
  * Chapter 11, Example 11.1.
  */
- /* We assume that the DEBUG stack holds only one stack frame and we will overwrite it.
+ /** undef_handler
+  * We assume that the DEBUG stack holds only one stack frame and we will overwrite it.
   * On entry, LR_undef points to one instruction past the UNDEF instruction.
   *
   * For the purpose of Debugging, the stack frame should present the PC (R15) as the address
@@ -48,6 +46,7 @@ undef_handler:
   * 	R2: Mode
   * 	R3: Debug Stack Pointer (for Banked R13-R14 update)
   */
+		dbg_interwork undef_handler
   		ldr		sp, =__debugger_stack__
  		stmfd 	sp, {r0-r15}^			/* Save workspace, previous mode's pc via 'S' flag, R13-R15: placeholders */
 		mov		r3, sp					/* Use R3 to write Banked R13-R14, and actual PC of UNDEF instruction */
@@ -103,10 +102,7 @@ _exit_undef_handler:
         bic 	sp, sp, #7
 		mov		pc, r2						/* Invoke Debugger */
 
-    .global resume_execution
-
-resume_execution:
-/*
+/** resume_execution
  * This routine is called by the Debugger prior to returning control to
  * the executing program.
  * It updates the SPSR_UNDEF with the Debug Stack value, and
@@ -119,6 +115,7 @@ resume_execution:
  * reexecuted, it should be placed in the Next Instruction Address slot
  * by ABORT mode before coming here
  */
+	dbg_interwork resume_execution
     ldr     lr, =__debugger_stack_bottom__      /* Use LR(undef) for Debug Stack Access */
     add     r1, lr, #(DBGSTACK_USERSP_INDEX*4)  /* Use R1 for Previous Mode SP (R13) and LR (R14) access */
     ldr     r0, [lr, #(DBGSTACK_USERCPSR_INDEX*4)]!      /* LR updated, Retrieve SPSR into R0 */
